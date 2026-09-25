@@ -939,14 +939,19 @@ def obtener_datos_hidrologicos():
     headers_browser = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
         "Accept": "application/json, text/plain, */*",
-        "Referer": "https://snih.hidricosargentina.gob.ar/"
+        "Referer": "https://alerta.ina.gob.ar/"
     }
 
-    # 1. Consulta al INA con timeout extendido y sin validación estricta de SSL
+    # 1. Consulta al INA con endpoint corregido (URL paramétrica limpia)
     def _get_ina(sid, info):
-        url = f"{BASE_URL_INA}/datos&seriesId={sid}&timeStart={timestart_str}&timeEnd={timeend_str}&format=json"
+        params = {
+            "seriesId": str(sid),
+            "timeStart": (ahora - timedelta(days=3)).strftime("%Y-%m-%d"),
+            "timeEnd": (ahora + timedelta(days=1)).strftime("%Y-%m-%d"),
+            "format": "json"
+        }
         try:
-            r = session.get(url, headers=headers_browser, timeout=12, verify=False)
+            r = session.get(BASE_URL_INA, params=params, headers=headers_browser, timeout=12, verify=False)
             if r.status_code == 200:
                 datos = r.json()
                 if isinstance(datos, dict):
@@ -968,9 +973,10 @@ def obtener_datos_hidrologicos():
                             "fuente": "INA"
                         })
                 if res:
+                    print(f"   -> [INA EN VIVO] {info['nombre']}: {len(res)} registros (Ult: {res[-1]['valor']} m)", flush=True)
                     return res
         except Exception as e:
-            print(f"   [AVISO INA] Error en {info['nombre']} ({sid}): {e}", flush=True)
+            print(f"   [AVISO INA] {info['nombre']} ({sid}): {e}", flush=True)
         return []
 
     with ThreadPoolExecutor(max_workers=4) as executor:
@@ -980,42 +986,49 @@ def obtener_datos_hidrologicos():
             if res:
                 registros_hidro.extend(res)
 
-    # 2. Consulta a SNIH con payload JSON
+    # 2. Consulta a SNIH con payload dual (int y str)
     for cod_snih, info in ESTACIONES_SNIH_INFO.items():
         try:
-            payload = json.dumps({"estacion": str(cod_snih)})
-            headers_snih = {
-                "Content-Type": "application/json; charset=utf-8",
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-                "X-Requested-With": "XMLHttpRequest"
-            }
-            r = requests.post(URL_API_SNIH, data=payload, headers=headers_snih, timeout=10, verify=False)
-            if r.status_code == 200:
-                resp = r.json()
-                if resp.get("d", {}).get("RespuestaOK"):
-                    mediciones = resp["d"].get("Mediciones", [])
-                    for m in mediciones:
-                        if m.get("Codigo") == 1 and m.get("Valor") is not None:
-                            ts = int(m.get("FechaHora").split("(")[1].split(")")[0]) / 1000
-                            registros_hidro.append({
-                                "fecha": datetime.fromtimestamp(ts, tz=TZ_ARG).strftime('%Y-%m-%d %H:%M:%S'),
-                                "valor": float(m.get("Valor")),
-                                "sitecode": f"SNIH_{cod_snih}",
-                                "nombre": info["nombre"],
-                                "distrito": info["distrito"],
-                                "rio": info["rio"],
-                                "lat": info["lat"],
-                                "lon": info["lon"],
-                                "fuente": "SNIH"
-                            })
+            for est_val in [int(cod_snih), str(cod_snih)]:
+                payload = json.dumps({"estacion": est_val})
+                headers_snih = {
+                    "Content-Type": "application/json; charset=utf-8",
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                    "X-Requested-With": "XMLHttpRequest",
+                    "Referer": "https://snih.hidricosargentina.gob.ar/MuestraDatos.aspx"
+                }
+                r = requests.post(URL_API_SNIH, data=payload, headers=headers_snih, timeout=8, verify=False)
+                if r.status_code == 200:
+                    resp = r.json()
+                    if resp.get("d", {}).get("RespuestaOK"):
+                        mediciones = resp["d"].get("Mediciones", [])
+                        snih_pts = []
+                        for m in mediciones:
+                            if m.get("Codigo") == 1 and m.get("Valor") is not None:
+                                ts = int(m.get("FechaHora").split("(")[1].split(")")[0]) / 1000
+                                snih_pts.append({
+                                    "fecha": datetime.fromtimestamp(ts, tz=TZ_ARG).strftime('%Y-%m-%d %H:%M:%S'),
+                                    "valor": float(m.get("Valor")),
+                                    "sitecode": f"SNIH_{cod_snih}",
+                                    "nombre": info["nombre"],
+                                    "distrito": info["distrito"],
+                                    "rio": info["rio"],
+                                    "lat": info["lat"],
+                                    "lon": info["lon"],
+                                    "fuente": "SNIH"
+                                })
+                        if snih_pts:
+                            print(f"   -> [SNIH EN VIVO] {info['nombre']}: {len(snih_pts)} registros (Ult: {snih_pts[-1]['valor']} m)", flush=True)
+                            registros_hidro.extend(snih_pts)
+                            break
         except Exception as e:
-            print(f"   [AVISO SNIH] Error en {info['nombre']} ({cod_snih}): {e}", flush=True)
+            print(f"   [AVISO SNIH] {info['nombre']} ({cod_snih}): {e}", flush=True)
 
-    print(f"   -> [CUERPOS DE AGUA]: {len(registros_hidro)} mediciones recuperadas.", flush=True)
+    print(f"   -> [TOTAL CUERPOS DE AGUA]: {len(registros_hidro)} mediciones consolidadas.", flush=True)
 
-    # Si INA / SNIH fallaron o no respondieron, usamos catálogo de referencia
+    # Si INA / SNIH no devuelven datos por bloqueo geográfico de IP, se recurre a respaldo
     if not registros_hidro:
-        print("   [INFO] Servidores INA/SNIH no accesibles desde IP externa: aplicando valores de referencia...", flush=True)
+        print("   [INFO] Servidores INA/SNIH restringidos para esta consulta: aplicando valores base...", flush=True)
         base_niveles = {
             6750: 1.05, 6444: 0.32, 6441: 1.08, 6472: 0.16, 6445: 1.79,
             6624: 0.66, 6622: 1.22, 6623: 1.69, 6391: 1.43, 2809: 0.78
@@ -1033,7 +1046,6 @@ def obtener_datos_hidrologicos():
                 "fuente": "INA"
             })
     return registros_hidro
-
 def obtener_descargas_atmosfericas():
     print("5. Consultando descargas atmosféricas (rayos Blitzortung)...", flush=True)
     rayos = []
