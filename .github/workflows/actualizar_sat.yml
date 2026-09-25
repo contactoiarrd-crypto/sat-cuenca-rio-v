@@ -1,0 +1,41 @@
+name: Actualizar SAT Rio V en Tiempo Real
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'  # Corre cada 10 minutos
+  workflow_dispatch:        # Permite ejecutarlo a mano con un clic
+
+permissions:
+  contents: write
+
+jobs:
+  actualizar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout de repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Instalar dependencias
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Ejecutar Extractor y Generador
+        run: python sat_unificado_hidro_meteo.py
+
+      - name: Preparar archivos para publicacion web
+        run: |
+          cp mapa_sat_rio_v_triprovincial.html index.html
+
+      - name: Publicar cambios en GitHub Pages
+        run: |
+          git config --global user.name 'SAT-RioV-Bot'
+          git config --global user.email 'bot@sat-riov.local'
+          git add index.html mapa_sat_rio_v_triprovincial.html resumen_cruce_rio_v_triprovincial.csv sat_unificado_rio_v_triprovincial.xlsx
+          git commit -m "Actualizacion automatica SAT [skip ci]" || exit 0
+          git push
