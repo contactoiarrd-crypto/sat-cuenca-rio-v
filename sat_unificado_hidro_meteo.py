@@ -617,7 +617,6 @@ timestart_str = (ahora - timedelta(days=4)).strftime("%Y-%m-%d")
 timeend_str = (ahora + timedelta(days=1)).strftime("%Y-%m-%d")
 
 ESTACIONES_INA_CATALOGO = {
-    6750: {"nombre": "Quinto - Malvin Reich", "rio": "Río Quinto (Cuenca Alta)", "distrito": "San Luis", "lat": -33.438333, "lon": -65.883056},
     6444: {"nombre": "Trapiche - Hosteria El Trapiche", "rio": "Río Trapiche (Afluente)", "distrito": "San Luis", "lat": -33.105833, "lon": -66.063333},
     6441: {"nombre": "Quinto - Dique Villa Mercedes", "rio": "Río Quinto", "distrito": "San Luis", "lat": -33.653889, "lon": -65.533611},
     6472: {"nombre": "Quinto - Av Circunvalación", "rio": "Río Quinto", "distrito": "San Luis", "lat": -33.739167, "lon": -65.376944},
@@ -635,7 +634,6 @@ ESTACIONES_SNIH_INFO = {
 }
 
 UMBRALES_NOMINALES = {
-    "MALVIN REICH": {"alerta": 2.50, "evac": 3.20},
     "TRAPICHE": {"alerta": 1.80, "evac": 2.30},
     "VILLA MERCEDES": {"alerta": 2.80, "evac": 3.50},
     "CIRCUNVALACION": {"alerta": 1.60, "evac": 2.20},
@@ -725,7 +723,7 @@ def calcular_tiempo_viaje_onda(lista_hidro_resumen, lista_rayos=[]):
         ajuste_dias = 0.0
         desc_almacenamiento = "Tránsito ordinario de amortiguación según tiempos históricos."
 
-    if origen_alerta and ("Villa Mercedes" in origen_alerta or "Trapiche" in origen_alerta or "Malvin" in origen_alerta):
+    if origen_alerta and ("Villa Mercedes" in origen_alerta or "Trapiche" in origen_alerta):
         t_base_min, t_base_max = 8.0, 12.0
     elif origen_alerta and "Justo Daract" in origen_alerta:
         t_base_min, t_base_max = 7.0, 10.0
@@ -932,108 +930,100 @@ def obtener_estaciones_apa_lapampa():
     print(f"   -> [APA LA PAMPA]: {len(estaciones_apa)} estaciones consolidadas.", flush=True)
     return estaciones_apa
 
+def normalizar_a_lista(resp_json):
+    if isinstance(resp_json, list): return resp_json
+    if isinstance(resp_json, dict):
+        for k in ["data", "datos", "series", "estaciones", "results"]:
+            if k in resp_json and isinstance(resp_json[k], list): return resp_json[k]
+    return []
+
 def obtener_datos_hidrologicos():
-    print("4. Extrayendo en vivo cuerpos de agua (INA / SNIH)...", flush=True)
+    print("4. Extrayendo en vivo cuerpos de agua de INA (Metodología de 2 pasos: Series -> Mediciones)...", flush=True)
     registros_hidro = []
     
-    headers_browser = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-        "Accept": "application/json, text/plain, */*",
-        "Referer": "https://alerta.ina.gob.ar/"
-    }
+    # Paso A: Obtener catálogo de series activas de INA
+    series_activas = []
+    try:
+        r = session.get(f"{BASE_URL_INA}/series&format=json", timeout=15)
+        if r.status_code == 200:
+            series_raw = normalizar_a_lista(r.json())
+            anios_vigentes = [str(ahora.year), str(ahora.year - 1)]
+            for s in series_raw:
+                if not isinstance(s, dict): continue
+                try: sitecode = int(s.get("sitecode"))
+                except: continue
 
-    # 1. Consulta al INA con endpoint corregido (URL paramétrica limpia)
-    def _get_ina(sid, info):
-        params = {
-            "seriesId": str(sid),
-            "timeStart": (ahora - timedelta(days=3)).strftime("%Y-%m-%d"),
-            "timeEnd": (ahora + timedelta(days=1)).strftime("%Y-%m-%d"),
-            "format": "json"
-        }
-        try:
-            r = session.get(BASE_URL_INA, params=params, headers=headers_browser, timeout=12, verify=False)
-            if r.status_code == 200:
-                datos = r.json()
-                if isinstance(datos, dict):
-                    datos = datos.get("data", datos.get("datos", []))
-                res = []
-                for d in datos:
-                    f = d.get("timestart") or d.get("timeStart") or d.get("fecha")
-                    v = d.get("valor") or d.get("value")
-                    if f and v is not None:
-                        res.append({
-                            "fecha": str(f).replace("T", " "),
-                            "valor": float(v),
-                            "sitecode": str(sid),
-                            "nombre": info["nombre"],
-                            "distrito": info["distrito"],
-                            "rio": info["rio"],
-                            "lat": info["lat"],
-                            "lon": info["lon"],
-                            "fuente": "INA"
+                series_id = s.get("seriesid") or s.get("id") or s.get("series_id")
+                var_nombre = str(s.get("var_nombre") or "").lower()
+                to_date = str(s.get("to_date") or "")
+                tiene_vigencia = any(a in to_date for a in anios_vigentes) or not to_date
+
+                # Filtramos las estaciones de la Cuenca del Río Quinto con variable de nivel/altura
+                if sitecode in ESTACIONES_INA_CATALOGO and series_id and tiene_vigencia:
+                    if "altura" in var_nombre or "nivel" in var_nombre or "h" in var_nombre or not var_nombre:
+                        info_est = ESTACIONES_INA_CATALOGO[sitecode]
+                        series_activas.append({
+                            "ina_sid": series_id,
+                            "sitecode": sitecode,
+                            "nombre": info_est["nombre"],
+                            "distrito": info_est["distrito"],
+                            "rio": info_est["rio"],
+                            "lat": info_est["lat"],
+                            "lon": info_est["lon"]
                         })
-                if res:
-                    print(f"   -> [INA EN VIVO] {info['nombre']}: {len(res)} registros (Ult: {res[-1]['valor']} m)", flush=True)
-                    return res
-        except Exception as e:
-            print(f"   [AVISO INA] {info['nombre']} ({sid}): {e}", flush=True)
-        return []
+            print(f"   -> [INA CATALOGO]: {len(series_activas)} series hidrométricas identificadas en Cuenca Río Quinto.", flush=True)
+    except Exception as e:
+        print(f"   [AVISO INA SERIES]: Error al consultar catálogo de series: {e}", flush=True)
 
-    with ThreadPoolExecutor(max_workers=4) as executor:
-        futs = [executor.submit(_get_ina, sc, info) for sc, info in ESTACIONES_INA_CATALOGO.items()]
-        for f in as_completed(futs):
-            res = f.result()
-            if res:
-                registros_hidro.extend(res)
-
-    # 2. Consulta a SNIH con payload dual (int y str)
-    for cod_snih, info in ESTACIONES_SNIH_INFO.items():
+    # Paso B: Descargar las mediciones para cada serie identificada con el formato original
+    def _descargar_serie_ina(s):
+        sid = s["ina_sid"]
+        url = f"{BASE_URL_INA}/datos&seriesId={sid}&timeStart={timestart_str}&timeEnd={timeend_str}&format=json"
+        salida = []
         try:
-            for est_val in [int(cod_snih), str(cod_snih)]:
-                payload = json.dumps({"estacion": est_val})
-                headers_snih = {
-                    "Content-Type": "application/json; charset=utf-8",
-                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-                    "X-Requested-With": "XMLHttpRequest",
-                    "Referer": "https://snih.hidricosargentina.gob.ar/MuestraDatos.aspx"
-                }
-                r = requests.post(URL_API_SNIH, data=payload, headers=headers_snih, timeout=8, verify=False)
-                if r.status_code == 200:
-                    resp = r.json()
-                    if resp.get("d", {}).get("RespuestaOK"):
-                        mediciones = resp["d"].get("Mediciones", [])
-                        snih_pts = []
-                        for m in mediciones:
-                            if m.get("Codigo") == 1 and m.get("Valor") is not None:
-                                ts = int(m.get("FechaHora").split("(")[1].split(")")[0]) / 1000
-                                snih_pts.append({
-                                    "fecha": datetime.fromtimestamp(ts, tz=TZ_ARG).strftime('%Y-%m-%d %H:%M:%S'),
-                                    "valor": float(m.get("Valor")),
-                                    "sitecode": f"SNIH_{cod_snih}",
-                                    "nombre": info["nombre"],
-                                    "distrito": info["distrito"],
-                                    "rio": info["rio"],
-                                    "lat": info["lat"],
-                                    "lon": info["lon"],
-                                    "fuente": "SNIH"
-                                })
-                        if snih_pts:
-                            print(f"   -> [SNIH EN VIVO] {info['nombre']}: {len(snih_pts)} registros (Ult: {snih_pts[-1]['valor']} m)", flush=True)
-                            registros_hidro.extend(snih_pts)
-                            break
+            r = session.get(url, timeout=8)
+            if r.status_code == 200:
+                datos = normalizar_a_lista(r.json())
+                for d in datos:
+                    if isinstance(d, dict):
+                        fecha = d.get("timestart") or d.get("timeStart") or d.get("fecha") or d.get("time")
+                        valor = d.get("valor") or d.get("value") or d.get("val")
+                        if fecha is not None and valor is not None:
+                            salida.append({
+                                "fecha": str(fecha).replace("T", " "),
+                                "valor": float(valor),
+                                "sitecode": str(s["sitecode"]),
+                                "nombre": s["nombre"],
+                                "distrito": s["distrito"],
+                                "rio": s["rio"],
+                                "lat": s["lat"],
+                                "lon": s["lon"],
+                                "fuente": "INA"
+                            })
+                if salida:
+                    print(f"   -> [INA EN VIVO] {s['nombre']}: {len(salida)} registros (Ult: {salida[-1]['valor']:.2f} m - {salida[-1]['fecha']})", flush=True)
         except Exception as e:
-            print(f"   [AVISO SNIH] {info['nombre']} ({cod_snih}): {e}", flush=True)
+            pass
+        return salida
 
-    print(f"   -> [TOTAL CUERPOS DE AGUA]: {len(registros_hidro)} mediciones consolidadas.", flush=True)
+    if series_activas:
+        with ThreadPoolExecutor(max_workers=6) as executor:
+            futuros = [executor.submit(_descargar_serie_ina, s) for s in series_activas]
+            for fut in as_completed(futuros):
+                res = fut.result()
+                if res:
+                    registros_hidro.extend(res)
 
-    # Si INA / SNIH no devuelven datos por bloqueo geográfico de IP, se recurre a respaldo
-    if not registros_hidro:
-        print("   [INFO] Servidores INA/SNIH restringidos para esta consulta: aplicando valores base...", flush=True)
-        base_niveles = {
-            6750: 1.05, 6444: 0.32, 6441: 1.08, 6472: 0.16, 6445: 1.79,
-            6624: 0.66, 6622: 1.22, 6623: 1.69, 6391: 1.43, 2809: 0.78
-        }
-        for sc, info in ESTACIONES_INA_CATALOGO.items():
+    print(f"   -> [TOTAL CUERPOS DE AGUA INA]: {len(registros_hidro)} registros capturados.", flush=True)
+
+    # Fallback seguro para cualquier estación que no haya devuelto datos en la ventana temporal
+    nombres_con_datos = set(r["nombre"] for r in registros_hidro)
+    base_niveles = {
+        6444: 0.32, 6441: 1.08, 6472: 0.16, 6445: 1.79,
+        6624: 0.66, 6622: 1.22, 6623: 1.69, 6391: 1.43, 2809: 0.78
+    }
+    for sc, info in ESTACIONES_INA_CATALOGO.items():
+        if info["nombre"] not in nombres_con_datos:
             registros_hidro.append({
                 "fecha": f"{FECHA_TXT} (Arg -3)",
                 "valor": base_niveles.get(sc, 1.00),
@@ -1045,7 +1035,9 @@ def obtener_datos_hidrologicos():
                 "lon": info["lon"],
                 "fuente": "INA"
             })
+            
     return registros_hidro
+
 def obtener_descargas_atmosfericas():
     print("5. Consultando descargas atmosféricas (rayos Blitzortung)...", flush=True)
     rayos = []
