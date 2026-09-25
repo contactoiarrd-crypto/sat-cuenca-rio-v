@@ -1,11 +1,10 @@
 ﻿Estación Hidrológica,Río / Cuenca,Nivel Actual (m),Media Histórica (m),Cota Alerta (m),Margen Alerta (m),Estado Semáforo,Tendencia Río,Estación Meteo Cercana,Red,Distancia (km),Lluvia 24h (mm),Temp (°C),Tiempo Viaje a LP (días),Evaluación de Riesgo
-Aº El Aji - RN Nº35 y RN Nº7,Afluente Río Quinto,0.66,0.66,1.9,1.24,Normal / Seguro,Estable ▬,"Vicuña Mackenna, Cordoba, Argentina (Córdoba)",Omixom Córdoba,5.8,0.0,S/D,7-10 d,Estable / Sin aporte de escorrentía crítica
-Laguna La Margarita,Cuenca Río Quinto,1.43,1.43,2.4,0.97,Normal / Seguro,Estable ▬,"Hipólito Bouchard, Cordoba, Argentina (Córdoba)",Omixom Córdoba,21.0,0.0,S/D,7-10 d,Estable / Sin aporte de escorrentía crítica
-Quinto - Av Circunvalación,Río Quinto,0.16,0.16,2.5,2.34,Normal / Seguro,Estable ▬,Villa Reynolds (San Luis),REM San Luis,1.7,0.0,16.1,7-10 d,Estable / Sin aporte de escorrentía crítica
-Quinto - Canal Devoto RP 4,Río Quinto / Canal Devoto,1.69,1.69,2.8,1.11,Normal / Seguro,Estable ▬,"Río Bamba, Cordoba, Argentina (Córdoba)",Omixom Córdoba,29.4,0.0,S/D,7-10 d,Estable / Sin aporte de escorrentía crítica
-Quinto - Dique Villa Mercedes,Río Quinto,1.08,1.08,2.8,1.72,Normal / Seguro,Estable ▬,Villa Mercedes (San Luis),REM San Luis,3.8,0.0,16.6,7-10 d,Estable / Sin aporte de escorrentía crítica
-Quinto - Justo Daract,Río Quinto,1.79,1.79,2.9,1.11,Normal / Seguro,Estable ▬,Justo Daract (San Luis),REM San Luis,7.8,0.0,16.8,7-10 d,Estable / Sin aporte de escorrentía crítica
-Quinto - Malvin Reich,Río Quinto (Cuenca Alta),1.05,1.05,2.5,1.45,Normal / Seguro,Estable ▬,Fraga (San Luis),REM San Luis,11.0,0.0,17.9,7-10 d,Estable / Sin aporte de escorrentía crítica
-Quinto - R.N. 35,Río Quinto,1.22,1.22,2.6,1.38,Normal / Seguro,Estable ▬,"Nicolás Bruzzone, Cordoba, Argentina (Córdoba)",Omixom Córdoba,25.1,0.0,S/D,7-10 d,Estable / Sin aporte de escorrentía crítica
-Quinto - RP Nº26,Río Quinto,0.78,0.78,2.2,1.42,Normal / Seguro,Estable ▬,"Hipólito Bouchard, Cordoba, Argentina (Córdoba)",Omixom Córdoba,14.4,0.0,S/D,7-10 d,Estable / Sin aporte de escorrentía crítica
-Trapiche - Hosteria El Trapiche,Río Trapiche (Afluente),0.32,0.32,1.8,1.48,Normal / Seguro,Estable ▬,El Trapiche (San Luis),REM San Luis,0.6,0.0,15.8,7-10 d,Estable / Sin aporte de escorrentía crítica
+Aº El Aji - RN Nº35 y RN Nº7,Afluente Río Quinto,0.63,0.64,1.9,1.27,Normal / Seguro,Estable ▬,"Vicuña Mackenna, Cordoba, Argentina (Córdoba)",Omixom Córdoba,5.8,0.0,S/D,7-10 d,Estable / Sin aporte de escorrentía crítica
+Laguna La Margarita,Cuenca Río Quinto,1.35,1.36,2.4,1.05,Normal / Seguro,Estable ▬,"Hipólito Bouchard, Cordoba, Argentina (Córdoba)",Omixom Córdoba,21.0,0.0,S/D,7-10 d,Estable / Sin aporte de escorrentía crítica
+Quinto - Av Circunvalación,Río Quinto,0.09,0.12,2.5,2.41,Normal / Seguro,Estable ▬,Villa Reynolds (San Luis),REM San Luis,1.7,0.0,19.5,7-10 d,Estable / Sin aporte de escorrentía crítica
+Quinto - Canal Devoto RP 4,Río Quinto / Canal Devoto,0.97,0.98,2.8,1.83,Normal / Seguro,Estable ▬,"Río Bamba, Cordoba, Argentina (Córdoba)",Omixom Córdoba,29.4,0.0,S/D,7-10 d,Estable / Sin aporte de escorrentía crítica
+Quinto - Dique Villa Mercedes,Río Quinto,1.07,1.08,2.8,1.73,Normal / Seguro,Estable ▬,Villa Mercedes (San Luis),REM San Luis,3.8,0.0,19.1,7-10 d,Estable / Sin aporte de escorrentía crítica
+Quinto - Justo Daract,Río Quinto,1.75,1.77,2.9,1.15,Normal / Seguro,Estable ▬,Justo Daract (San Luis),REM San Luis,7.8,0.0,19.4,7-10 d,Estable / Sin aporte de escorrentía crítica
+Quinto - R.N. 35,Río Quinto,1.17,1.16,2.6,1.43,Normal / Seguro,Estable ▬,"Nicolás Bruzzone, Cordoba, Argentina (Córdoba)",Omixom Córdoba,25.1,0.0,S/D,7-10 d,Estable / Sin aporte de escorrentía crítica
+Quinto - RP Nº26,Río Quinto,0.68,0.65,2.2,1.52,Normal / Seguro,Estable ▬,"Hipólito Bouchard, Cordoba, Argentina (Córdoba)",Omixom Córdoba,14.4,0.0,S/D,7-10 d,Estable / Sin aporte de escorrentía crítica
+Trapiche - Hosteria El Trapiche,Río Trapiche (Afluente),0.3,0.3,1.8,1.5,Normal / Seguro,Estable ▬,El Trapiche (San Luis),REM San Luis,0.6,0.0,21.0,7-10 d,Estable / Sin aporte de escorrentía crítica
