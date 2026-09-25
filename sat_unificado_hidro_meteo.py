@@ -1552,7 +1552,9 @@ def generar_entregables(estaciones_meteo, registros_hidro, lista_rayos):
             </a>
         </div>
     </div>
+    """
 
+    html_estatico = """
     <style>
         .leaflet-control-attribution { display: none !important; }
         .leaflet-top.leaflet-right { top: 75px !important; z-index: 1100 !important; }
@@ -1651,7 +1653,7 @@ def generar_entregables(estaciones_meteo, registros_hidro, lista_rayos):
     </script>
     """
 
-    mapa.get_root().html.add_child(folium.Element(html_banner))
+    mapa.get_root().html.add_child(folium.Element(html_banner + html_estatico))
     mapa.save(MAPA_HTML_SALIDA)
     print(f"   -> [MAPA HTML GENERADO]: {MAPA_HTML_SALIDA}")
 
