@@ -608,12 +608,11 @@ retries = Retry(total=2, backoff_factor=1.0, status_forcelist=[500, 502, 503, 50
 session.mount("https://", HTTPAdapter(max_retries=retries))
 
 # =============================================================
-# 4. CATÁLOGO CUERPOS DE AGUA (INA / SNIH) Y COTAS FÍSICAS
+# 4. CATÁLOGO CUERPOS DE AGUA (INA) Y COTAS FÍSICAS
 # =============================================================
 BASE_URL_INA = "https://alerta.ina.gob.ar/pub/datos"
-URL_API_SNIH = "https://snih.hidricosargentina.gob.ar/MuestraDatos.aspx/LeerDatosActuales"
 
-timestart_str = (ahora - timedelta(days=4)).strftime("%Y-%m-%d")
+timestart_str = (ahora - timedelta(days=5)).strftime("%Y-%m-%d")
 timeend_str = (ahora + timedelta(days=1)).strftime("%Y-%m-%d")
 
 ESTACIONES_INA_CATALOGO = {
@@ -626,11 +625,6 @@ ESTACIONES_INA_CATALOGO = {
     6623: {"nombre": "Quinto - Canal Devoto RP 4", "rio": "Río Quinto / Canal Devoto", "distrito": "Córdoba / LP", "lat": -33.933056, "lon": -63.449167},
     6391: {"nombre": "Laguna La Margarita", "rio": "Cuenca Río Quinto", "distrito": "Córdoba / LP", "lat": -34.653333, "lon": -63.723056},
     2809: {"nombre": "Quinto - RP Nº26", "rio": "Río Quinto", "distrito": "Córdoba / LP", "lat": -34.762778, "lon": -63.645000}
-}
-
-ESTACIONES_SNIH_INFO = {
-    "1630": {"nombre": "Justo Daract (SL)", "rio": "Río Quinto", "distrito": "San Luis", "lat": -33.92, "lon": -65.152222},
-    "4312": {"nombre": "RP 26 (Cba)", "rio": "Río Quinto", "distrito": "Córdoba", "lat": -34.762778, "lon": -63.645}
 }
 
 UMBRALES_NOMINALES = {
@@ -930,6 +924,10 @@ def obtener_estaciones_apa_lapampa():
     print(f"   -> [APA LA PAMPA]: {len(estaciones_apa)} estaciones consolidadas.", flush=True)
     return estaciones_apa
 
+# =============================================================
+# 7. EXTRACCIÓN HIDROLÓGICA (INA) CON DESCUBRIMIENTO DE SERIES
+#    (Metodología exacta de actualizar_y_mapear.py)
+# =============================================================
 def normalizar_a_lista(resp_json):
     if isinstance(resp_json, list): return resp_json
     if isinstance(resp_json, dict):
@@ -1039,20 +1037,22 @@ def obtener_datos_hidrologicos():
     return registros_hidro
 
 def obtener_descargas_atmosfericas():
-    print("5. Consultando descargas atmosféricas (rayos Blitzortung)...", flush=True)
+    print("5. Consultando descargas atmosféricas (rayos Blitzortung en tiempo real)...", flush=True)
     rayos = []
-    urls = [
-        "https://map.blitzortung.org/Data_Json/Strikes_0.json",
-        "https://map.blitzortung.org/Data_Json/Strikes_1.json"
-    ]
+    # Consultamos los últimos 6 paquetes temporales (últimas 1 a 2 horas de actividad)
+    urls = [f"https://map.blitzortung.org/Data_Json/Strikes_{i}.json" for i in range(6)]
     headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
         "Referer": "https://map.blitzortung.org/"
     }
     
+    # Ventana geográfica ampliada para capturar tormentas en aproximación y cabeceras
+    LAT_MIN_R, LAT_MAX_R = -38.5, -31.0
+    LON_MIN_R, LON_MAX_R = -68.8, -60.0
+
     for url in urls:
         try:
-            r = session.get(url, headers=headers, timeout=6)
+            r = session.get(url, headers=headers, timeout=5)
             if r.status_code == 200:
                 datos = r.json()
                 if isinstance(datos, list):
@@ -1060,7 +1060,7 @@ def obtener_descargas_atmosfericas():
                         if isinstance(st, list) and len(st) >= 3:
                             lat = float(st[2])
                             lon = float(st[1])
-                            if LAT_MIN_CUENCA <= lat <= LAT_MAX_CUENCA and LON_MIN_CUENCA <= lon <= LON_MAX_CUENCA:
+                            if LAT_MIN_R <= lat <= LAT_MAX_R and LON_MIN_R <= lon <= LON_MAX_R:
                                 ts_val = float(st[0])
                                 ts_seg = ts_val / 1e9 if ts_val > 1e15 else ts_val / 1000
                                 hora_str = datetime.fromtimestamp(ts_seg, tz=TZ_ARG).strftime("%H:%M")
@@ -1068,14 +1068,14 @@ def obtener_descargas_atmosfericas():
                                     "lat": lat,
                                     "lon": lon,
                                     "hora": hora_str,
-                                    "tipo": "Nube-Suelo",
+                                    "tipo": "Nube-Suelo / Intra-nube",
                                     "ka": "Detectado",
-                                    "loc": "Cuenca Río V"
+                                    "loc": "Región Cuenca Río V Ampliada"
                                 })
         except Exception:
             pass
 
-    print(f"   -> [RAYOS DETECTADOS]: {len(rayos)} descargas recientes.")
+    print(f"   -> [RAYOS DETECTADOS EN REGIÓN]: {len(rayos)} descargas recientes activas.", flush=True)
     return rayos
 
 # =============================================================
@@ -1353,7 +1353,7 @@ def generar_entregables(estaciones_meteo, registros_hidro, lista_rayos):
             ws.cell(row=rn, column=11, value=m.get("viento_kmh", 0.0)).number_format = '0.0 "km/h"'
             ws.cell(row=rn, column=12, value=m["fecha_actualizacion"]).alignment = Alignment(horizontal="center")
             for c in range(1, 13):
-                cell_c = ws.cell(row=rn, column=c)
+                cell_c = ws_rem.cell(row=rn, column=c) if ws == ws_rem else ws.cell(row=rn, column=c)
                 cell_c.border = border_subtle
                 cell_c.font = font_data
                 if fill_r.fill_type: cell_c.fill = fill_r
@@ -1409,8 +1409,6 @@ def generar_entregables(estaciones_meteo, registros_hidro, lista_rayos):
         max_zoom=19
     ).add_to(mapa)
 
-    fg_satelite = folium.FeatureGroup(name="🛰️ Satélite GOES-16 Ch13 (Topes Fríos IR)", show=True)
-    fg_radar_mosaico = folium.FeatureGroup(name="🌧️ Radar Meteorológico Compuesto (SMN/RainViewer)", show=True)
     fg_radares_sinarame = folium.FeatureGroup(name="📡 Cobertura Radares SINARAME (Santa Isabel + Villa Reynolds)", show=True)
     fg_rayos = folium.FeatureGroup(name="⚡ Descargas Eléctricas (Rayos Cuenca)", show=True)
     fg_hidro = folium.FeatureGroup(name="💧 Cuerpos de Agua (INA/SNIH)", show=True)
@@ -1564,8 +1562,6 @@ def generar_entregables(estaciones_meteo, registros_hidro, lista_rayos):
             weight=1.5
         ).add_to(fg_rayos)
 
-    fg_satelite.add_to(mapa)
-    fg_radar_mosaico.add_to(mapa)
     fg_radares_sinarame.add_to(mapa)
     fg_rayos.add_to(mapa)
     fg_hidro.add_to(mapa)
@@ -1648,60 +1644,74 @@ def generar_entregables(estaciones_meteo, registros_hidro, lista_rayos):
     </div>
 
     <script>
-        document.addEventListener("DOMContentLoaded", function() {
-            var mapObj = null;
-            for (var k in window) {
-                if (k.startsWith("map_") && window[k] instanceof L.Map) {
-                    mapObj = window[k];
-                    break;
+        // Carga dinámica de Satélite GOES-16 y Radar SMN/RainViewer
+        (function() {
+            function inicializarCapasRemotas() {
+                var mapObj = null;
+                var layerControl = null;
+
+                for (var k in window) {
+                    if (k.startsWith("map_") && window[k] instanceof L.Map) {
+                        mapObj = window[k];
+                    }
+                    if (k.startsWith("layer_control_") && window[k] instanceof L.Control.Layers) {
+                        layerControl = window[k];
+                    }
                 }
+
+                if (!mapObj) {
+                    setTimeout(inicializarCapasRemotas, 300);
+                    return;
+                }
+
+                fetch("https://api.rainviewer.com/public/weather-maps.json")
+                    .then(function(r) { return r.json(); })
+                    .then(function(d) {
+                        var host = (d && d.host) ? d.host : "https://tilecache.rainviewer.com";
+
+                        // 1. Satélite GOES-16 (Topes Fríos IR)
+                        if (d && d.satellite && d.satellite.infrared && d.satellite.infrared.length > 0) {
+                            var frameSat = d.satellite.infrared[d.satellite.infrared.length - 1];
+                            var satUrl = host + frameSat.path + "/256/{z}/{x}/{y}/1/1_0.png";
+                            var tileLayerSat = L.tileLayer(satUrl, {
+                                attribution: "NOAA GOES-16 Clean IR",
+                                opacity: 0.60,
+                                maxZoom: 18,
+                                zIndex: 250
+                            });
+                            tileLayerSat.addTo(mapObj);
+                            if (layerControl) {
+                                layerControl.addOverlay(tileLayerSat, "🛰️ Satélite GOES-16 IR en Vivo");
+                            }
+                        }
+
+                        // 2. Mosaico Radar de Lluvias en Vivo
+                        if (d && d.radar && d.radar.past && d.radar.past.length > 0) {
+                            var frameRadar = d.radar.past[d.radar.past.length - 1];
+                            var radarUrl = host + frameRadar.path + "/256/{z}/{x}/{y}/2/1_1.png";
+                            var tileLayerRadar = L.tileLayer(radarUrl, {
+                                attribution: "Radar Meteorológico / SMN SINARAME",
+                                opacity: 0.78,
+                                maxZoom: 18,
+                                zIndex: 300
+                            });
+                            tileLayerRadar.addTo(mapObj);
+                            if (layerControl) {
+                                layerControl.addOverlay(tileLayerRadar, "🌧️ Radar Lluvias / Mosaico en Vivo");
+                            }
+                        }
+                    })
+                    .catch(function(e) {
+                        console.warn("Fallo al conectar con RainViewer API:", e);
+                    });
             }
-            if (!mapObj) return;
 
-            // Satélite GOES-16 y Radar en vivo
-            fetch("https://api.rainviewer.com/public/weather-maps.json")
-                .then(function(r) { return r.json(); })
-                .then(function(d) {
-                    var host = (d && d.host) ? d.host : "https://tilecache.rainviewer.com";
-
-                    if (d && d.satellite && d.satellite.infrared && d.satellite.infrared.length > 0) {
-                        var frameSat = d.satellite.infrared[d.satellite.infrared.length - 1];
-                        var satUrl = host + frameSat.path + "/256/{z}/{x}/{y}/1/1_0.png";
-                        var tileLayerSat = L.tileLayer(satUrl, {
-                            attribution: "NOAA GOES-16 Clean IR",
-                            opacity: 0.55,
-                            maxZoom: 18,
-                            zIndex: 240
-                        });
-                        mapObj.eachLayer(function(ly) {
-                            if (ly instanceof L.FeatureGroup && ly.options && ly.options.name && ly.options.name.indexOf("Satélite") !== -1) {
-                                ly.clearLayers();
-                                ly.addLayer(tileLayerSat);
-                            }
-                        });
-                    }
-
-                    if (d && d.radar && d.radar.past && d.radar.past.length > 0) {
-                        var frameRadar = d.radar.past[d.radar.past.length - 1];
-                        var radarUrl = host + frameRadar.path + "/256/{z}/{x}/{y}/2/1_1.png";
-                        var tileLayerRadar = L.tileLayer(radarUrl, {
-                            attribution: "Radar Meteorológico Compuesto / SINARAME",
-                            opacity: 0.72,
-                            maxZoom: 18,
-                            zIndex: 260
-                        });
-                        mapObj.eachLayer(function(ly) {
-                            if (ly instanceof L.FeatureGroup && ly.options && ly.options.name && ly.options.name.indexOf("Radar Meteorológico") !== -1) {
-                                ly.clearLayers();
-                                ly.addLayer(tileLayerRadar);
-                            }
-                        });
-                    }
-                })
-                .catch(function(e) {
-                    console.warn("Fallo satélite/radar:", e);
-                });
-        });
+            if (document.readyState === "complete" || document.readyState === "interactive") {
+                setTimeout(inicializarCapasRemotas, 200);
+            } else {
+                window.addEventListener("load", inicializarCapasRemotas);
+            }
+        })();
     </script>
     """
 
