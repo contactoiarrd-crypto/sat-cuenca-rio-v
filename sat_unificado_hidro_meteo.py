@@ -897,8 +897,6 @@ def obtener_estaciones_apa_lapampa():
             if res:
                 estaciones_apa.append(res)
 
-    # Si el servidor provincial bloquea IPs del exterior (servidores de GitHub en EEUU),
-    # activamos el fallback garantizado para que NUNCA desaparezcan las estaciones de La Pampa
     if len(estaciones_apa) < 3:
         print("   [INFO] Servidor APA restringido desde el exterior: aplicando catalogo seguro de La Pampa...", flush=True)
         estaciones_apa = []
@@ -926,7 +924,6 @@ def obtener_estaciones_apa_lapampa():
 
 # =============================================================
 # 7. EXTRACCIÓN HIDROLÓGICA (INA) CON DESCUBRIMIENTO DE SERIES
-#    (Metodología exacta de actualizar_y_mapear.py)
 # =============================================================
 def normalizar_a_lista(resp_json):
     if isinstance(resp_json, list): return resp_json
@@ -956,7 +953,6 @@ def obtener_datos_hidrologicos():
                 to_date = str(s.get("to_date") or "")
                 tiene_vigencia = any(a in to_date for a in anios_vigentes) or not to_date
 
-                # Filtramos las estaciones de la Cuenca del Río Quinto con variable de nivel/altura
                 if sitecode in ESTACIONES_INA_CATALOGO and series_id and tiene_vigencia:
                     if "altura" in var_nombre or "nivel" in var_nombre or "h" in var_nombre or not var_nombre:
                         info_est = ESTACIONES_INA_CATALOGO[sitecode]
@@ -1036,17 +1032,39 @@ def obtener_datos_hidrologicos():
             
     return registros_hidro
 
+# =============================================================
+# 8. EXTRACCIÓN DE RADAR Y SATÉLITE DINÁMICO (TILELAYERS NATIVOS)
+# =============================================================
+def obtener_urls_mosaicos():
+    print("5. Consultando capas satelitales y de radar (RainViewer / GOES-16)...", flush=True)
+    sat_url = "https://tilecache.rainviewer.com/v2/satellite/latest/256/{z}/{x}/{y}/1/1_0.png"
+    radar_url = "https://tilecache.rainviewer.com/v2/radar/nowcast_0/256/{z}/{x}/{y}/2/1_1.png"
+    try:
+        r = session.get("https://api.rainviewer.com/public/weather-maps.json", timeout=6)
+        if r.status_code == 200:
+            d = r.json()
+            host = d.get("host", "https://tilecache.rainviewer.com")
+            if d.get("satellite", {}).get("infrared") and len(d["satellite"]["infrared"]) > 0:
+                frame_sat = d["satellite"]["infrared"][-1]["path"]
+                sat_url = f"{host}{frame_sat}/256/{{z}}/{{x}}/{{y}}/1/1_0.png"
+            if d.get("radar", {}).get("past") and len(d["radar"]["past"]) > 0:
+                frame_rad = d["radar"]["past"][-1]["path"]
+                radar_url = f"{host}{frame_rad}/256/{{z}}/{{x}}/{{y}}/2/1_1.png"
+            print("   -> [SATÉLITE Y RADAR]: Timestamps dinámicos en vivo sincronizados con éxito.", flush=True)
+    except Exception as e:
+        print(f"   [AVISO] Conexión RainViewer diferida: aplicando capas base directas: {e}", flush=True)
+        
+    return sat_url, radar_url
+
 def obtener_descargas_atmosfericas():
-    print("5. Consultando descargas atmosféricas (rayos Blitzortung en tiempo real)...", flush=True)
+    print("6. Consultando descargas atmosféricas (rayos Blitzortung en tiempo real)...", flush=True)
     rayos = []
-    # Consultamos los últimos 6 paquetes temporales (últimas 1 a 2 horas de actividad)
     urls = [f"https://map.blitzortung.org/Data_Json/Strikes_{i}.json" for i in range(6)]
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
         "Referer": "https://map.blitzortung.org/"
     }
     
-    # Ventana geográfica ampliada para capturar tormentas en aproximación y cabeceras
     LAT_MIN_R, LAT_MAX_R = -38.5, -31.0
     LON_MIN_R, LON_MAX_R = -68.8, -60.0
 
@@ -1079,10 +1097,10 @@ def obtener_descargas_atmosfericas():
     return rayos
 
 # =============================================================
-# 8. GENERACIÓN DE ENTREGABLES (EXCEL, CSV Y MAPA HTML)
+# 9. GENERACIÓN DE ENTREGABLES (EXCEL, CSV Y MAPA HTML)
 # =============================================================
 def generar_entregables(estaciones_meteo, registros_hidro, lista_rayos):
-    print("6. Compilando modelo hidrológico y generando archivos...", flush=True)
+    print("7. Compilando modelo hidrológico y generando archivos...", flush=True)
     df_hidro_raw = pd.DataFrame(registros_hidro)
     df_hidro_raw["fecha_dt"] = pd.to_datetime(df_hidro_raw["fecha"], errors="coerce")
     
@@ -1198,7 +1216,7 @@ def generar_entregables(estaciones_meteo, registros_hidro, lista_rayos):
     ws1["A1"].alignment = Alignment(horizontal="center", vertical="center")
 
     ws1.merge_cells("A2:O2")
-    ws1["A2"] = "Integración: INA/SNIH + REM San Luis + Omixom (Cba/LP) + APA La Pampa + SINARAME (Santa Isabel / Villa Reynolds)"
+    ws1["A2"] = "Integración: INA + REM San Luis + Omixom (Cba/LP) + APA La Pampa + SINARAME (Santa Isabel / Villa Reynolds)"
     ws1["A2"].font = font_sub
     ws1["A2"].fill = fill_med_blue
     ws1["A2"].alignment = Alignment(horizontal="center", vertical="center")
@@ -1272,11 +1290,11 @@ def generar_entregables(estaciones_meteo, registros_hidro, lista_rayos):
             if c != 15 and fill_r.fill_type: cell_c.fill = fill_r
             if c not in [7, 15]: cell_c.font = font_data
 
-    # Solapa 2: Cuerpos de Agua (INA / SNIH)
-    ws_hidro = wb.create_sheet(title="Cuerpos de Agua (INA-SNIH)")
+    # Solapa 2: Cuerpos de Agua (INA)
+    ws_hidro = wb.create_sheet(title="Cuerpos de Agua (INA)")
     ws_hidro.views.sheetView[0].showGridLines = True
     ws_hidro.merge_cells("A1:K1")
-    ws_hidro["A1"] = "MONITOREO DE NIVELES HIDROMÉTRICOS Y COTAS FÍSICAS (INA / SNIH)"
+    ws_hidro["A1"] = "MONITOREO DE NIVELES HIDROMÉTRICOS Y COTAS FÍSICAS (INA)"
     ws_hidro["A1"].font = font_title
     ws_hidro["A1"].fill = fill_navy
     ws_hidro["A1"].alignment = Alignment(horizontal="center", vertical="center")
@@ -1370,7 +1388,6 @@ def generar_entregables(estaciones_meteo, registros_hidro, lista_rayos):
     ws_omx = wb.create_sheet(title="Meteo Omixom (Cba-LP)")
     poblar_solapa_meteo(ws_omx, "REDES CLIMÁTICAS OMIXOM CÓRDOBA Y LA PAMPA (ESTÁTICAS - EN ESPERA DE API)", [m for m in estaciones_meteo if "Omixom" in m["red"]])
 
-    # Ajuste automático del ancho de celdas
     for ws in wb.worksheets:
         for col in ws.columns:
             max_len = 0
@@ -1383,7 +1400,7 @@ def generar_entregables(estaciones_meteo, registros_hidro, lista_rayos):
     wb.save(EXCEL_SALIDA)
     print(f"   -> [EXCEL GUARDADO]: {EXCEL_SALIDA}")
 
-    # C. Visualizador Folium con Botón de Descarga Directo en el Banner
+    # C. Visualizador Folium con Capas Nativas
     lat_centro = np.mean([h["lat"] for h in lista_hidro_resumen])
     lon_centro = np.mean([h["lon"] for h in lista_hidro_resumen])
     
@@ -1409,9 +1426,34 @@ def generar_entregables(estaciones_meteo, registros_hidro, lista_rayos):
         max_zoom=19
     ).add_to(mapa)
 
+    # 1. Capa Nativa Satélite GOES-16 IR en Vivo (Directa en Leaflet)
+    sat_url, radar_url = obtener_urls_mosaicos()
+    folium.TileLayer(
+        tiles=sat_url,
+        attr="NOAA GOES-16 Clean IR / RainViewer",
+        name="🛰️ Satélite GOES-16 Ch13 (Topes Fríos IR)",
+        overlay=True,
+        control=True,
+        show=True,
+        opacity=0.60,
+        max_zoom=18
+    ).add_to(mapa)
+
+    # 2. Capa Nativa Radar Meteorológico de Lluvias en Vivo (Directa en Leaflet)
+    folium.TileLayer(
+        tiles=radar_url,
+        attr="Radar Meteorológico Compuesto / SMN SINARAME",
+        name="🌧️ Radar Meteorológico Compuesto (Lluvias)",
+        overlay=True,
+        control=True,
+        show=True,
+        opacity=0.78,
+        max_zoom=18
+    ).add_to(mapa)
+
     fg_radares_sinarame = folium.FeatureGroup(name="📡 Cobertura Radares SINARAME (Santa Isabel + Villa Reynolds)", show=True)
     fg_rayos = folium.FeatureGroup(name="⚡ Descargas Eléctricas (Rayos Cuenca)", show=True)
-    fg_hidro = folium.FeatureGroup(name="💧 Cuerpos de Agua (INA/SNIH)", show=True)
+    fg_hidro = folium.FeatureGroup(name="💧 Cuerpos de Agua (INA)", show=True)
     fg_meteo_sl = folium.FeatureGroup(name="⛰️ REM San Luis (Cuenca Alta)", show=True)
     fg_meteo_cba = folium.FeatureGroup(name="🌾 Omixom Córdoba (Cuenca Media - Estática)", show=True)
     fg_meteo_lp = folium.FeatureGroup(name="🌾 Omixom La Pampa (Cuenca Baja - Estática)", show=True)
@@ -1642,77 +1684,6 @@ def generar_entregables(estaciones_meteo, registros_hidro, lista_rayos):
         <i style="background:#facc15; border:1px solid #ca8a04; width:10px; height:10px; border-radius:50%; display:inline-block; margin-right:4px;"></i> Rayo / Descarga Atmosférica<br>
         <span style="font-size:9.5px; color:#475569;">🛰️ Satélite GOES-16 Ch13 (Clean IR)</span>
     </div>
-
-    <script>
-        // Carga dinámica de Satélite GOES-16 y Radar SMN/RainViewer
-        (function() {
-            function inicializarCapasRemotas() {
-                var mapObj = null;
-                var layerControl = null;
-
-                for (var k in window) {
-                    if (k.startsWith("map_") && window[k] instanceof L.Map) {
-                        mapObj = window[k];
-                    }
-                    if (k.startsWith("layer_control_") && window[k] instanceof L.Control.Layers) {
-                        layerControl = window[k];
-                    }
-                }
-
-                if (!mapObj) {
-                    setTimeout(inicializarCapasRemotas, 300);
-                    return;
-                }
-
-                fetch("https://api.rainviewer.com/public/weather-maps.json")
-                    .then(function(r) { return r.json(); })
-                    .then(function(d) {
-                        var host = (d && d.host) ? d.host : "https://tilecache.rainviewer.com";
-
-                        // 1. Satélite GOES-16 (Topes Fríos IR)
-                        if (d && d.satellite && d.satellite.infrared && d.satellite.infrared.length > 0) {
-                            var frameSat = d.satellite.infrared[d.satellite.infrared.length - 1];
-                            var satUrl = host + frameSat.path + "/256/{z}/{x}/{y}/1/1_0.png";
-                            var tileLayerSat = L.tileLayer(satUrl, {
-                                attribution: "NOAA GOES-16 Clean IR",
-                                opacity: 0.60,
-                                maxZoom: 18,
-                                zIndex: 250
-                            });
-                            tileLayerSat.addTo(mapObj);
-                            if (layerControl) {
-                                layerControl.addOverlay(tileLayerSat, "🛰️ Satélite GOES-16 IR en Vivo");
-                            }
-                        }
-
-                        // 2. Mosaico Radar de Lluvias en Vivo
-                        if (d && d.radar && d.radar.past && d.radar.past.length > 0) {
-                            var frameRadar = d.radar.past[d.radar.past.length - 1];
-                            var radarUrl = host + frameRadar.path + "/256/{z}/{x}/{y}/2/1_1.png";
-                            var tileLayerRadar = L.tileLayer(radarUrl, {
-                                attribution: "Radar Meteorológico / SMN SINARAME",
-                                opacity: 0.78,
-                                maxZoom: 18,
-                                zIndex: 300
-                            });
-                            tileLayerRadar.addTo(mapObj);
-                            if (layerControl) {
-                                layerControl.addOverlay(tileLayerRadar, "🌧️ Radar Lluvias / Mosaico en Vivo");
-                            }
-                        }
-                    })
-                    .catch(function(e) {
-                        console.warn("Fallo al conectar con RainViewer API:", e);
-                    });
-            }
-
-            if (document.readyState === "complete" || document.readyState === "interactive") {
-                setTimeout(inicializarCapasRemotas, 200);
-            } else {
-                window.addEventListener("load", inicializarCapasRemotas);
-            }
-        })();
-    </script>
     """
 
     mapa.get_root().html.add_child(folium.Element(html_banner + html_estatico))
@@ -1720,7 +1691,7 @@ def generar_entregables(estaciones_meteo, registros_hidro, lista_rayos):
     print(f"   -> [MAPA HTML GENERADO]: {MAPA_HTML_SALIDA}")
 
 # =============================================================
-# 9. EJECUCIÓN PRINCIPAL
+# 10. EJECUCIÓN PRINCIPAL
 # =============================================================
 if __name__ == "__main__":
     print("=" * 70)
