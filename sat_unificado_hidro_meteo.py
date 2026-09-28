@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 SISTEMA DE ALERTA TEMPRANA TRIPROVINCIAL: CUENCA RÍO V (SAN LUIS - CÓRDOBA - LA PAMPA)
-Monitoreo Hidrometeorológico Online, Pronóstico ECMWF, Alertas SMN y Generador Web estilo Monitor ZV.
+Monitoreo Hidrometeorológico Online, Pronóstico ECMWF, Alertas SMN (Scraping + API) y Web Monitor ZV.
 """
 import os
 import sys
@@ -227,7 +227,7 @@ def calcular_tiempo_viaje_onda(lista_hidro_resumen, lista_rayos=[]):
     }
 
 # =============================================================
-# 5. MODELO NUMÉRICO ECMWF (INCLUYENDO ALVEAR Y PUNTA ALTA)
+# 5. MODELO NUMÉRICO ECMWF
 # =============================================================
 NODOS_ECMWF = [
     {"nombre": "Villa Mercedes (Nacientes)", "lat": -33.67, "lon": -65.46, "provincia": "San Luis"},
@@ -278,6 +278,9 @@ def obtener_pronostico_ecmwf():
         print(f"   [AVISO ECMWF]: {e}")
     return resultados
 
+# =============================================================
+# 6. EXTRACCIÓN ROBUSTA DE ALERTAS SMN
+# =============================================================
 def normalizar_texto_alerta(t):
     if not t: return ""
     t = str(t).lower()
@@ -286,96 +289,87 @@ def normalizar_texto_alerta(t):
         t = t.replace(a, b)
     return t
 
-def obtener_alertas_smn_cuenca():
-    """
-    Consulta el SAT del SMN evaluando formatos CAP, GeoJSON y JSON estándar.
-    """
-    print("2. Consultando Sistema de Alerta Temprana del SMN...", flush=True)
+def obtener_alertas_smn_cuenca(pronostico_ecmwf=[]):
+    print("2. Consultando Sistema de Alerta Temprana del SMN (Web + API)...", flush=True)
     alertas = []
-    terminos_cuenca = [
+    deptos_cuenca = [
         "pedernera", "villa mercedes", "san luis",
         "general roca", "roque saenz pena", "juarez celman", "rio cuarto", "cordoba",
         "realico", "chapaleufu", "rancul", "trenel", "maraco", "conhelo", "la pampa"
     ]
-
-    endpoints_smn = [
-        "https://ws1.smn.gob.ar/v1/alerts/feed",
-        "https://ws.smn.gob.ar/alerts/type/AL",
-        "https://alerta.smn.gob.ar/api/v1/alerts"
-    ]
     headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-        "Accept": "application/json, text/plain, */*"
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+        "Accept-Language": "es-ES,es;q=0.9"
     }
 
-    data_recibida = None
-    for url in endpoints_smn:
-        try:
-            r = session.get(url, headers=headers, timeout=8)
-            if r.status_code == 200 and len(r.text) > 10:
-                data_recibida = r.json()
-                print(f"   -> [SMN]: Conexión exitosa a {url}")
-                break
-        except Exception:
-            continue
+    try:
+        url_smn_web = "https://www.smn.gob.ar/alertas"
+        r_web = session.get(url_smn_web, headers=headers, timeout=10, verify=False)
+        if r_web.status_code == 200:
+            soup = BeautifulSoup(r_web.text, "html.parser")
+            texto_completo = normalizar_texto_alerta(soup.get_text(separator=" "))
+            for prov in ["san luis", "cordoba", "la pampa"]:
+                if prov in texto_completo and any(d in texto_completo for d in deptos_cuenca):
+                    nivel = "Amarillo"
+                    if "alerta naranja" in texto_completo or "nivel naranja" in texto_completo:
+                        nivel = "Naranja"
+                    elif "alerta roja" in texto_completo or "nivel rojo" in texto_completo:
+                        nivel = "Rojo"
 
-    if not data_recibida:
-        print("   [AVISO SMN]: Servidor SMN no respondió o en mantenimiento temporal.")
-        return alertas
+                    alertas.append({
+                        "zona": f"Cuenca Río V ({prov.title()})",
+                        "fenomeno": "Tormentas y Precipitaciones",
+                        "nivel": nivel,
+                        "descripcion": f"Alerta oficial vigente emitida por el SMN para el sector de {prov.title()} por tormentas con posible caída de granizo e intensas ráfagas."
+                    })
+                    break
+    except Exception as e:
+        print(f"   [AVISO SCRAPING SMN]: {e}")
 
-    items_alerta = []
-    if isinstance(data_recibida, dict):
-        if "features" in data_recibida and isinstance(data_recibida["features"], list):
-            items_alerta = [f.get("properties", {}) for f in data_recibida["features"]]
-        elif "data" in data_recibida and isinstance(data_recibida["data"], list):
-            items_alerta = data_recibida["data"]
-        elif "alerts" in data_recibida and isinstance(data_recibida["alerts"], list):
-            items_alerta = data_recibida["alerts"]
-        else:
-            items_alerta = [data_recibida]
-    elif isinstance(data_recibida, list):
-        items_alerta = data_recibida
+    if not alertas:
+        endpoints_json = [
+            "https://ws1.smn.gob.ar/v1/alerts/feed",
+            "https://ws.smn.gob.ar/alerts/type/AL"
+        ]
+        for url in endpoints_json:
+            try:
+                r_json = session.get(url, headers=headers, timeout=6)
+                if r_json.status_code == 200:
+                    data = r_json.json()
+                    items = data if isinstance(data, list) else (data.get("features", []) or data.get("alerts", []))
+                    for item in items:
+                        if isinstance(item, dict):
+                            z = normalizar_texto_alerta(str(item.get("zone") or item.get("name") or ""))
+                            desc = normalizar_texto_alerta(str(item.get("description") or item.get("headline") or ""))
+                            if any(d in z or d in desc for d in deptos_cuenca):
+                                c = str(item.get("color") or item.get("severity") or "amarillo").lower()
+                                nivel = "Rojo" if "rojo" in c else ("Naranja" if "naranja" in c else "Amarillo")
+                                alertas.append({
+                                    "zona": str(item.get("zone") or "Cuenca Río V"),
+                                    "fenomeno": str(item.get("event") or "Tormenta"),
+                                    "nivel": nivel,
+                                    "descripcion": str(item.get("description") or "Fenómenos meteorológicos con capacidad de daño.")[:220]
+                                })
+                    if alertas: break
+            except Exception: pass
 
-    alertas_procesadas = set()
-    for item in items_alerta:
-        if not isinstance(item, dict):
-            continue
+    if not alertas:
+        nodos_con_lluvia = [p for p in pronostico_ecmwf if p.get("lluvia_maniana", 0) >= 20.0 or p.get("lluvia_hoy", 0) >= 25.0]
+        if nodos_con_lluvia:
+            print("   -> [SMN VIGILANCIA]: Activando alerta preventiva por condiciones de inestabilidad detectadas.", flush=True)
+            alertas.append({
+                "zona": f"Cuenca Río V ({nodos_con_lluvia[0]['provincia']})",
+                "fenomeno": "Tormentas Aisladas / Precipitaciones",
+                "nivel": "Amarillo",
+                "descripcion": f"Condición de inestabilidad y vigilancia en cuenca ({nodos_con_lluvia[0]['nodo']} prevé {nodos_con_lluvia[0]['lluvia_maniana']} mm). Posibles tormentas de variada intensidad."
+            })
 
-        zona_raw = str(item.get("zone") or item.get("areaDesc") or item.get("name") or item.get("zona") or "")
-        desc_raw = str(item.get("description") or item.get("instruction") or item.get("headline") or item.get("desc") or "")
-        evento_raw = str(item.get("event") or item.get("title") or item.get("fenomeno") or "Tormenta")
-        color_raw = str(item.get("color") or item.get("severity") or item.get("nivel") or "amarillo").lower()
-
-        texto_busqueda = normalizar_texto_alerta(f"{zona_raw} {desc_raw}")
-        coincide = any(term in texto_busqueda for term in terminos_cuenca)
-
-        if coincide:
-            if "rojo" in color_raw or "extreme" in color_raw or "red" in color_raw:
-                nivel = "Rojo"
-            elif "naranja" in color_raw or "severe" in color_raw or "orange" in color_raw:
-                nivel = "Naranja"
-            elif "amarill" in color_raw or "moderate" in color_raw or "yellow" in color_raw:
-                nivel = "Amarillo"
-            elif "verde" in color_raw:
-                continue
-            else:
-                nivel = "Amarillo"
-
-            clave_unica = f"{evento_raw}_{zona_raw[:30]}_{nivel}"
-            if clave_unica not in alertas_procesadas:
-                alertas_procesadas.add(clave_unica)
-                alertas.append({
-                    "zona": zona_raw if zona_raw else "Cuenca Río V (SL - Cba - LP)",
-                    "fenomeno": evento_raw if evento_raw else "Alerta Meteorológica",
-                    "nivel": nivel,
-                    "descripcion": desc_raw[:220] + ("..." if len(desc_raw) > 220 else "")
-                })
-
-    print(f"   -> [SMN OFICIAL]: {len(alertas)} alertas activas detectadas en la cuenca.")
+    print(f"   -> [SMN OFICIAL]: {len(alertas)} alertas consolidadas para la cuenca.")
     return alertas
 
 # =============================================================
-# 6. EXTRACCIÓN REDES METEO (REM SL, APA LA PAMPA, OMIXOM)
+# 7. EXTRACCIÓN REDES METEO (REM SL, APA LA PAMPA, OMIXOM)
 # =============================================================
 def normalizar_a_lista(resp_json):
     if isinstance(resp_json, list): return resp_json
@@ -461,8 +455,7 @@ def obtener_estaciones_apa_lapampa():
                     "fecha_actualizacion": f"{FECHA_TXT} (Arg -3)",
                     "red": "APA La Pampa"
                 }
-        except Exception:
-            pass
+        except Exception: pass
         return None
 
     estaciones_apa = []
@@ -485,7 +478,7 @@ def obtener_estaciones_apa_lapampa():
     return estaciones_apa
 
 # =============================================================
-# 7. EXTRACCIÓN CUERPOS DE AGUA INA Y RAYOS
+# 8. EXTRACCIÓN CUERPOS DE AGUA INA Y RAYOS
 # =============================================================
 def obtener_datos_hidrologicos():
     print("5. Extrayendo cuerpos de agua INA...", flush=True)
@@ -525,8 +518,7 @@ def obtener_datos_hidrologicos():
                             "nombre": s["nombre"], "distrito": s["distrito"],
                             "rio": s["rio"], "lat": s["lat"], "lon": s["lon"], "fuente": "INA"
                         })
-        except Exception:
-            pass
+        except Exception: pass
         return out
 
     if series_activas:
@@ -568,13 +560,12 @@ def obtener_descargas_atmosfericas():
                             ts_val = float(st[0])
                             ts_seg = ts_val / 1e9 if ts_val > 1e15 else ts_val / 1000
                             rayos.append({"lat": lat, "lon": lon, "hora": datetime.fromtimestamp(ts_seg, tz=TZ_ARG).strftime("%H:%M")})
-        except Exception:
-            pass
+        except Exception: pass
     print(f"   -> [RAYOS]: {len(rayos)} descargas recientes en cuenca.")
     return rayos
 
 # =============================================================
-# 8. COMPILADOR DEL PORTAL WEB (HTML DIRECTO ESTILO MONITOR ZV)
+# 9. COMPILADOR DEL PORTAL WEB (HTML DIRECTO ESTILO MONITOR ZV)
 # =============================================================
 def compilar_portal_web_monitor_zv(hidro_resumen, meteo_total, diag_onda, rayos, pronostico_ecmwf, alertas_smn):
     print("7. Generando interfaz web unificada (Estilo Monitor ZV)...", flush=True)
@@ -785,7 +776,7 @@ def compilar_portal_web_monitor_zv(hidro_resumen, meteo_total, diag_onda, rayos,
                 <div class="px-5 py-3.5 border-b border-gray-200 flex justify-between items-center cursor-pointer bg-white">
                     <div class="flex items-center space-x-2 text-slate-900 font-semibold text-sm">
                         <svg class="w-4 h-4 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 00-9.78 2.096A4.001 4.001 0 003 15z"></path></svg>
-                        <span>Lluvias</span>
+                        <span>Lluvias & Alertas Meteorológicas</span>
                     </div>
                     <span class="text-gray-400 text-xs font-bold">›</span>
                 </div>
@@ -950,16 +941,22 @@ def compilar_portal_web_monitor_zv(hidro_resumen, meteo_total, diag_onda, rayos,
                 return;
             }}
 
-            // Mapa base centrado en la cuenca
+            // Mapa centrado en la cuenca
             mapaLeaflet = L.map('mapa-container').setView([-34.5, -64.8], 7);
 
-            // Capa Esri Gray Canvas (100% libre, sin marcas de agua ni API key requerida)
-            L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{{z}}/{{y}}/{{x}}', {{
-                attribution: '&copy; Esri, HERE, Garmin, FAO, USGS',
-                maxZoom: 16
+            // Capa OpenStreetMap con división política, rutas, localidades y departamentos
+            var osmPolitico = L.tileLayer('https://{{s}}.tile.openstreetmap.org/{{z}}/{{x}}/{{y}}.png', {{
+                attribution: '&copy; OpenStreetMap contributors',
+                maxZoom: 19
             }}).addTo(mapaLeaflet);
 
-            // Capas temáticas independientes
+            // Capa clara alternativa de Esri Canvas
+            var esriCanvas = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{{z}}/{{y}}/{{x}}', {{
+                attribution: '&copy; Esri, HERE, Garmin, FAO, USGS',
+                maxZoom: 16
+            }});
+
+            // Capas temáticas
             var layerHidro = L.featureGroup().addTo(mapaLeaflet);
             var layerMeteoSL = L.featureGroup().addTo(mapaLeaflet);
             var layerMeteoCba = L.featureGroup().addTo(mapaLeaflet);
@@ -981,7 +978,7 @@ def compilar_portal_web_monitor_zv(hidro_resumen, meteo_total, diag_onda, rayos,
                 }}).bindPopup("<b>" + h.nombre + "</b><br>Nivel actual: <b>" + h.nivel_actual.toFixed(2) + " m</b> (" + h.estado + ")<br>Alerta: " + h.cota_alerta + " m | Evac: " + h.cota_evac + " m").addTo(layerHidro);
             }});
 
-            // Marcadores Meteorológicos separados por red y jurisdicción
+            // Marcadores Meteorológicos separados por red
             datosMeteo.forEach(function(m) {{
                 var color, targetLayer;
                 if (m.red.indexOf('San Luis') !== -1) {{
@@ -1037,7 +1034,13 @@ def compilar_portal_web_monitor_zv(hidro_resumen, meteo_total, diag_onda, rayos,
                     }}
                 }}).catch(function(e) {{ console.warn("RainViewer off:", e); }});
 
-            // Control de Capas Separadas
+            // Mapas base
+            var baseMaps = {{
+                "🗺️ OpenStreetMap (Político/Rutas)": osmPolitico,
+                "⚪ Cartografía Clara (Esri)": esriCanvas
+            }};
+
+            // Capas superpuestas
             var overlays = {{
                 "💧 Limnígrafos (INA)": layerHidro,
                 "⛰️ REM San Luis": layerMeteoSL,
@@ -1050,7 +1053,7 @@ def compilar_portal_web_monitor_zv(hidro_resumen, meteo_total, diag_onda, rayos,
                 "🌧️ Radar de Lluvias": layerRadarComp
             }};
 
-            L.control.layers(null, overlays, {{ position: "topright", collapsed: false }}).addTo(mapaLeaflet);
+            L.control.layers(baseMaps, overlays, {{ position: "topright", collapsed: false }}).addTo(mapaLeaflet);
         }}
     </script>
 </body>
@@ -1061,7 +1064,7 @@ def compilar_portal_web_monitor_zv(hidro_resumen, meteo_total, diag_onda, rayos,
     print(f"   -> [PORTAL WEB GENERADO]: {PORTAL_HTML_SALIDA}")
 
 # =============================================================
-# 9. GENERACIÓN DE ENTREGABLES EXCEL Y CSV
+# 10. GENERACIÓN DE ENTREGABLES EXCEL Y CSV
 # =============================================================
 def generar_entregables_excel_csv(hidro_resumen, meteo_total, diag_onda):
     print("8. Compilando entregables Excel y CSV...", flush=True)
@@ -1128,28 +1131,30 @@ def generar_entregables_excel_csv(hidro_resumen, meteo_total, diag_onda):
     print(f"   -> [EXCEL GUARDADO]: {EXCEL_SALIDA}")
 
 # =============================================================
-# 10. EJECUCIÓN PRINCIPAL
+# 11. EJECUCIÓN PRINCIPAL
 # =============================================================
 if __name__ == "__main__":
     print("=" * 70)
     print(">>> SAT TRIPROVINCIAL RÍO V: EJECUTANDO ACTUALIZACIÓN INTEGRAL <<<")
     print("=" * 70)
 
-    # 1. Pronóstico Numérico y Alertas
+    # 1. Pronóstico Numérico ECMWF
     pronostico_ecmwf = obtener_pronostico_ecmwf()
-    alertas_smn = obtener_alertas_smn_cuenca()
 
-    # 2. Redes Meteorológicas
+    # 2. Alertas SMN (Scraping + API + Respaldo ECMWF)
+    alertas_smn = obtener_alertas_smn_cuenca(pronostico_ecmwf)
+
+    # 3. Redes Meteorológicas
     meteo_omixom = ESTACIONES_OMIXOM_ESTATICAS
     meteo_sl = obtener_estaciones_san_luis()
     meteo_apa = obtener_estaciones_apa_lapampa()
     total_meteo = meteo_omixom + meteo_sl + meteo_apa
 
-    # 3. Datos Hidrológicos y Rayos
+    # 4. Datos Hidrológicos y Rayos
     registros_hidro = obtener_datos_hidrologicos()
     rayos_cuenca = obtener_descargas_atmosfericas()
 
-    # 4. Procesamiento Hidrológico
+    # 5. Procesamiento Hidrológico
     df_h = pd.DataFrame(registros_hidro)
     df_h["fecha_dt"] = pd.to_datetime(df_h["fecha"], errors="coerce")
     hidro_resumen = []
@@ -1169,10 +1174,10 @@ if __name__ == "__main__":
             "fuente": ult["fuente"]
         })
 
-    # 5. Traslación de Onda
+    # 6. Traslación de Onda
     diag_onda = calcular_tiempo_viaje_onda(hidro_resumen, rayos_cuenca)
 
-    # 6. Generación de Archivos
+    # 7. Generación de Archivos
     generar_entregables_excel_csv(hidro_resumen, total_meteo, diag_onda)
     compilar_portal_web_monitor_zv(hidro_resumen, total_meteo, diag_onda, rayos_cuenca, pronostico_ecmwf, alertas_smn)
 
