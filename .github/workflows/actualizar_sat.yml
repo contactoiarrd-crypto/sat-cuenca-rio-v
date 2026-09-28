@@ -2,7 +2,7 @@ name: Actualizar SAT Rio V en Tiempo Real
 
 on:
   schedule:
-    - cron: '*/30 * * * *'  # Cada 30 minutos (recomendado para optimizar cuota de minutos de GitHub)
+    - cron: '*/10 * * * *'  # Corre automáticamente cada 10 minutos
   workflow_dispatch:
 
 permissions:
@@ -43,13 +43,13 @@ jobs:
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
           
-          # Elimina el archivo viejo para que no sobreescriba ni moleste
+          # Elimina el mapa viejo para que no sobreescriba ni cause conflicto
           git rm -f mapa_sat_rio_v_triprovincial.html 2>/dev/null || true
           
-          # Agrega el index.html nuevo generado por el script y los reportes
+          # Agrega el index.html generado directamente por el script y los reportes
           git add index.html sat_unificado_rio_v_triprovincial.xlsx resumen_cruce_rio_v_triprovincial.csv
           
-          # Commit y push SIN [skip ci] para que GitHub Pages se active automáticamente
+          # Commit y push sin [skip ci] para disparar el deployment de GitHub Pages
           if ! git diff --staged --quiet; then
             git commit -m "Auto-actualizacion SAT Rio V [$(date -u '+%Y-%m-%d %H:%M UTC')]"
             git pull --rebase origin main || true
