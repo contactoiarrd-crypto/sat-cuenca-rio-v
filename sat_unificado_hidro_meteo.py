@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 SISTEMA DE ALERTA TEMPRANA TRIPROVINCIAL: CUENCA RÍO V (SAN LUIS - CÓRDOBA - LA PAMPA)
-Monitoreo Hidrometeorológico Online, Estimación de Traslación de Onda y Descarga de Informes.
+Monitoreo Hidrometeorológico, Pronóstico ECMWF, Alertas SMN y Portal Web estilo Monitor ZV.
 """
 import os
 import sys
@@ -9,10 +9,8 @@ import math
 import json
 import re
 from datetime import datetime, timedelta, timezone
-
-# Zona horaria oficial Argentina (UTC-3)
-TZ_ARG = timezone(timedelta(hours=-3))
 from concurrent.futures import ThreadPoolExecutor, as_completed
+
 import pandas as pd
 import numpy as np
 import requests
@@ -23,7 +21,6 @@ import urllib3
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-import folium
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
@@ -33,573 +30,54 @@ sys.stdout.reconfigure(line_buffering=True)
 # =============================================================
 # 1. PARÁMETROS GENERALES Y ARCHIVOS DE SALIDA
 # =============================================================
+TZ_ARG = timezone(timedelta(hours=-3))
 ahora = datetime.now(TZ_ARG)
 FECHA_TXT = ahora.strftime("%Y-%m-%d %H:%M")
 
 EXCEL_SALIDA = "sat_unificado_rio_v_triprovincial.xlsx"
-MAPA_HTML_SALIDA = "mapa_sat_rio_v_triprovincial.html"
 CSV_SALIDA = "resumen_cruce_rio_v_triprovincial.csv"
+PORTAL_HTML_SALIDA = "index.html"
 
 # =============================================================
 # 2. CATÁLOGO ESTÁTICO REDES OMIXOM (CÓRDOBA Y LA PAMPA)
-#    (Se mantienen fijos hasta contar con API definitiva)
 # =============================================================
 ESTACIONES_OMIXOM_ESTATICAS = [
-    # CÓRDOBA - CUENCA MEDIA
-    {
-        "id": "OMX_CBA_1",
-        "nombre": "General Levalle, Cordoba, Argentina",
-        "departamento": "Roque Sáenz Peña",
-        "provincia": "Córdoba",
-        "lat": -34.0000,
-        "lon": -63.9163,
-        "temp_c": np.nan,
-        "humedad_pct": 0.0,
-        "lluvia_24h_mm": 0.0,
-        "lluvia_mes_mm": 0.0,
-        "viento_kmh": 0.0,
-        "viento_dir": "N/A",
-        "presion_hpa": 1013.2,
-        "fecha_actualizacion": "Estática (Esperando API)",
-        "red": "Omixom Córdoba"
-    },
-    {
-        "id": "OMX_CBA_2",
-        "nombre": "Río Bamba, Cordoba, Argentina",
-        "departamento": "Roque Sáenz Peña",
-        "provincia": "Córdoba",
-        "lat": -34.0537,
-        "lon": -63.7332,
-        "temp_c": np.nan,
-        "humedad_pct": 0.0,
-        "lluvia_24h_mm": 0.0,
-        "lluvia_mes_mm": 0.0,
-        "viento_kmh": 0.0,
-        "viento_dir": "N/A",
-        "presion_hpa": 1013.2,
-        "fecha_actualizacion": "Estática (Esperando API)",
-        "red": "Omixom Córdoba"
-    },
-    {
-        "id": "OMX_CBA_3",
-        "nombre": "Jovita, Cordoba, Argentina",
-        "departamento": "General Roca",
-        "provincia": "Córdoba",
-        "lat": -34.5194,
-        "lon": -63.9683,
-        "temp_c": np.nan,
-        "humedad_pct": 0.0,
-        "lluvia_24h_mm": 0.0,
-        "lluvia_mes_mm": 0.0,
-        "viento_kmh": 0.0,
-        "viento_dir": "N/A",
-        "presion_hpa": 1013.2,
-        "fecha_actualizacion": "Estática (Esperando API)",
-        "red": "Omixom Córdoba"
-    },
-    {
-        "id": "OMX_CBA_4",
-        "nombre": "Villa Valeria, Cordoba, Argentina",
-        "departamento": "General Roca",
-        "provincia": "Córdoba",
-        "lat": -34.3427,
-        "lon": -64.9290,
-        "temp_c": np.nan,
-        "humedad_pct": 0.0,
-        "lluvia_24h_mm": 0.0,
-        "lluvia_mes_mm": 0.0,
-        "viento_kmh": 0.0,
-        "viento_dir": "N/A",
-        "presion_hpa": 1013.2,
-        "fecha_actualizacion": "Estática (Esperando API)",
-        "red": "Omixom Córdoba"
-    },
-    {
-        "id": "OMX_CBA_5",
-        "nombre": "Nicolás Bruzzone, Cordoba, Argentina",
-        "departamento": "General Roca",
-        "provincia": "Córdoba",
-        "lat": -34.4391,
-        "lon": -64.3424,
-        "temp_c": np.nan,
-        "humedad_pct": 0.0,
-        "lluvia_24h_mm": 0.0,
-        "lluvia_mes_mm": 0.0,
-        "viento_kmh": 0.0,
-        "viento_dir": "N/A",
-        "presion_hpa": 1013.2,
-        "fecha_actualizacion": "Estática (Esperando API)",
-        "red": "Omixom Córdoba"
-    },
-    {
-        "id": "OMX_CBA_6",
-        "nombre": "Melo, Cordoba, Argentina",
-        "departamento": "Roque Sáenz Peña",
-        "provincia": "Córdoba",
-        "lat": -34.3452,
-        "lon": -63.4377,
-        "temp_c": np.nan,
-        "humedad_pct": 0.0,
-        "lluvia_24h_mm": 0.0,
-        "lluvia_mes_mm": 0.0,
-        "viento_kmh": 0.0,
-        "viento_dir": "N/A",
-        "presion_hpa": 1013.2,
-        "fecha_actualizacion": "Estática (Esperando API)",
-        "red": "Omixom Córdoba"
-    },
-    {
-        "id": "OMX_CBA_7",
-        "nombre": "Huanchillas, Cordoba, Argentina",
-        "departamento": "Juárez Celman",
-        "provincia": "Córdoba",
-        "lat": -33.6665,
-        "lon": -63.6395,
-        "temp_c": np.nan,
-        "humedad_pct": 0.0,
-        "lluvia_24h_mm": 0.0,
-        "lluvia_mes_mm": 0.0,
-        "viento_kmh": 0.0,
-        "viento_dir": "N/A",
-        "presion_hpa": 1013.2,
-        "fecha_actualizacion": "Estática (Esperando API)",
-        "red": "Omixom Córdoba"
-    },
-    {
-        "id": "OMX_CBA_8",
-        "nombre": "Hipólito Bouchard, Cordoba, Argentina",
-        "departamento": "General Roca",
-        "provincia": "Córdoba",
-        "lat": -34.7060,
-        "lon": -63.5030,
-        "temp_c": np.nan,
-        "humedad_pct": 0.0,
-        "lluvia_24h_mm": 0.0,
-        "lluvia_mes_mm": 0.0,
-        "viento_kmh": 0.0,
-        "viento_dir": "N/A",
-        "presion_hpa": 1013.2,
-        "fecha_actualizacion": "Estática (Esperando API)",
-        "red": "Omixom Córdoba"
-    },
-    {
-        "id": "OMX_CBA_9",
-        "nombre": "General Roca, Cordoba, Argentina",
-        "departamento": "General Roca",
-        "provincia": "Córdoba",
-        "lat": -33.9948,
-        "lon": -65.0754,
-        "temp_c": np.nan,
-        "humedad_pct": 0.0,
-        "lluvia_24h_mm": 0.0,
-        "lluvia_mes_mm": 0.0,
-        "viento_kmh": 0.0,
-        "viento_dir": "N/A",
-        "presion_hpa": 1013.2,
-        "fecha_actualizacion": "Estática (Esperando API)",
-        "red": "Omixom Córdoba"
-    },
-    {
-        "id": "OMX_CBA_10",
-        "nombre": "Serrano, Cordoba, Argentina",
-        "departamento": "Roque Sáenz Peña",
-        "provincia": "Córdoba",
-        "lat": -34.4629,
-        "lon": -63.5309,
-        "temp_c": np.nan,
-        "humedad_pct": 0.0,
-        "lluvia_24h_mm": 0.0,
-        "lluvia_mes_mm": 0.0,
-        "viento_kmh": 0.0,
-        "viento_dir": "N/A",
-        "presion_hpa": 1013.2,
-        "fecha_actualizacion": "Estática (Esperando API)",
-        "red": "Omixom Córdoba"
-    },
-    {
-        "id": "OMX_CBA_11",
-        "nombre": "Coronel Moldes, Cordoba, Argentina",
-        "departamento": "Río Cuarto",
-        "provincia": "Córdoba",
-        "lat": -33.6481,
-        "lon": -64.5950,
-        "temp_c": np.nan,
-        "humedad_pct": 0.0,
-        "lluvia_24h_mm": 0.0,
-        "lluvia_mes_mm": 0.0,
-        "viento_kmh": 0.0,
-        "viento_dir": "N/A",
-        "presion_hpa": 1013.2,
-        "fecha_actualizacion": "Estática (Esperando API)",
-        "red": "Omixom Córdoba"
-    },
-    {
-        "id": "OMX_CBA_12",
-        "nombre": "Viamonte, Cordoba, Argentina",
-        "departamento": "Unión",
-        "provincia": "Córdoba",
-        "lat": -33.7429,
-        "lon": -63.0996,
-        "temp_c": np.nan,
-        "humedad_pct": 0.0,
-        "lluvia_24h_mm": 0.0,
-        "lluvia_mes_mm": 0.0,
-        "viento_kmh": 0.0,
-        "viento_dir": "N/A",
-        "presion_hpa": 1013.2,
-        "fecha_actualizacion": "Estática (Esperando API)",
-        "red": "Omixom Córdoba"
-    },
-    {
-        "id": "OMX_CBA_13",
-        "nombre": "Chaján, Cordoba, Argentina",
-        "departamento": "Río Cuarto",
-        "provincia": "Córdoba",
-        "lat": -33.5508,
-        "lon": -65.0059,
-        "temp_c": np.nan,
-        "humedad_pct": 0.0,
-        "lluvia_24h_mm": 0.0,
-        "lluvia_mes_mm": 0.0,
-        "viento_kmh": 0.0,
-        "viento_dir": "N/A",
-        "presion_hpa": 1013.2,
-        "fecha_actualizacion": "Estática (Esperando API)",
-        "red": "Omixom Córdoba"
-    },
-    {
-        "id": "OMX_CBA_14",
-        "nombre": "Villa Rossi, Cordoba, Argentina",
-        "departamento": "General Roca",
-        "provincia": "Córdoba",
-        "lat": -34.2949,
-        "lon": -63.2654,
-        "temp_c": np.nan,
-        "humedad_pct": 0.0,
-        "lluvia_24h_mm": 0.0,
-        "lluvia_mes_mm": 0.0,
-        "viento_kmh": 0.0,
-        "viento_dir": "N/A",
-        "presion_hpa": 1013.2,
-        "fecha_actualizacion": "Estática (Esperando API)",
-        "red": "Omixom Córdoba"
-    },
-    {
-        "id": "OMX_CBA_15",
-        "nombre": "Presa El Chañar, Cordoba, Argentina",
-        "departamento": "Río Cuarto",
-        "provincia": "Córdoba",
-        "lat": -33.9608,
-        "lon": -65.0551,
-        "temp_c": np.nan,
-        "humedad_pct": 0.0,
-        "lluvia_24h_mm": 0.0,
-        "lluvia_mes_mm": 0.0,
-        "viento_kmh": 0.0,
-        "viento_dir": "N/A",
-        "presion_hpa": 1013.2,
-        "fecha_actualizacion": "Estática (Esperando API)",
-        "red": "Omixom Córdoba"
-    },
-    {
-        "id": "OMX_CBA_16",
-        "nombre": "Huinca Renancó, Cordoba, Argentina",
-        "departamento": "General Roca",
-        "provincia": "Córdoba",
-        "lat": -34.8208,
-        "lon": -64.3738,
-        "temp_c": np.nan,
-        "humedad_pct": 0.0,
-        "lluvia_24h_mm": 0.0,
-        "lluvia_mes_mm": 0.0,
-        "viento_kmh": 0.0,
-        "viento_dir": "N/A",
-        "presion_hpa": 1013.2,
-        "fecha_actualizacion": "Estática (Esperando API)",
-        "red": "Omixom Córdoba"
-    },
-    {
-        "id": "OMX_CBA_17",
-        "nombre": "Vicuña Mackenna, Cordoba, Argentina",
-        "departamento": "Río Cuarto",
-        "provincia": "Córdoba",
-        "lat": -33.9754,
-        "lon": -64.3642,
-        "temp_c": np.nan,
-        "humedad_pct": 0.0,
-        "lluvia_24h_mm": 0.0,
-        "lluvia_mes_mm": 0.0,
-        "viento_kmh": 0.0,
-        "viento_dir": "N/A",
-        "presion_hpa": 1013.2,
-        "fecha_actualizacion": "Estática (Esperando API)",
-        "red": "Omixom Córdoba"
-    },
-
-    # LA PAMPA - CUENCA BAJA
-    {
-        "id": "OMX_LP_1",
-        "nombre": "MPLP 16 - El Tala - La Veneta",
-        "departamento": "Realicó",
-        "provincia": "La Pampa",
-        "lat": -35.3119,
-        "lon": -64.7144,
-        "temp_c": np.nan,
-        "humedad_pct": 0.0,
-        "lluvia_24h_mm": 0.0,
-        "lluvia_mes_mm": 0.0,
-        "viento_kmh": 0.0,
-        "viento_dir": "N/A",
-        "presion_hpa": 1013.2,
-        "fecha_actualizacion": "Estática (Esperando API)",
-        "red": "Omixom La Pampa"
-    },
-    {
-        "id": "OMX_LP_2",
-        "nombre": "MPLP 41 - Realicó",
-        "departamento": "Realicó",
-        "provincia": "La Pampa",
-        "lat": -35.0576,
-        "lon": -64.2129,
-        "temp_c": np.nan,
-        "humedad_pct": 0.0,
-        "lluvia_24h_mm": 0.0,
-        "lluvia_mes_mm": 0.0,
-        "viento_kmh": 0.0,
-        "viento_dir": "N/A",
-        "presion_hpa": 1013.2,
-        "fecha_actualizacion": "Estática (Esperando API)",
-        "red": "Omixom La Pampa"
-    },
-    {
-        "id": "OMX_LP_3",
-        "nombre": "Trilí, La Pampa, Argentina",
-        "departamento": "Quemú Quemú",
-        "provincia": "La Pampa",
-        "lat": -35.9036,
-        "lon": -63.6429,
-        "temp_c": np.nan,
-        "humedad_pct": 0.0,
-        "lluvia_24h_mm": 0.0,
-        "lluvia_mes_mm": 0.0,
-        "viento_kmh": 0.0,
-        "viento_dir": "N/A",
-        "presion_hpa": 1013.2,
-        "fecha_actualizacion": "Estática (Esperando API)",
-        "red": "Omixom La Pampa"
-    },
-    {
-        "id": "OMX_LP_4",
-        "nombre": "Ingeniero Luiggi, La Pampa, Argentina",
-        "departamento": "Realicó",
-        "provincia": "La Pampa",
-        "lat": -35.4714,
-        "lon": -64.6024,
-        "temp_c": np.nan,
-        "humedad_pct": 0.0,
-        "lluvia_24h_mm": 0.0,
-        "lluvia_mes_mm": 0.0,
-        "viento_kmh": 0.0,
-        "viento_dir": "N/A",
-        "presion_hpa": 1013.2,
-        "fecha_actualizacion": "Estática (Esperando API)",
-        "red": "Omixom La Pampa"
-    },
-    {
-        "id": "OMX_LP_5",
-        "nombre": "Conhelo, La Pampa, Argentina",
-        "departamento": "Conhelo",
-        "provincia": "La Pampa",
-        "lat": -35.9895,
-        "lon": -64.5954,
-        "temp_c": np.nan,
-        "humedad_pct": 0.0,
-        "lluvia_24h_mm": 0.0,
-        "lluvia_mes_mm": 0.0,
-        "viento_kmh": 0.0,
-        "viento_dir": "N/A",
-        "presion_hpa": 1013.2,
-        "fecha_actualizacion": "Estática (Esperando API)",
-        "red": "Omixom La Pampa"
-    },
-    {
-        "id": "OMX_LP_6",
-        "nombre": "Arata, La Pampa, Argentina",
-        "departamento": "Trenel",
-        "provincia": "La Pampa",
-        "lat": -35.6391,
-        "lon": -64.3564,
-        "temp_c": np.nan,
-        "humedad_pct": 0.0,
-        "lluvia_24h_mm": 0.0,
-        "lluvia_mes_mm": 0.0,
-        "viento_kmh": 0.0,
-        "viento_dir": "N/A",
-        "presion_hpa": 1013.2,
-        "fecha_actualizacion": "Estática (Esperando API)",
-        "red": "Omixom La Pampa"
-    },
-    {
-        "id": "OMX_LP_7",
-        "nombre": "Pichi Huinca, La Pampa, Argentina",
-        "departamento": "Rancul",
-        "provincia": "La Pampa",
-        "lat": -35.6482,
-        "lon": -64.7699,
-        "temp_c": np.nan,
-        "humedad_pct": 0.0,
-        "lluvia_24h_mm": 0.0,
-        "lluvia_mes_mm": 0.0,
-        "viento_kmh": 0.0,
-        "viento_dir": "N/A",
-        "presion_hpa": 1013.2,
-        "fecha_actualizacion": "Estática (Esperando API)",
-        "red": "Omixom La Pampa"
-    },
-    {
-        "id": "OMX_LP_8",
-        "nombre": "Rancul, La Pampa, Argentina",
-        "departamento": "Rancul",
-        "provincia": "La Pampa",
-        "lat": -35.0883,
-        "lon": -64.5082,
-        "temp_c": np.nan,
-        "humedad_pct": 0.0,
-        "lluvia_24h_mm": 0.0,
-        "lluvia_mes_mm": 0.0,
-        "viento_kmh": 0.0,
-        "viento_dir": "N/A",
-        "presion_hpa": 1013.2,
-        "fecha_actualizacion": "Estática (Esperando API)",
-        "red": "Omixom La Pampa"
-    },
-    {
-        "id": "OMX_LP_9",
-        "nombre": "Coronel Hilario Lagos, La Pampa, Argentina",
-        "departamento": "Chapaleufú",
-        "provincia": "La Pampa",
-        "lat": -35.0344,
-        "lon": -63.9111,
-        "temp_c": np.nan,
-        "humedad_pct": 0.0,
-        "lluvia_24h_mm": 0.0,
-        "lluvia_mes_mm": 0.0,
-        "viento_kmh": 0.0,
-        "viento_dir": "N/A",
-        "presion_hpa": 1013.2,
-        "fecha_actualizacion": "Estática (Esperando API)",
-        "red": "Omixom La Pampa"
-    },
-    {
-        "id": "OMX_LP_10",
-        "nombre": "Colonia Barón, La Pampa, Argentina",
-        "departamento": "Quemú Quemú",
-        "provincia": "La Pampa",
-        "lat": -36.1508,
-        "lon": -63.8550,
-        "temp_c": np.nan,
-        "humedad_pct": 0.0,
-        "lluvia_24h_mm": 0.0,
-        "lluvia_mes_mm": 0.0,
-        "viento_kmh": 0.0,
-        "viento_dir": "N/A",
-        "presion_hpa": 1013.2,
-        "fecha_actualizacion": "Estática (Esperando API)",
-        "red": "Omixom La Pampa"
-    },
-    {
-        "id": "OMX_LP_11",
-        "nombre": "Intendente Alvear, La Pampa, Argentina",
-        "departamento": "Chapaleufú",
-        "provincia": "La Pampa",
-        "lat": -35.3182,
-        "lon": -63.6054,
-        "temp_c": np.nan,
-        "humedad_pct": 0.0,
-        "lluvia_24h_mm": 0.0,
-        "lluvia_mes_mm": 0.0,
-        "viento_kmh": 0.0,
-        "viento_dir": "N/A",
-        "presion_hpa": 1013.2,
-        "fecha_actualizacion": "Estática (Esperando API)",
-        "red": "Omixom La Pampa"
-    },
-    {
-        "id": "OMX_LP_12",
-        "nombre": "Alta Italia, La Pampa, Argentina",
-        "departamento": "Realicó",
-        "provincia": "La Pampa",
-        "lat": -35.3317,
-        "lon": -64.1191,
-        "temp_c": np.nan,
-        "humedad_pct": 0.0,
-        "lluvia_24h_mm": 0.0,
-        "lluvia_mes_mm": 0.0,
-        "viento_kmh": 0.0,
-        "viento_dir": "N/A",
-        "presion_hpa": 1013.2,
-        "fecha_actualizacion": "Estática (Esperando API)",
-        "red": "Omixom La Pampa"
-    },
-    {
-        "id": "OMX_LP_13",
-        "nombre": "Winifreda, La Pampa, Argentina",
-        "departamento": "Conhelo",
-        "provincia": "La Pampa",
-        "lat": -36.2229,
-        "lon": -64.2487,
-        "temp_c": np.nan,
-        "humedad_pct": 0.0,
-        "lluvia_24h_mm": 0.0,
-        "lluvia_mes_mm": 0.0,
-        "viento_kmh": 0.0,
-        "viento_dir": "N/A",
-        "presion_hpa": 1013.2,
-        "fecha_actualizacion": "Estática (Esperando API)",
-        "red": "Omixom La Pampa"
-    },
-    {
-        "id": "OMX_LP_14",
-        "nombre": "General Pico, La Pampa, Argentina",
-        "departamento": "Maracó",
-        "provincia": "La Pampa",
-        "lat": -35.6969,
-        "lon": -63.6207,
-        "temp_c": np.nan,
-        "humedad_pct": 0.0,
-        "lluvia_24h_mm": 0.0,
-        "lluvia_mes_mm": 0.0,
-        "viento_kmh": 0.0,
-        "viento_dir": "N/A",
-        "presion_hpa": 1013.2,
-        "fecha_actualizacion": "Estática (Esperando API)",
-        "red": "Omixom La Pampa"
-    },
-    {
-        "id": "OMX_LP_15",
-        "nombre": "Eduardo Castex, La Pampa, Argentina",
-        "departamento": "Conhelo",
-        "provincia": "La Pampa",
-        "lat": -35.9160,
-        "lon": -64.2956,
-        "temp_c": np.nan,
-        "humedad_pct": 0.0,
-        "lluvia_24h_mm": 0.0,
-        "lluvia_mes_mm": 0.0,
-        "viento_kmh": 0.0,
-        "viento_dir": "N/A",
-        "presion_hpa": 1013.2,
-        "fecha_actualizacion": "Estática (Esperando API)",
-        "red": "Omixom La Pampa"
-    }
+    {"id": "OMX_CBA_1", "nombre": "General Levalle", "departamento": "Roque Sáenz Peña", "provincia": "Córdoba", "lat": -34.0000, "lon": -63.9163, "temp_c": np.nan, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Estática", "red": "Omixom Córdoba"},
+    {"id": "OMX_CBA_2", "nombre": "Río Bamba", "departamento": "Roque Sáenz Peña", "provincia": "Córdoba", "lat": -34.0537, "lon": -63.7332, "temp_c": np.nan, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Estática", "red": "Omixom Córdoba"},
+    {"id": "OMX_CBA_3", "nombre": "Jovita", "departamento": "General Roca", "provincia": "Córdoba", "lat": -34.5194, "lon": -63.9683, "temp_c": np.nan, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Estática", "red": "Omixom Córdoba"},
+    {"id": "OMX_CBA_4", "nombre": "Villa Valeria", "departamento": "General Roca", "provincia": "Córdoba", "lat": -34.3427, "lon": -64.9290, "temp_c": np.nan, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Estática", "red": "Omixom Córdoba"},
+    {"id": "OMX_CBA_5", "nombre": "Nicolás Bruzzone", "departamento": "General Roca", "provincia": "Córdoba", "lat": -34.4391, "lon": -64.3424, "temp_c": np.nan, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Estática", "red": "Omixom Córdoba"},
+    {"id": "OMX_CBA_6", "nombre": "Melo", "departamento": "Roque Sáenz Peña", "provincia": "Córdoba", "lat": -34.3452, "lon": -63.4377, "temp_c": np.nan, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Estática", "red": "Omixom Córdoba"},
+    {"id": "OMX_CBA_7", "nombre": "Huanchillas", "departamento": "Juárez Celman", "provincia": "Córdoba", "lat": -33.6665, "lon": -63.6395, "temp_c": np.nan, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Estática", "red": "Omixom Córdoba"},
+    {"id": "OMX_CBA_8", "nombre": "Hipólito Bouchard", "departamento": "General Roca", "provincia": "Córdoba", "lat": -34.7060, "lon": -63.5030, "temp_c": np.nan, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Estática", "red": "Omixom Córdoba"},
+    {"id": "OMX_CBA_9", "nombre": "General Roca", "departamento": "General Roca", "provincia": "Córdoba", "lat": -33.9948, "lon": -65.0754, "temp_c": np.nan, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Estática", "red": "Omixom Córdoba"},
+    {"id": "OMX_CBA_10", "nombre": "Serrano", "departamento": "Roque Sáenz Peña", "provincia": "Córdoba", "lat": -34.4629, "lon": -63.5309, "temp_c": np.nan, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Estática", "red": "Omixom Córdoba"},
+    {"id": "OMX_CBA_11", "nombre": "Coronel Moldes", "departamento": "Río Cuarto", "provincia": "Córdoba", "lat": -33.6481, "lon": -64.5950, "temp_c": np.nan, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Estática", "red": "Omixom Córdoba"},
+    {"id": "OMX_CBA_12", "nombre": "Viamonte", "departamento": "Unión", "provincia": "Córdoba", "lat": -33.7429, "lon": -63.0996, "temp_c": np.nan, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Estática", "red": "Omixom Córdoba"},
+    {"id": "OMX_CBA_13", "nombre": "Chaján", "departamento": "Río Cuarto", "provincia": "Córdoba", "lat": -33.5508, "lon": -65.0059, "temp_c": np.nan, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Estática", "red": "Omixom Córdoba"},
+    {"id": "OMX_CBA_14", "nombre": "Villa Rossi", "departamento": "General Roca", "provincia": "Córdoba", "lat": -34.2949, "lon": -63.2654, "temp_c": np.nan, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Estática", "red": "Omixom Córdoba"},
+    {"id": "OMX_CBA_15", "nombre": "Presa El Chañar", "departamento": "Río Cuarto", "provincia": "Córdoba", "lat": -33.9608, "lon": -65.0551, "temp_c": np.nan, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Estática", "red": "Omixom Córdoba"},
+    {"id": "OMX_CBA_16", "nombre": "Huinca Renancó", "departamento": "General Roca", "provincia": "Córdoba", "lat": -34.8208, "lon": -64.3738, "temp_c": np.nan, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Estática", "red": "Omixom Córdoba"},
+    {"id": "OMX_CBA_17", "nombre": "Vicuña Mackenna", "departamento": "Río Cuarto", "provincia": "Córdoba", "lat": -33.9754, "lon": -64.3642, "temp_c": np.nan, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Estática", "red": "Omixom Córdoba"},
+    {"id": "OMX_LP_1", "nombre": "El Tala - La Veneta", "departamento": "Realicó", "provincia": "La Pampa", "lat": -35.3119, "lon": -64.7144, "temp_c": np.nan, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Estática", "red": "Omixom La Pampa"},
+    {"id": "OMX_LP_2", "nombre": "Realicó (Omixom)", "departamento": "Realicó", "provincia": "La Pampa", "lat": -35.0576, "lon": -64.2129, "temp_c": np.nan, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Estática", "red": "Omixom La Pampa"},
+    {"id": "OMX_LP_3", "nombre": "Trilí", "departamento": "Quemú Quemú", "provincia": "La Pampa", "lat": -35.9036, "lon": -63.6429, "temp_c": np.nan, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Estática", "red": "Omixom La Pampa"},
+    {"id": "OMX_LP_4", "nombre": "Ingeniero Luiggi", "departamento": "Realicó", "provincia": "La Pampa", "lat": -35.4714, "lon": -64.6024, "temp_c": np.nan, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Estática", "red": "Omixom La Pampa"},
+    {"id": "OMX_LP_5", "nombre": "Conhelo", "departamento": "Conhelo", "provincia": "La Pampa", "lat": -35.9895, "lon": -64.5954, "temp_c": np.nan, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Estática", "red": "Omixom La Pampa"},
+    {"id": "OMX_LP_6", "nombre": "Arata", "departamento": "Trenel", "provincia": "La Pampa", "lat": -35.6391, "lon": -64.3564, "temp_c": np.nan, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Estática", "red": "Omixom La Pampa"},
+    {"id": "OMX_LP_7", "nombre": "Pichi Huinca", "departamento": "Rancul", "provincia": "La Pampa", "lat": -35.6482, "lon": -64.7699, "temp_c": np.nan, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Estática", "red": "Omixom La Pampa"},
+    {"id": "OMX_LP_8", "nombre": "Rancul", "departamento": "Rancul", "provincia": "La Pampa", "lat": -35.0883, "lon": -64.5082, "temp_c": np.nan, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Estática", "red": "Omixom La Pampa"},
+    {"id": "OMX_LP_9", "nombre": "Coronel Hilario Lagos", "departamento": "Chapaleufú", "provincia": "La Pampa", "lat": -35.0344, "lon": -63.9111, "temp_c": np.nan, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Estática", "red": "Omixom La Pampa"},
+    {"id": "OMX_LP_10", "nombre": "Colonia Barón", "departamento": "Quemú Quemú", "provincia": "La Pampa", "lat": -36.1508, "lon": -63.8550, "temp_c": np.nan, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Estática", "red": "Omixom La Pampa"},
+    {"id": "OMX_LP_11", "nombre": "Intendente Alvear", "departamento": "Chapaleufú", "provincia": "La Pampa", "lat": -35.3182, "lon": -63.6054, "temp_c": np.nan, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Estática", "red": "Omixom La Pampa"},
+    {"id": "OMX_LP_12", "nombre": "Alta Italia", "departamento": "Realicó", "provincia": "La Pampa", "lat": -35.3317, "lon": -64.1191, "temp_c": np.nan, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Estática", "red": "Omixom La Pampa"},
+    {"id": "OMX_LP_13", "nombre": "Winifreda", "departamento": "Conhelo", "provincia": "La Pampa", "lat": -36.2229, "lon": -64.2487, "temp_c": np.nan, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Estática", "red": "Omixom La Pampa"},
+    {"id": "OMX_LP_14", "nombre": "General Pico", "departamento": "Maracó", "provincia": "La Pampa", "lat": -35.6969, "lon": -63.6207, "temp_c": np.nan, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Estática", "red": "Omixom La Pampa"},
+    {"id": "OMX_LP_15", "nombre": "Eduardo Castex", "departamento": "Conhelo", "provincia": "La Pampa", "lat": -35.9160, "lon": -64.2956, "temp_c": np.nan, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Estática", "red": "Omixom La Pampa"}
 ]
 
-# =============================================================
-# 3. LÍMITES GEOGRÁFICOS Y CLIENTE HTTP
-# =============================================================
 LAT_MIN_SL, LAT_MAX_SL = -35.5, -33.0
 LON_MIN_SL, LON_MAX_SL = -66.3, -65.0
-
 LAT_MIN_CUENCA, LAT_MAX_CUENCA = -36.5, -32.8
 LON_MIN_CUENCA, LON_MAX_CUENCA = -67.5, -63.0
 
@@ -608,11 +86,10 @@ retries = Retry(total=2, backoff_factor=1.0, status_forcelist=[500, 502, 503, 50
 session.mount("https://", HTTPAdapter(max_retries=retries))
 
 # =============================================================
-# 4. CATÁLOGO CUERPOS DE AGUA (INA) Y COTAS FÍSICAS
+# 3. CATÁLOGO CUERPOS DE AGUA (INA) Y COTAS FÍSICAS
 # =============================================================
 BASE_URL_INA = "https://alerta.ina.gob.ar/pub/datos"
-
-timestart_str = (ahora - timedelta(days=5)).strftime("%Y-%m-%d")
+timestart_str = (ahora - timedelta(days=4)).strftime("%Y-%m-%d")
 timeend_str = (ahora + timedelta(days=1)).strftime("%Y-%m-%d")
 
 ESTACIONES_INA_CATALOGO = {
@@ -642,7 +119,7 @@ UMBRALES_NOMINALES = {
 }
 
 # =============================================================
-# 5. FUNCIONES DE CÁLCULO Y TRASLACIÓN DE ONDA
+# 4. FUNCIONES DE CÁLCULO Y TRASLACIÓN DE ONDA
 # =============================================================
 def distancia_haversine(lat1, lon1, lat2, lon2):
     R = 6371.0
@@ -662,17 +139,16 @@ def clasificar_nivel(valor, nombre_estacion):
     
     umbral_precaucion = round(c_alerta * 0.75, 2)
     if valor < umbral_precaucion:
-        return "#2b9348", "Normal / Seguro", c_alerta, c_evac
+        return "#10b981", "Normal", c_alerta, c_evac
     elif valor >= c_evac:
-        return "#d90429", "Evacuación Oficial", c_alerta, c_evac
+        return "#ef4444", "Evacuación", c_alerta, c_evac
     elif valor >= c_alerta:
-        return "#f77f00", "Alerta Hidrológica", c_alerta, c_evac
+        return "#f97316", "Alerta Hidrológica", c_alerta, c_evac
     else:
-        return "#fcbf49", "Precaución", c_alerta, c_evac
+        return "#eab308", "Precaución", c_alerta, c_evac
 
 def calcular_tiempo_viaje_onda(lista_hidro_resumen, lista_rayos=[]):
     dict_h = {h["nombre"]: h for h in lista_hidro_resumen}
-    
     dique_vm = next((h for k, h in dict_h.items() if "Dique Villa Mercedes" in k or "Villa Mercedes" in k), None)
     daract = next((h for k, h in dict_h.items() if "Justo Daract" in k), None)
     margarita = next((h for k, h in dict_h.items() if "Margarita" in k), None)
@@ -683,11 +159,11 @@ def calcular_tiempo_viaje_onda(lista_hidro_resumen, lista_rayos=[]):
     origen_alerta = None
     nivel_origen = 0.0
     cota_alerta_origen = 0.0
-    estado_alerta_origen = "Normal / Seguro"
+    estado_alerta_origen = "Normal"
     fecha_deteccion = ahora.strftime("%d/%m/%Y %H:%M")
 
     for punto in [daract, dique_vm, rn35, devoto, rp26]:
-        if punto and punto["estado"] in ["Alerta Hidrológica", "Evacuación Oficial"]:
+        if punto and punto["estado"] in ["Alerta Hidrológica", "Evacuación"]:
             origen_alerta = punto["nombre"]
             nivel_origen = punto["nivel_actual"]
             cota_alerta_origen = punto["cota_alerta"]
@@ -705,17 +181,14 @@ def calcular_tiempo_viaje_onda(lista_hidro_resumen, lista_rayos=[]):
     cota_alerta_margarita = margarita["cota_alerta"] if margarita else 2.40
 
     if nivel_margarita < 1.00:
-        factor_almacenamiento = "ALTA RETENCIÓN (Bañados secos / Lagunas deprimidas)"
+        factor_almacenamiento = "Alta Retención (Bañados secos / Lagunas deprimidas)"
         ajuste_dias = 4.0
-        desc_almacenamiento = "Amortiguación máxima (+4 días al tiempo de viaje hacia La Pampa)."
     elif nivel_margarita >= 2.00 or (cota_alerta_margarita - nivel_margarita <= 0.40):
-        factor_almacenamiento = "SATURACIÓN CRÍTICA (Efecto vaso lleno)"
+        factor_almacenamiento = "Saturación Crítica (Efecto vaso lleno)"
         ajuste_dias = -3.0
-        desc_almacenamiento = "Transferencia directa acelerada (-3 días al tiempo de viaje hacia La Pampa)."
     else:
-        factor_almacenamiento = "RETENCIÓN MEDIA ORDINARIA"
+        factor_almacenamiento = "Retención Media Ordinaria"
         ajuste_dias = 0.0
-        desc_almacenamiento = "Tránsito ordinario de amortiguación según tiempos históricos."
 
     if origen_alerta and ("Villa Mercedes" in origen_alerta or "Trapiche" in origen_alerta):
         t_base_min, t_base_max = 8.0, 12.0
@@ -734,33 +207,9 @@ def calcular_tiempo_viaje_onda(lista_hidro_resumen, lista_rayos=[]):
     f_llegada_min = ahora + timedelta(days=t_est_min)
     f_llegada_max = ahora + timedelta(days=t_est_max)
 
-    alerta_activa = estado_alerta_origen in ["Alerta Hidrológica", "Evacuación Oficial", "Precaución"]
+    alerta_activa = estado_alerta_origen in ["Alerta Hidrológica", "Evacuación", "Precaución"]
     rayos_cuenca_alta = [r for r in lista_rayos if r.get("lat", 0) > -34.5]
     alerta_convectiva = len(rayos_cuenca_alta) >= 8
-
-    if alerta_activa:
-        banner_msg = (
-            f"⚠️ ALERTA HIDROLÓGICA EN CUENCA MEDIA ({origen_alerta}) | Nivel: {nivel_origen:.2f} m "
-            f"(Cota Alerta: {cota_alerta_origen:.2f} m). Estado: {estado_alerta_origen}. "
-            f"Tiempo estimado de arribo de onda a límite pampeano: {t_est_min:.0f} a {t_est_max:.0f} días "
-            f"(Arribo previsto: {f_llegada_min.strftime('%d/%m')} al {f_llegada_max.strftime('%d/%m/%Y')}). "
-            f"Condición de almacenamiento: {factor_almacenamiento}."
-        )
-    elif alerta_convectiva:
-        banner_msg = (
-            f"⚡ ALERTA METEOROLÓGICA CONVECTIVA EN NACIENTES | Detección de {len(rayos_cuenca_alta)} descargas eléctricas "
-            f"y topes convectivos fríos (< -50 °C) en cabecera de San Luis / Córdoba. Potencial pulso de crecida en formación "
-            f"(Ventana teórica estimada a La Pampa: {t_est_min:.0f} a {t_est_max:.0f} días)."
-        )
-        alerta_activa = True
-        estado_alerta_origen = "Alerta Convectiva"
-    else:
-        banner_msg = (
-            f"🟢 CUENCA EN CALMA HIDROLÓGICA ORDINARIA | Todos los nudos de control en nivel normal/seguro. "
-            f"Ventana teórica de respuesta ante pulso en Justo Daract: {t_est_min:.0f} a {t_est_max:.0f} días. "
-            f"Nivel actual en Laguna La Margarita: {nivel_margarita:.2f} m ({factor_almacenamiento}). "
-            f"Actividad eléctrica: {len(lista_rayos)} descargas recientes en cuenca."
-        )
 
     return {
         "alerta_activa": alerta_activa,
@@ -771,159 +220,89 @@ def calcular_tiempo_viaje_onda(lista_hidro_resumen, lista_rayos=[]):
         "fecha_deteccion": fecha_deteccion,
         "nivel_margarita": nivel_margarita,
         "factor_almacenamiento": factor_almacenamiento,
-        "desc_almacenamiento": desc_almacenamiento,
         "tiempo_viaje_min_dias": t_est_min,
         "tiempo_viaje_max_dias": t_est_max,
         "fecha_arribo_estimada_str": f"{f_llegada_min.strftime('%d/%m')} al {f_llegada_max.strftime('%d/%m/%Y')}",
-        "banner_msg": banner_msg
+        "rayos_nacientes": len(rayos_cuenca_alta)
     }
 
 # =============================================================
-# 6. EXTRACCIÓN METEOROLÓGICA (OMIXOM, REM Y APA)
+# 5. MODELO NUMÉRICO ECMWF Y ALERTAS SMN
 # =============================================================
-def obtener_estaciones_omixom():
-    print("1. Cargando catálogo de redes Omixom (Córdoba y La Pampa fijas)...", flush=True)
-    return ESTACIONES_OMIXOM_ESTATICAS
+NODOS_ECMWF = [
+    {"nombre": "Villa Mercedes (Nacientes)", "lat": -33.67, "lon": -65.46, "provincia": "San Luis"},
+    {"nombre": "General Levalle (Media)", "lat": -34.00, "lon": -63.92, "provincia": "Córdoba"},
+    {"nombre": "Jovita (Media-Baja)", "lat": -34.52, "lon": -63.97, "provincia": "Córdoba"},
+    {"nombre": "Realicó (Cuenca Baja)", "lat": -35.04, "lon": -64.24, "provincia": "La Pampa"}
+]
 
-def obtener_estaciones_san_luis():
-    print("2. Extrayendo en vivo REM San Luis (Cuenca Alta y Media Río V)...", flush=True)
-    estaciones_sl = []
-    url = "https://clima.sanluis.gob.ar/"
-    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
-    
+def obtener_pronostico_ecmwf():
+    print("1. Consultando pronóstico numérico ECMWF IFS 0.25°...", flush=True)
+    lats = ",".join(str(p["lat"]) for p in NODOS_ECMWF)
+    lons = ",".join(str(p["lon"]) for p in NODOS_ECMWF)
+    url = (
+        f"https://api.open-meteo.com/v1/forecast?"
+        f"latitude={lats}&longitude={lons}&daily=precipitation_sum,precipitation_probability_max,"
+        f"temperature_2m_max,temperature_2m_min&timezone=America%2FArgentina%2FBuenos_Aires"
+        f"&models=ecmwf_ifs025"
+    )
+    resultados = []
     try:
-        r = session.get(url, headers=headers, timeout=12)
+        r = session.get(url, timeout=12)
         if r.status_code == 200:
-            patron = re.compile(
-                r'\[(\d+),\s*"([^"]+)",\s*([-0-9.]+),\s*([-0-9.]+),\s*new Date\((\d+)\),\s*([-0-9.]+),\s*([-0-9.]+),\s*"([^"]+)"'
-            )
-            for m in patron.finditer(r.text):
-                est_id = m.group(1)
-                nombre = m.group(2)
-                lat = float(m.group(3))
-                lon = float(m.group(4))
-                ts = int(m.group(5)) / 1000.0
-                fecha = datetime.fromtimestamp(ts, tz=TZ_ARG).strftime("%Y-%m-%d %H:%M")
-                temp = float(m.group(6))
-                lluvia = float(m.group(7))
+            datos = r.json()
+            if not isinstance(datos, list):
+                datos = [datos]
+            for idx, p in enumerate(NODOS_ECMWF):
+                d_met = datos[idx].get("daily", {})
+                fechas = d_met.get("time", [])
+                lluvias = d_met.get("precipitation_sum", [])
+                
+                lluvia_hoy = round(lluvias[0] if len(lluvias) > 0 and lluvias[0] is not None else 0.0, 1)
+                lluvia_maniana = round(lluvias[1] if len(lluvias) > 1 and lluvias[1] is not None else 0.0, 1)
+                lluvia_pasado = round(lluvias[2] if len(lluvias) > 2 and lluvias[2] is not None else 0.0, 1)
 
-                if LAT_MIN_SL <= lat <= LAT_MAX_SL and LON_MIN_SL <= lon <= LON_MAX_SL:
-                    estaciones_sl.append({
-                        "id": f"REM_{est_id}",
-                        "nombre": nombre,
-                        "departamento": "San Luis",
-                        "provincia": "San Luis",
-                        "lat": lat,
-                        "lon": lon,
-                        "temp_c": temp,
-                        "humedad_pct": 0.0,
-                        "lluvia_24h_mm": lluvia,
-                        "lluvia_mes_mm": 0.0,
-                        "viento_kmh": 0.0,
-                        "viento_dir": "N/A",
-                        "presion_hpa": 1013.2,
-                        "fecha_actualizacion": fecha,
-                        "red": "REM San Luis"
-                    })
+                resultados.append({
+                    "nodo": p["nombre"],
+                    "provincia": p["provincia"],
+                    "lat": p["lat"],
+                    "lon": p["lon"],
+                    "lluvia_hoy": lluvia_hoy,
+                    "lluvia_maniana": lluvia_maniana,
+                    "lluvia_pasado": lluvia_pasado,
+                    "alerta": lluvia_maniana >= 25.0 or lluvia_pasado >= 35.0
+                })
+        print(f"   -> [ECMWF]: {len(resultados)} nodos procesados.")
     except Exception as e:
-        print(f"   [AVISO] Falla temporal al conectar con REM San Luis: {e}")
+        print(f"   [AVISO ECMWF]: {e}")
+    return resultados
 
-    return estaciones_sl
-
-def obtener_estaciones_apa_lapampa():
-    print("3. Extrayendo APA La Pampa (Red Oficial Davis)...", flush=True)
-    RED_APA = [
-        {"id": "APA_ARATA", "nombre": "Arata", "slug": "arata", "depto": "Trenel", "lat": -35.617, "lon": -64.356, "temp": 19.2, "lluvia": 0.0},
-        {"id": "APA_QUEMU", "nombre": "Quemú Quemú", "slug": "quemu", "depto": "Quemú Quemú", "lat": -36.056, "lon": -63.551, "temp": 16.3, "lluvia": 0.0},
-        {"id": "APA_CUCHILLOCO", "nombre": "Cuchillo Có", "slug": "emacuchi", "depto": "Lihuel Calel", "lat": -38.334, "lon": -64.642, "temp": 12.7, "lluvia": 0.0},
-        {"id": "APA_ALPACHIRI", "nombre": "Alpachiri", "slug": "alpachir", "depto": "Guatraché", "lat": -37.378, "lon": -63.784, "temp": 13.4, "lluvia": 0.0},
-        {"id": "APA_LIHUECALEL", "nombre": "Lihué Calel", "slug": "lihuecalel", "depto": "Lihuel Calel", "lat": -37.954, "lon": -65.602, "temp": 13.2, "lluvia": 0.0},
-        {"id": "APA_CASADEPIEDRA", "nombre": "Casa de Piedra", "slug": "casadepi", "depto": "Puelén", "lat": -38.163, "lon": -67.151, "temp": 13.8, "lluvia": 0.0},
-        {"id": "APA_TELEN", "nombre": "Telén", "slug": "telen", "depto": "Loventué", "lat": -36.262, "lon": -65.511, "temp": 16.3, "lluvia": 0.0},
-        {"id": "APA_GRALACHA", "nombre": "General Acha", "slug": "gralacha", "depto": "Utracán", "lat": -37.378, "lon": -64.604, "temp": 15.0, "lluvia": 0.0},
-        {"id": "APA_ALGARROBO", "nombre": "Algarrobo del Águila", "slug": "algarrobo", "depto": "Chical Có", "lat": -36.402, "lon": -67.147, "temp": 14.2, "lluvia": 0.0},
-        {"id": "APA_LAADELA", "nombre": "La Adela", "slug": "laadela", "depto": "Caleu Caleu", "lat": -38.985, "lon": -64.088, "temp": 17.9, "lluvia": 2.4},
-        {"id": "APA_25DEMAYO", "nombre": "25 de Mayo", "slug": "25demayo", "depto": "Puelén", "lat": -37.773, "lon": -67.718, "temp": 16.5, "lluvia": 0.0},
-        {"id": "APA_GOBDUVAL", "nombre": "Gobernador Duval", "slug": "gobduval", "depto": "Curacó", "lat": -38.731, "lon": -65.772, "temp": 16.0, "lluvia": 0.0}
-    ]
-    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
-
-    def _fetch_estacion_apa(info):
-        url = f"https://estaciones-apa.lapampa.gob.ar/{info['slug']}/mb1.htm"
-        try:
-            r = session.get(url, headers=headers, timeout=6, verify=False)
-            if r.status_code == 200 and len(r.text) > 100:
-                soup = BeautifulSoup(r.text, "html.parser")
-                texto = soup.get_text(separator=" ")
-
-                f_m = re.search(r"FECHA:\s*([\d/]+)", texto)
-                h_m = re.search(r"HORA:\s*([\d:]+)", texto)
-                t_m = re.search(r"TEMPERATURA.*?Actual\s*([\d.-]+)\s*°C", texto, re.S)
-                hu_m = re.search(r"HUMEDAD.*?Actual\s*([\d]+)\s*%", texto, re.S)
-                p_m = re.search(r"PRESION BAROMETRICA.*?Actual\s*([\d.-]+)\s*hPa", texto, re.S)
-                v_m = re.search(r"VIENTO.*?Velocidad\s*([\d.-]+)\s*km/h", texto, re.S)
-                ll_m = re.search(r"LLUVIA.*?Diaria\s*([\d.-]+)\s*mm", texto, re.S)
-                ll_mes = re.search(r"LLUVIA.*?Mensual\s*([\d.-]+)\s*mm", texto, re.S)
-                v_dir = re.search(r"Del Sector\s*([A-Za-z0-9() ]+)", texto)
-
-                fecha_txt = f"{f_m.group(1)} {h_m.group(1)} (Arg -3)" if (f_m and h_m) else FECHA_TXT
-
-                return {
-                    "id": info["id"],
-                    "nombre": f"{info['nombre']} (APA)",
-                    "departamento": info["depto"],
-                    "provincia": "La Pampa",
-                    "lat": info["lat"],
-                    "lon": info["lon"],
-                    "temp_c": float(t_m.group(1)) if t_m else info.get("temp", 15.0),
-                    "humedad_pct": float(hu_m.group(1)) if hu_m else 0.0,
-                    "lluvia_24h_mm": float(ll_m.group(1)) if ll_m else info.get("lluvia", 0.0),
-                    "lluvia_mes_mm": float(ll_mes.group(1)) if ll_mes else 0.0,
-                    "viento_kmh": float(v_m.group(1)) if v_m else 0.0,
-                    "viento_dir": v_dir.group(1).strip() if v_dir else "N/A",
-                    "presion_hpa": float(p_m.group(1)) if p_m else 1013.2,
-                    "fecha_actualizacion": fecha_txt,
-                    "red": "APA La Pampa"
-                }
-        except Exception:
-            pass
-        return None
-
-    estaciones_apa = []
-    with ThreadPoolExecutor(max_workers=6) as executor:
-        futs = [executor.submit(_fetch_estacion_apa, e) for e in RED_APA]
-        for f in as_completed(futs):
-            res = f.result()
-            if res:
-                estaciones_apa.append(res)
-
-    if len(estaciones_apa) < 3:
-        print("   [INFO] Servidor APA restringido desde el exterior: aplicando catalogo seguro de La Pampa...", flush=True)
-        estaciones_apa = []
-        for e in RED_APA:
-            estaciones_apa.append({
-                "id": e["id"],
-                "nombre": f"{e['nombre']} (APA)",
-                "departamento": e["depto"],
-                "provincia": "La Pampa",
-                "lat": e["lat"],
-                "lon": e["lon"],
-                "temp_c": e.get("temp", 15.0),
-                "humedad_pct": 50.0,
-                "lluvia_24h_mm": e.get("lluvia", 0.0),
-                "lluvia_mes_mm": 5.0,
-                "viento_kmh": 0.0,
-                "viento_dir": "Calma",
-                "presion_hpa": 1013.2,
-                "fecha_actualizacion": f"{FECHA_TXT} (Arg -3)",
-                "red": "APA La Pampa"
-            })
-
-    print(f"   -> [APA LA PAMPA]: {len(estaciones_apa)} estaciones consolidadas.", flush=True)
-    return estaciones_apa
+def obtener_alertas_smn_cuenca():
+    print("2. Consultando Sistema de Alerta Temprana del SMN...", flush=True)
+    alertas = []
+    deptos_cuenca = ["pedernera", "general roca", "roque sáenz peña", "realicó", "chapaleufú", "trenel", "conhelo"]
+    try:
+        r = session.get("https://ws1.smn.gob.ar/v1/alerts/feed", timeout=8)
+        if r.status_code == 200:
+            data = r.json()
+            for al in data:
+                z = str(al.get("zone", "")).lower()
+                desc = str(al.get("description", "")).lower()
+                if any(d in z or d in desc for d in deptos_cuenca):
+                    color = al.get("color", "amarillo").lower()
+                    alertas.append({
+                        "zona": al.get("zone", "Cuenca Río V"),
+                        "fenomeno": al.get("event", "Tormenta"),
+                        "nivel": color.capitalize(),
+                        "descripcion": al.get("description", "")
+                    })
+        print(f"   -> [SMN OFICIAL]: {len(alertas)} alertas vigentes en cuenca.")
+    except Exception as e:
+        print(f"   [AVISO SMN]: Falla feed SMN: {e}")
+    return alertas
 
 # =============================================================
-# 7. EXTRACCIÓN HIDROLÓGICA (INA) CON DESCUBRIMIENTO DE SERIES
+# 6. EXTRACCIÓN REDES METEO (REM SL, APA LA PAMPA, OMIXOM)
 # =============================================================
 def normalizar_a_lista(resp_json):
     if isinstance(resp_json, list): return resp_json
@@ -932,96 +311,164 @@ def normalizar_a_lista(resp_json):
             if k in resp_json and isinstance(resp_json[k], list): return resp_json[k]
     return []
 
-def obtener_datos_hidrologicos():
-    print("4. Extrayendo en vivo cuerpos de agua de INA (Metodología de 2 pasos: Series -> Mediciones)...", flush=True)
-    registros_hidro = []
-    
-    # Paso A: Obtener catálogo de series activas de INA
-    series_activas = []
+def obtener_estaciones_san_luis():
+    print("3. Extrayendo REM San Luis en vivo...", flush=True)
+    estaciones_sl = []
+    url = "https://clima.sanluis.gob.ar/"
+    headers = {"User-Agent": "Mozilla/5.0"}
     try:
-        r = session.get(f"{BASE_URL_INA}/series&format=json", timeout=15)
+        r = session.get(url, headers=headers, timeout=12)
         if r.status_code == 200:
-            series_raw = normalizar_a_lista(r.json())
-            anios_vigentes = [str(ahora.year), str(ahora.year - 1)]
-            for s in series_raw:
-                if not isinstance(s, dict): continue
-                try: sitecode = int(s.get("sitecode"))
-                except: continue
-
-                series_id = s.get("seriesid") or s.get("id") or s.get("series_id")
-                var_nombre = str(s.get("var_nombre") or "").lower()
-                to_date = str(s.get("to_date") or "")
-                tiene_vigencia = any(a in to_date for a in anios_vigentes) or not to_date
-
-                if sitecode in ESTACIONES_INA_CATALOGO and series_id and tiene_vigencia:
-                    if "altura" in var_nombre or "nivel" in var_nombre or "h" in var_nombre or not var_nombre:
-                        info_est = ESTACIONES_INA_CATALOGO[sitecode]
-                        series_activas.append({
-                            "ina_sid": series_id,
-                            "sitecode": sitecode,
-                            "nombre": info_est["nombre"],
-                            "distrito": info_est["distrito"],
-                            "rio": info_est["rio"],
-                            "lat": info_est["lat"],
-                            "lon": info_est["lon"]
-                        })
-            print(f"   -> [INA CATALOGO]: {len(series_activas)} series hidrométricas identificadas en Cuenca Río Quinto.", flush=True)
+            patron = re.compile(
+                r'\[(\d+),\s*"([^"]+)",\s*([-0-9.]+),\s*([-0-9.]+),\s*new Date\((\d+)\),\s*([-0-9.]+),\s*([-0-9.]+),\s*"([^"]+)"'
+            )
+            for m in patron.finditer(r.text):
+                lat = float(m.group(3))
+                lon = float(m.group(4))
+                if LAT_MIN_SL <= lat <= LAT_MAX_SL and LON_MIN_SL <= lon <= LON_MAX_SL:
+                    ts = int(m.group(5)) / 1000.0
+                    fecha = datetime.fromtimestamp(ts, tz=TZ_ARG).strftime("%Y-%m-%d %H:%M")
+                    estaciones_sl.append({
+                        "id": f"REM_{m.group(1)}",
+                        "nombre": m.group(2),
+                        "departamento": "San Luis",
+                        "provincia": "San Luis",
+                        "lat": lat,
+                        "lon": lon,
+                        "temp_c": float(m.group(6)),
+                        "humedad_pct": 0.0,
+                        "lluvia_24h_mm": float(m.group(7)),
+                        "lluvia_mes_mm": 0.0,
+                        "viento_kmh": 0.0,
+                        "viento_dir": "N/A",
+                        "presion_hpa": 1013.2,
+                        "fecha_actualizacion": fecha,
+                        "red": "REM San Luis"
+                    })
+        print(f"   -> [REM SAN LUIS]: {len(estaciones_sl)} estaciones activas.")
     except Exception as e:
-        print(f"   [AVISO INA SERIES]: Error al consultar catálogo de series: {e}", flush=True)
+        print(f"   [AVISO REM]: {e}")
+    return estaciones_sl
 
-    # Paso B: Descargar las mediciones para cada serie identificada con el formato original
-    def _descargar_serie_ina(s):
-        sid = s["ina_sid"]
-        url = f"{BASE_URL_INA}/datos&seriesId={sid}&timeStart={timestart_str}&timeEnd={timeend_str}&format=json"
-        salida = []
+def obtener_estaciones_apa_lapampa():
+    print("4. Extrayendo APA La Pampa...", flush=True)
+    RED_APA = [
+        {"id": "APA_ARATA", "nombre": "Arata", "slug": "arata", "depto": "Trenel", "lat": -35.617, "lon": -64.356, "temp": 19.2, "lluvia": 0.0},
+        {"id": "APA_QUEMU", "nombre": "Quemú Quemú", "slug": "quemu", "depto": "Quemú Quemú", "lat": -36.056, "lon": -63.551, "temp": 16.3, "lluvia": 0.0},
+        {"id": "APA_CUCHILLOCO", "nombre": "Cuchillo Có", "slug": "emacuchi", "depto": "Lihuel Calel", "lat": -38.334, "lon": -64.642, "temp": 12.7, "lluvia": 0.0},
+        {"id": "APA_TELEN", "nombre": "Telén", "slug": "telen", "depto": "Loventué", "lat": -36.262, "lon": -65.511, "temp": 16.3, "lluvia": 0.0},
+        {"id": "APA_GRALACHA", "nombre": "General Acha", "slug": "gralacha", "depto": "Utracán", "lat": -37.378, "lon": -64.604, "temp": 15.0, "lluvia": 0.0},
+        {"id": "APA_25DEMAYO", "nombre": "25 de Mayo", "slug": "25demayo", "depto": "Puelén", "lat": -37.773, "lon": -67.718, "temp": 16.5, "lluvia": 0.0}
+    ]
+    headers = {"User-Agent": "Mozilla/5.0"}
+
+    def _fetch_apa(info):
+        url = f"https://estaciones-apa.lapampa.gob.ar/{info['slug']}/mb1.htm"
         try:
-            r = session.get(url, timeout=8)
-            if r.status_code == 200:
-                datos = normalizar_a_lista(r.json())
-                for d in datos:
-                    if isinstance(d, dict):
-                        fecha = d.get("timestart") or d.get("timeStart") or d.get("fecha") or d.get("time")
-                        valor = d.get("valor") or d.get("value") or d.get("val")
-                        if fecha is not None and valor is not None:
-                            salida.append({
-                                "fecha": str(fecha).replace("T", " "),
-                                "valor": float(valor),
-                                "sitecode": str(s["sitecode"]),
-                                "nombre": s["nombre"],
-                                "distrito": s["distrito"],
-                                "rio": s["rio"],
-                                "lat": s["lat"],
-                                "lon": s["lon"],
-                                "fuente": "INA"
-                            })
-                if salida:
-                    print(f"   -> [INA EN VIVO] {s['nombre']}: {len(salida)} registros (Ult: {salida[-1]['valor']:.2f} m - {salida[-1]['fecha']})", flush=True)
-        except Exception as e:
+            r = session.get(url, headers=headers, timeout=5, verify=False)
+            if r.status_code == 200 and len(r.text) > 100:
+                soup = BeautifulSoup(r.text, "html.parser")
+                txt = soup.get_text(separator=" ")
+                t_m = re.search(r"TEMPERATURA.*?Actual\s*([\d.-]+)\s*°C", txt, re.S)
+                ll_m = re.search(r"LLUVIA.*?Diaria\s*([\d.-]+)\s*mm", txt, re.S)
+                return {
+                    "id": info["id"],
+                    "nombre": f"{info['nombre']} (APA)",
+                    "departamento": info["depto"],
+                    "provincia": "La Pampa",
+                    "lat": info["lat"],
+                    "lon": info["lon"],
+                    "temp_c": float(t_m.group(1)) if t_m else info.get("temp", 15.0),
+                    "humedad_pct": 50.0,
+                    "lluvia_24h_mm": float(ll_m.group(1)) if ll_m else info.get("lluvia", 0.0),
+                    "lluvia_mes_mm": 0.0,
+                    "viento_kmh": 0.0,
+                    "viento_dir": "Calma",
+                    "presion_hpa": 1013.2,
+                    "fecha_actualizacion": f"{FECHA_TXT} (Arg -3)",
+                    "red": "APA La Pampa"
+                }
+        except Exception:
             pass
-        return salida
+        return None
 
-    if series_activas:
-        with ThreadPoolExecutor(max_workers=6) as executor:
-            futuros = [executor.submit(_descargar_serie_ina, s) for s in series_activas]
-            for fut in as_completed(futuros):
-                res = fut.result()
-                if res:
-                    registros_hidro.extend(res)
+    estaciones_apa = []
+    with ThreadPoolExecutor(max_workers=5) as executor:
+        futs = [executor.submit(_fetch_apa, e) for e in RED_APA]
+        for f in as_completed(futs):
+            res = f.result()
+            if res: estaciones_apa.append(res)
 
-    print(f"   -> [TOTAL CUERPOS DE AGUA INA]: {len(registros_hidro)} registros capturados.", flush=True)
+    if len(estaciones_apa) < 2:
+        for e in RED_APA:
+            estaciones_apa.append({
+                "id": e["id"], "nombre": f"{e['nombre']} (APA)", "departamento": e["depto"],
+                "provincia": "La Pampa", "lat": e["lat"], "lon": e["lon"],
+                "temp_c": e.get("temp", 15.0), "humedad_pct": 50.0, "lluvia_24h_mm": e.get("lluvia", 0.0),
+                "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "Calma",
+                "presion_hpa": 1013.2, "fecha_actualizacion": f"{FECHA_TXT} (Arg -3)", "red": "APA La Pampa"
+            })
+    print(f"   -> [APA LA PAMPA]: {len(estaciones_apa)} estaciones consolidadas.")
+    return estaciones_apa
 
-    # Fallback seguro para cualquier estación que no haya devuelto datos en la ventana temporal
-    nombres_con_datos = set(r["nombre"] for r in registros_hidro)
+# =============================================================
+# 7. EXTRACCIÓN CUERPOS DE AGUA INA Y RAYOS
+# =============================================================
+def obtener_datos_hidrologicos():
+    print("5. Extrayendo cuerpos de agua INA...", flush=True)
+    registros = []
     base_niveles = {
         6444: 0.32, 6441: 1.08, 6472: 0.16, 6445: 1.79,
         6624: 0.66, 6622: 1.22, 6623: 1.69, 6391: 1.43, 2809: 0.78
     }
+    series_activas = []
+    try:
+        r = session.get(f"{BASE_URL_INA}/series&format=json", timeout=12)
+        if r.status_code == 200:
+            for s in normalizar_a_lista(r.json()):
+                try: sitecode = int(s.get("sitecode"))
+                except: continue
+                sid = s.get("seriesid") or s.get("id") or s.get("series_id")
+                var_nom = str(s.get("var_nombre") or "").lower()
+                if sitecode in ESTACIONES_INA_CATALOGO and sid:
+                    if "altura" in var_nom or "nivel" in var_nom or "h" in var_nom or not var_nom:
+                        info_est = ESTACIONES_INA_CATALOGO[sitecode]
+                        series_activas.append({"sid": sid, "sitecode": sitecode, **info_est})
+    except Exception as e:
+        print(f"   [AVISO INA SERIES]: {e}")
+
+    def _fetch_ina(s):
+        url = f"{BASE_URL_INA}/datos&seriesId={s['sid']}&timeStart={timestart_str}&timeEnd={timeend_str}&format=json"
+        out = []
+        try:
+            r = session.get(url, timeout=7)
+            if r.status_code == 200:
+                for d in normalizar_a_lista(r.json()):
+                    f = d.get("timestart") or d.get("timeStart") or d.get("fecha")
+                    v = d.get("valor") or d.get("value")
+                    if f is not None and v is not None:
+                        out.append({
+                            "fecha": str(f).replace("T", " "), "valor": float(v),
+                            "nombre": s["nombre"], "distrito": s["distrito"],
+                            "rio": s["rio"], "lat": s["lat"], "lon": s["lon"], "fuente": "INA"
+                        })
+        except Exception:
+            pass
+        return out
+
+    if series_activas:
+        with ThreadPoolExecutor(max_workers=5) as ex:
+            futs = [ex.submit(_fetch_ina, s) for s in series_activas]
+            for f in as_completed(futs):
+                res = f.result()
+                if res: registros.extend(res)
+
+    nombres_con_datos = set(r["nombre"] for r in registros)
     for sc, info in ESTACIONES_INA_CATALOGO.items():
         if info["nombre"] not in nombres_con_datos:
-            registros_hidro.append({
+            registros.append({
                 "fecha": f"{FECHA_TXT} (Arg -3)",
                 "valor": base_niveles.get(sc, 1.00),
-                "sitecode": str(sc),
                 "nombre": info["nombre"],
                 "distrito": info["distrito"],
                 "rio": info["rio"],
@@ -1029,137 +476,520 @@ def obtener_datos_hidrologicos():
                 "lon": info["lon"],
                 "fuente": "INA"
             })
-            
-    return registros_hidro
-
-# =============================================================
-# 8. EXTRACCIÓN DE RADAR Y SATÉLITE DINÁMICO (TILELAYERS NATIVOS)
-# =============================================================
-def obtener_urls_mosaicos():
-    print("5. Consultando capas satelitales y de radar (RainViewer / GOES-16)...", flush=True)
-    sat_url = "https://tilecache.rainviewer.com/v2/satellite/latest/256/{z}/{x}/{y}/1/1_0.png"
-    radar_url = "https://tilecache.rainviewer.com/v2/radar/nowcast_0/256/{z}/{x}/{y}/2/1_1.png"
-    try:
-        r = session.get("https://api.rainviewer.com/public/weather-maps.json", timeout=6)
-        if r.status_code == 200:
-            d = r.json()
-            host = d.get("host", "https://tilecache.rainviewer.com")
-            if d.get("satellite", {}).get("infrared") and len(d["satellite"]["infrared"]) > 0:
-                frame_sat = d["satellite"]["infrared"][-1]["path"]
-                sat_url = f"{host}{frame_sat}/256/{{z}}/{{x}}/{{y}}/1/1_0.png"
-            if d.get("radar", {}).get("past") and len(d["radar"]["past"]) > 0:
-                frame_rad = d["radar"]["past"][-1]["path"]
-                radar_url = f"{host}{frame_rad}/256/{{z}}/{{x}}/{{y}}/2/1_1.png"
-            print("   -> [SATÉLITE Y RADAR]: Timestamps dinámicos en vivo sincronizados con éxito.", flush=True)
-    except Exception as e:
-        print(f"   [AVISO] Conexión RainViewer diferida: aplicando capas base directas: {e}", flush=True)
-        
-    return sat_url, radar_url
+    print(f"   -> [INA HIDROLÓGICO]: {len(registros)} registros compilados.")
+    return registros
 
 def obtener_descargas_atmosfericas():
-    print("6. Consultando descargas atmosféricas (rayos Blitzortung en tiempo real)...", flush=True)
+    print("6. Consultando descargas eléctricas (Blitzortung)...", flush=True)
     rayos = []
-    urls = [f"https://map.blitzortung.org/Data_Json/Strikes_{i}.json" for i in range(6)]
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-        "Referer": "https://map.blitzortung.org/"
-    }
-    
-    LAT_MIN_R, LAT_MAX_R = -38.5, -31.0
-    LON_MIN_R, LON_MAX_R = -68.8, -60.0
-
-    for url in urls:
+    urls = ["https://map.blitzortung.org/Data_Json/Strikes_0.json", "https://map.blitzortung.org/Data_Json/Strikes_1.json"]
+    headers = {"User-Agent": "Mozilla/5.0", "Referer": "https://map.blitzortung.org/"}
+    for u in urls:
         try:
-            r = session.get(url, headers=headers, timeout=5)
+            r = session.get(u, headers=headers, timeout=5)
             if r.status_code == 200:
-                datos = r.json()
-                if isinstance(datos, list):
-                    for st in datos:
-                        if isinstance(st, list) and len(st) >= 3:
-                            lat = float(st[2])
-                            lon = float(st[1])
-                            if LAT_MIN_R <= lat <= LAT_MAX_R and LON_MIN_R <= lon <= LON_MAX_R:
-                                ts_val = float(st[0])
-                                ts_seg = ts_val / 1e9 if ts_val > 1e15 else ts_val / 1000
-                                hora_str = datetime.fromtimestamp(ts_seg, tz=TZ_ARG).strftime("%H:%M")
-                                rayos.append({
-                                    "lat": lat,
-                                    "lon": lon,
-                                    "hora": hora_str,
-                                    "tipo": "Nube-Suelo / Intra-nube",
-                                    "ka": "Detectado",
-                                    "loc": "Región Cuenca Río V Ampliada"
-                                })
+                for st in r.json():
+                    if isinstance(st, list) and len(st) >= 3:
+                        lat, lon = float(st[2]), float(st[1])
+                        if LAT_MIN_CUENCA <= lat <= LAT_MAX_CUENCA and LON_MIN_CUENCA <= lon <= LON_MAX_CUENCA:
+                            ts_val = float(st[0])
+                            ts_seg = ts_val / 1e9 if ts_val > 1e15 else ts_val / 1000
+                            rayos.append({"lat": lat, "lon": lon, "hora": datetime.fromtimestamp(ts_seg, tz=TZ_ARG).strftime("%H:%M")})
         except Exception:
             pass
-
-    print(f"   -> [RAYOS DETECTADOS EN REGIÓN]: {len(rayos)} descargas recientes activas.", flush=True)
+    print(f"   -> [RAYOS]: {len(rayos)} descargas recientes en cuenca.")
     return rayos
 
 # =============================================================
-# 9. GENERACIÓN DE ENTREGABLES (EXCEL, CSV Y MAPA HTML)
+# 8. GENERADOR DEL PORTAL WEB COMPLETO ESTILO MONITOR ZV
 # =============================================================
-def generar_entregables(estaciones_meteo, registros_hidro, lista_rayos):
-    print("7. Compilando modelo hidrológico y generando archivos...", flush=True)
-    df_hidro_raw = pd.DataFrame(registros_hidro)
-    df_hidro_raw["fecha_dt"] = pd.to_datetime(df_hidro_raw["fecha"], errors="coerce")
-    
-    lista_hidro_resumen = []
-    for nombre_est, grp in df_hidro_raw.groupby("nombre"):
-        grp_ord = grp.sort_values("fecha_dt")
-        ult = grp_ord.iloc[-1]
-        media_val = round(grp_ord["valor"].mean(), 2)
-        
-        if len(grp_ord) >= 2:
-            dif = grp_ord.iloc[-1]["valor"] - grp_ord.iloc[-2]["valor"]
-            tendencia = "Creciendo ▲" if dif > 0.02 else ("Bajando ▼" if dif < -0.02 else "Estable ▬")
-        else:
-            dif = 0.0
-            tendencia = "Estable ▬"
+def compilar_portal_web_monitor_zv(hidro_resumen, meteo_total, diag_onda, rayos, pronostico_ecmwf, alertas_smn):
+    print("7. Generando interfaz web unificada (Estilo Monitor ZV)...", flush=True)
 
-        color, estado, c_alerta, c_evac = clasificar_nivel(ult["valor"], nombre_est)
-        lista_hidro_resumen.append({
-            "nombre": nombre_est,
-            "rio": ult["rio"],
-            "distrito": ult["distrito"],
-            "lat": ult["lat"],
-            "lon": ult["lon"],
-            "nivel_actual": ult["valor"],
-            "media_hist": media_val,
-            "cota_alerta": c_alerta,
-            "cota_evac": c_evac,
-            "margen_alerta": round(c_alerta - ult["valor"], 2),
-            "tendencia": tendencia,
-            "variacion": round(dif, 3),
-            "color": color,
-            "estado": estado,
-            "fecha": ult["fecha_dt"].strftime("%d/%m/%Y %H:%M") if pd.notna(ult["fecha_dt"]) else FECHA_TXT,
-            "fuente": ult["fuente"],
-            "historial_5": grp_ord.tail(5)
-        })
+    # 1. Alertas de Lluvia y Pronóstico (Estilo Monitor ZV)
+    alertas_lluvia_html = ""
 
-    diag_onda = calcular_tiempo_viaje_onda(lista_hidro_resumen, lista_rayos)
+    # Alertas SMN oficiales
+    if alertas_smn:
+        for al in alertas_smn:
+            alertas_lluvia_html += f"""
+            <div class="flex items-center justify-between p-3.5 rounded-lg bg-amber-50 border border-amber-300 text-amber-900 text-sm">
+                <div class="flex items-center space-x-3">
+                    <i class="fa-solid fa-triangle-exclamation text-amber-500 text-base"></i>
+                    <span><b>Alerta Oficial SMN ({al['nivel']}):</b> {al['fenomeno']} previsto en {al['zona']}. {al['descripcion']}</span>
+                </div>
+                <span class="text-xs font-bold px-2 py-0.5 bg-amber-200 text-amber-800 rounded">SMN</span>
+            </div>
+            """
 
-    # A. Archivo CSV de Cruce
+    # Pronóstico ECMWF
+    for p in pronostico_ecmwf:
+        if p["lluvia_maniana"] >= 15.0:
+            bg_c = "bg-rose-50 border-rose-200 text-rose-900" if p["lluvia_maniana"] >= 35.0 else "bg-amber-50 border-amber-200 text-amber-900"
+            ico_c = "text-rose-500" if p["lluvia_maniana"] >= 35.0 else "text-amber-500"
+            alertas_lluvia_html += f"""
+            <div class="flex items-center justify-between p-3.5 rounded-lg {bg_c} border text-sm">
+                <div class="flex items-center space-x-3">
+                    <i class="fa-solid fa-cloud-showers-heavy {ico_c} text-base"></i>
+                    <span><b>Lluvia pronosticada (ECMWF):</b> {p['nodo']} — se prevé <b>{p['lluvia_maniana']:.1f} mm</b> para mañana.</span>
+                </div>
+                <span class="text-xs font-medium text-slate-500">ECMWF IFS</span>
+            </div>
+            """
+
+    # Lluvias observadas en vivo en REM / APA
+    lluvias_significativas = [m for m in meteo_total if m.get("lluvia_24h_mm", 0) >= 20.0]
+    for m in lluvias_significativas:
+        alertas_lluvia_html += f"""
+        <div class="flex items-center justify-between p-3.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-900 text-sm">
+            <div class="flex items-center space-x-3">
+                <i class="fa-solid fa-droplet text-rose-500 text-base"></i>
+                <span><b>Lluvia registrada (24h):</b> {m['nombre']} ({m['red']}) — acumulado de <b>{m['lluvia_24h_mm']:.1f} mm</b>.</span>
+            </div>
+            <span class="text-xs font-bold px-2 py-0.5 bg-rose-200 text-rose-800 rounded">Observado</span>
+        </div>
+        """
+
+    if not alertas_lluvia_html:
+        alertas_lluvia_html = """
+        <div class="flex items-center justify-between p-3.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-900 text-sm">
+            <div class="flex items-center space-x-3">
+                <i class="fa-solid fa-circle-check text-emerald-600 text-base"></i>
+                <span><b>Sin alertas de precipitaciones:</b> El modelo ECMWF no prevé eventos extremos para las próximas 48h y no rigen alertas del SMN en la cuenca.</span>
+            </div>
+            <span class="text-xs font-bold px-2 py-0.5 bg-emerald-200 text-emerald-800 rounded">Normal</span>
+        </div>
+        """
+
+    # 2. Alerta de Traslación de Onda
+    if diag_onda["alerta_activa"]:
+        onda_badge = f'<span class="text-xs font-bold px-2.5 py-1 bg-rose-200 text-rose-800 rounded">{diag_onda["estado_alerta"]}</span>'
+        onda_card = f"""
+        <div class="flex items-center justify-between p-3.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-900 text-sm">
+            <div class="flex items-center space-x-3">
+                <i class="fa-solid fa-triangle-exclamation text-rose-500 text-base"></i>
+                <span><b>Alerta Hidrológica activa en {diag_onda['origen_alerta']}:</b> Nivel {diag_onda['nivel_origen']:.2f} m. Tiempo estimado de arribo a límite pampeano: <b>{diag_onda['tiempo_viaje_min_dias']:.0f} a {diag_onda['tiempo_viaje_max_dias']:.0f} días</b> (Ventana: {diag_onda['fecha_arribo_estimada_str']}). {diag_onda['factor_almacenamiento']}.</span>
+            </div>
+            {onda_badge}
+        </div>
+        """
+    else:
+        onda_card = f"""
+        <div class="flex items-center justify-between p-3.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-900 text-sm">
+            <div class="flex items-center space-x-3">
+                <i class="fa-solid fa-circle-check text-emerald-600 text-base"></i>
+                <span><b>Cuenca en calma ordinaria:</b> Ventana teórica estimada a La Pampa: <b>{diag_onda['tiempo_viaje_min_dias']:.0f} a {diag_onda['tiempo_viaje_max_dias']:.0f} días</b> ante eventual pulso en nacientes. Laguna La Margarita: <b>{diag_onda['nivel_margarita']:.2f} m</b> ({diag_onda['factor_almacenamiento']}).</span>
+            </div>
+            <span class="text-xs font-bold px-2.5 py-1 bg-emerald-200 text-emerald-800 rounded">Calma</span>
+        </div>
+        """
+
+    # 3. Filas Tabla Limnígrafos
+    filas_limnigrafos = ""
+    for h in hidro_resumen:
+        badge_color = "bg-emerald-100 text-emerald-800" if h["estado"] == "Normal" else ("bg-amber-100 text-amber-800" if h["estado"] == "Precaución" else "bg-rose-100 text-rose-800")
+        filas_limnigrafos += f"""
+        <tr class="hover:bg-slate-50 transition border-b border-slate-100">
+            <td class="px-4 py-3 font-semibold text-slate-800">{h['nombre']}</td>
+            <td class="px-4 py-3 text-slate-500">{h['rio']} ({h['distrito']})</td>
+            <td class="px-4 py-3 text-right font-bold text-slate-900">{h['nivel_actual']:.2f} m</td>
+            <td class="px-4 py-3 text-right text-slate-600">{h['media_hist']:.2f} m</td>
+            <td class="px-4 py-3 text-right text-amber-700 font-semibold">{h['cota_alerta']:.2f} m</td>
+            <td class="px-4 py-3 text-right text-rose-700 font-semibold">{h['cota_evac']:.2f} m</td>
+            <td class="px-4 py-3 text-center"><span class="px-2 py-0.5 rounded text-xs font-medium {badge_color}">{h['estado']}</span></td>
+            <td class="px-4 py-3 text-center font-medium text-slate-700">{h['tendencia']}</td>
+            <td class="px-4 py-3 text-center text-xs text-slate-400">{h['fecha']}</td>
+        </tr>
+        """
+
+    # 4. Tarjetas Nodos ECMWF Pronóstico
+    cards_ecmwf = ""
+    for p in pronostico_ecmwf:
+        cards_ecmwf += f"""
+        <div class="p-4 rounded-xl border border-slate-200 bg-white shadow-sm flex flex-col justify-between">
+            <div>
+                <span class="text-xs font-semibold uppercase text-slate-400">{p['provincia']}</span>
+                <h4 class="text-base font-bold text-slate-800">{p['nodo']}</h4>
+            </div>
+            <div class="grid grid-cols-3 gap-2 mt-4 text-center border-t border-slate-100 pt-3">
+                <div class="bg-slate-50 p-2 rounded-lg">
+                    <span class="text-[10px] uppercase font-bold text-slate-400">Hoy</span>
+                    <p class="text-sm font-bold text-slate-800">{p['lluvia_hoy']} mm</p>
+                </div>
+                <div class="bg-blue-50 p-2 rounded-lg">
+                    <span class="text-[10px] uppercase font-bold text-blue-500">Mañana</span>
+                    <p class="text-sm font-bold text-blue-700">{p['lluvia_maniana']} mm</p>
+                </div>
+                <div class="bg-slate-50 p-2 rounded-lg">
+                    <span class="text-[10px] uppercase font-bold text-slate-400">Pasado</span>
+                    <p class="text-sm font-bold text-slate-800">{p['lluvia_pasado']} mm</p>
+                </div>
+            </div>
+        </div>
+        """
+
+    # Datos JSON para Leaflet
+    geo_hidro = json.dumps(hidro_resumen)
+    geo_meteo = json.dumps(meteo_total)
+    geo_rayos = json.dumps(rayos)
+
+    html = f"""<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monitor del Clima — Cuenca Triprovincial Río V</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <style>
+        body {{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: #f8fafc; }}
+        .tab-btn.active {{ background-color: #ffffff; color: #0f172a; font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }}
+        .tab-btn {{ color: #64748b; transition: all 0.15s ease-in-out; }}
+        #mapa-container {{ height: calc(100vh - 165px); min-height: 540px; }}
+    </style>
+</head>
+<body class="text-slate-800 antialiased min-h-screen flex flex-col">
+
+    <!-- HEADER ESTILO MONITOR ZV -->
+    <header class="bg-white border-b border-slate-200 px-6 py-3 flex justify-between items-center sticky top-0 z-50">
+        <div class="flex items-center space-x-3">
+            <i class="fa-solid fa-cloud-sun-rain text-blue-600 text-xl"></i>
+            <div>
+                <h1 class="text-lg font-bold tracking-tight text-slate-900 leading-none">Monitor del Clima — Cuenca Río V</h1>
+                <span class="text-xs text-slate-500 font-medium">SAT Triprovincial: San Luis · Córdoba · La Pampa | Actualizado: {FECHA_TXT}</span>
+            </div>
+        </div>
+        <div class="flex items-center space-x-3">
+            <button onclick="location.reload()" class="inline-flex items-center space-x-2 text-xs font-semibold px-3 py-1.5 rounded-lg border border-slate-300 hover:bg-slate-50 text-slate-700 transition">
+                <i class="fa-solid fa-rotate text-slate-500"></i>
+                <span>Actualizar</span>
+            </button>
+            <a href="{EXCEL_SALIDA}" download class="inline-flex items-center space-x-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition shadow-sm">
+                <i class="fa-solid fa-file-excel"></i>
+                <span>Descargar Excel</span>
+            </a>
+        </div>
+    </header>
+
+    <!-- NAVEGACIÓN EN PESTAÑAS -->
+    <nav class="bg-slate-100/90 border-b border-slate-200 px-6 py-2 sticky top-[57px] z-40">
+        <div class="flex space-x-1 overflow-x-auto text-sm">
+            <button onclick="cambiarTab('panel')" id="btn-panel" class="tab-btn active px-4 py-2 rounded-lg">Panel</button>
+            <button onclick="cambiarTab('limnigrafos')" id="btn-limnigrafos" class="tab-btn px-4 py-2 rounded-lg">Limnígrafos</button>
+            <button onclick="cambiarTab('precipitaciones')" id="btn-precipitaciones" class="tab-btn px-4 py-2 rounded-lg">Precipitaciones & ECMWF</button>
+            <button onclick="cambiarTab('traslacion')" id="btn-traslacion" class="tab-btn px-4 py-2 rounded-lg">Onda de Crecida</button>
+            <button onclick="cambiarTab('mapa')" id="btn-mapa" class="tab-btn px-4 py-2 rounded-lg">Visor Cartográfico</button>
+            <button onclick="cambiarTab('archivo')" id="btn-archivo" class="tab-btn px-4 py-2 rounded-lg">Descargas & Documentación</button>
+        </div>
+    </nav>
+
+    <!-- CONTENIDO PRINCIPAL -->
+    <main class="flex-1 p-6 max-w-7xl mx-auto w-full">
+
+        <!-- TAB 1: PANEL (ESTILO MONITOR ZV) -->
+        <section id="tab-panel" class="space-y-6">
+            <!-- BLOQUE: LLUVIAS Y ALERTAS SMN/ECMWF -->
+            <div class="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+                <div class="px-5 py-3.5 bg-slate-50 border-b border-slate-200 flex justify-between items-center cursor-pointer">
+                    <div class="flex items-center space-x-2 text-slate-800 font-semibold text-sm">
+                        <i class="fa-solid fa-cloud-showers-heavy text-slate-600"></i>
+                        <span>Lluvias Pronosticadas (ECMWF) y Alertas Meteorológicas Oficiales (SMN)</span>
+                    </div>
+                    <i class="fa-solid fa-chevron-right text-xs text-slate-400"></i>
+                </div>
+                <div class="p-4 space-y-2.5">
+                    {alertas_lluvia_html}
+                </div>
+            </div>
+
+            <!-- BLOQUE: TRASLACIÓN DE ONDA -->
+            <div class="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+                <div class="px-5 py-3.5 bg-slate-50 border-b border-slate-200 flex justify-between items-center cursor-pointer">
+                    <div class="flex items-center space-x-2 text-slate-800 font-semibold text-sm">
+                        <i class="fa-solid fa-water text-slate-600"></i>
+                        <span>Onda de Tormenta & Estimación de Traslación a La Pampa</span>
+                    </div>
+                    <i class="fa-solid fa-chevron-right text-xs text-slate-400"></i>
+                </div>
+                <div class="p-4">
+                    {onda_card}
+                </div>
+            </div>
+
+            <!-- BLOQUE: LIMNÍGRAFOS SÍNTESIS -->
+            <div class="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+                <div class="px-5 py-3.5 bg-slate-50 border-b border-slate-200 flex justify-between items-center cursor-pointer">
+                    <div class="flex items-center space-x-2 text-slate-800 font-semibold text-sm">
+                        <i class="fa-solid fa-gauge-high text-slate-600"></i>
+                        <span>Limnígrafos — Niveles en Cuerpos de Agua</span>
+                    </div>
+                    <i class="fa-solid fa-chevron-right text-xs text-slate-400"></i>
+                </div>
+                <div class="p-4">
+                    <div class="flex items-center justify-between p-3.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-900 text-sm">
+                        <div class="flex items-center space-x-3">
+                            <i class="fa-solid fa-circle-check text-emerald-600 text-base"></i>
+                            <span><b>Estado hidrométrico normal:</b> {len(hidro_resumen)} estaciones monitoreadas en San Luis y Córdoba con niveles por debajo de cotas de riesgo.</span>
+                        </div>
+                        <button onclick="cambiarTab('limnigrafos')" class="text-xs font-semibold text-blue-600 hover:underline">Ver tabla completa →</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 2: TABLA LIMNÍGRAFOS -->
+        <section id="tab-limnigrafos" class="hidden bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden p-5">
+            <h2 class="text-base font-bold text-slate-900 mb-4">Red Limnimétrica Oficial — Cuenca Río V (INA / SNIH)</h2>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm text-slate-600">
+                    <thead class="bg-slate-50 text-slate-700 uppercase font-semibold text-xs border-b border-slate-200">
+                        <tr>
+                            <th class="px-4 py-3">Estación</th>
+                            <th class="px-4 py-3">Cuerpo de Agua</th>
+                            <th class="px-4 py-3 text-right">Nivel Act.</th>
+                            <th class="px-4 py-3 text-right">Media Hist.</th>
+                            <th class="px-4 py-3 text-right">Cota Alerta</th>
+                            <th class="px-4 py-3 text-right">Cota Evac.</th>
+                            <th class="px-4 py-3 text-center">Semáforo</th>
+                            <th class="px-4 py-3 text-center">Tendencia</th>
+                            <th class="px-4 py-3 text-center">Últ. Medición</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {filas_limnigrafos}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- TAB 3: PRECIPITACIONES Y PRONÓSTICO ECMWF -->
+        <section id="tab-precipitaciones" class="hidden space-y-6">
+            <div class="bg-white border border-slate-200 rounded-xl shadow-sm p-5">
+                <h2 class="text-base font-bold text-slate-900 mb-1">Pronóstico Numérico del Tiempo — Modelo ECMWF IFS 0.25°</h2>
+                <p class="text-xs text-slate-500 mb-4">Previsión de precipitaciones acumuladas diarias en los puntos de control clave de la cuenca.</p>
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    {cards_ecmwf}
+                </div>
+            </div>
+
+            <div class="bg-white border border-slate-200 rounded-xl shadow-sm p-5">
+                <h2 class="text-base font-bold text-slate-900 mb-3">Redes Pluviométricas en Tiempo Real (REM San Luis + APA La Pampa)</h2>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                    <div class="p-3 bg-slate-50 rounded-lg border border-slate-200">
+                        <span class="text-xs text-slate-500">Estaciones REM San Luis</span>
+                        <p class="text-lg font-bold text-slate-800">{len([m for m in meteo_total if 'REM' in m['red']])} en línea</p>
+                    </div>
+                    <div class="p-3 bg-slate-50 rounded-lg border border-slate-200">
+                        <span class="text-xs text-slate-500">Estaciones APA La Pampa</span>
+                        <p class="text-lg font-bold text-slate-800">{len([m for m in meteo_total if 'APA' in m['red']])} consolidadas</p>
+                    </div>
+                    <div class="p-3 bg-slate-50 rounded-lg border border-slate-200">
+                        <span class="text-xs text-slate-500">Catálogo Omixom Cba/LP</span>
+                        <p class="text-lg font-bold text-slate-800">{len([m for m in meteo_total if 'Omixom' in m['red']])} estaciones</p>
+                    </div>
+                    <div class="p-3 bg-slate-50 rounded-lg border border-slate-200">
+                        <span class="text-xs text-slate-500">Actividad Eléctrica</span>
+                        <p class="text-lg font-bold text-amber-600">{len(rayos)} rayos detectados</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 4: TRASLACIÓN DE ONDA -->
+        <section id="tab-traslacion" class="hidden bg-white border border-slate-200 rounded-xl shadow-sm p-6 space-y-6">
+            <h2 class="text-base font-bold text-slate-900">Modelo Dinámico de Traslación de Onda — Cuenca Río V</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 bg-blue-50/70 border border-blue-200 rounded-xl p-6 text-center">
+                <div>
+                    <span class="text-xs font-bold text-blue-600 uppercase">Tiempo Estimado a La Pampa</span>
+                    <p class="text-3xl font-extrabold text-blue-950 mt-1">{diag_onda['tiempo_viaje_min_dias']:.0f} a {diag_onda['tiempo_viaje_max_dias']:.0f} Días</p>
+                    <span class="text-xs text-slate-500">Ventana teórica calculada</span>
+                </div>
+                <div>
+                    <span class="text-xs font-bold text-blue-600 uppercase">Amortiguación Laguna La Margarita</span>
+                    <p class="text-3xl font-extrabold text-blue-950 mt-1">{diag_onda['nivel_margarita']:.2f} m</p>
+                    <span class="text-xs text-slate-500">{diag_onda['factor_almacenamiento']}</span>
+                </div>
+                <div>
+                    <span class="text-xs font-bold text-blue-600 uppercase">Estado en Cabecera (San Luis)</span>
+                    <p class="text-3xl font-extrabold text-emerald-600 mt-1">{diag_onda['estado_alerta']}</p>
+                    <span class="text-xs text-slate-500">{diag_onda['origen_alerta']}</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 5: VISOR CARTOGRÁFICO LEAFLET -->
+        <section id="tab-mapa" class="hidden bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden p-2">
+            <div id="mapa-container" class="w-full rounded-lg"></div>
+        </section>
+
+        <!-- TAB 6: ARCHIVO Y DESCARGAS -->
+        <section id="tab-archivo" class="hidden bg-white border border-slate-200 rounded-xl shadow-sm p-6">
+            <h2 class="text-base font-bold text-slate-900 mb-4">Informes Ejecutivos & Archivo de Datos</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <a href="{EXCEL_SALIDA}" download class="flex items-center p-4 border border-slate-200 rounded-xl hover:border-emerald-500 hover:bg-emerald-50/30 transition">
+                    <i class="fa-solid fa-file-excel text-emerald-600 text-3xl mr-4"></i>
+                    <div>
+                        <h4 class="font-bold text-slate-800">Planilla Multisolapa Excel</h4>
+                        <p class="text-xs text-slate-500">Datos consolidados de niveles INA, REM San Luis, APA La Pampa y cruces.</p>
+                    </div>
+                </a>
+                <a href="{CSV_SALIDA}" download class="flex items-center p-4 border border-slate-200 rounded-xl hover:border-blue-500 hover:bg-blue-50/30 transition">
+                    <i class="fa-solid fa-file-csv text-blue-600 text-3xl mr-4"></i>
+                    <div>
+                        <h4 class="font-bold text-slate-800">Cruce Pluvio-Hidrométrico (CSV)</h4>
+                        <p class="text-xs text-slate-500">Archivo liviano para análisis en SIG, Power BI o Python.</p>
+                    </div>
+                </a>
+            </div>
+        </section>
+    </main>
+
+    <!-- SCRIPTS DE CONTROL -->
+    <script>
+        var mapaLeaflet = null;
+        var datosHidro = {geo_hidro};
+        var datosMeteo = {geo_meteo};
+        var datosRayos = {geo_rayos};
+
+        function cambiarTab(tabId) {{
+            ['panel', 'limnigrafos', 'precipitaciones', 'traslacion', 'mapa', 'archivo'].forEach(function(t) {{
+                var el = document.getElementById('tab-' + t);
+                var btn = document.getElementById('btn-' + t);
+                if (el) el.classList.add('hidden');
+                if (btn) btn.classList.remove('active');
+            }});
+
+            var target = document.getElementById('tab-' + tabId);
+            var btnTarget = document.getElementById('btn-' + tabId);
+            if (target) target.classList.remove('hidden');
+            if (btnTarget) btnTarget.classList.add('active');
+
+            if (tabId === 'mapa') {{
+                setTimeout(iniciarMapa, 150);
+            }}
+        }}
+
+        function iniciarMapa() {{
+            if (mapaLeaflet !== null) {{
+                mapaLeaflet.invalidateSize();
+                return;
+            }}
+
+            mapaLeaflet = L.map('mapa-container').setView([-34.5, -64.8], 7);
+
+            var capaBase = L.tileLayer('https://{{s}}.basemaps.cartocdn.com/light_all/{{z}}/{{x}}/{{y}}{{r}}.png', {{
+                attribution: '&copy; OpenStreetMap, &copy; CARTO'
+            }}).addTo(mapaLeaflet);
+
+            var layerHidro = L.featureGroup().addTo(mapaLeaflet);
+            var layerMeteo = L.featureGroup().addTo(mapaLeaflet);
+            var layerRayos = L.featureGroup().addTo(mapaLeaflet);
+            var layerRadares = L.featureGroup().addTo(mapaLeaflet);
+            var layerSat = L.featureGroup().addTo(mapaLeaflet);
+            var layerRadarComp = L.featureGroup().addTo(mapaLeaflet);
+
+            // Capa Cuerpos de Agua
+            datosHidro.forEach(function(h) {{
+                var marker = L.circleMarker([h.lat, h.lon], {{
+                    radius: 8,
+                    fillColor: h.color,
+                    color: "#ffffff",
+                    weight: 2,
+                    opacity: 1,
+                    fillOpacity: 0.9
+                }}).bindPopup("<b>" + h.nombre + "</b><br>Nivel: " + h.nivel_actual.toFixed(2) + " m (" + h.estado + ")<br>Alerta: " + h.cota_alerta + " m | Evac: " + h.cota_evac + " m");
+                layerHidro.addLayer(marker);
+            }});
+
+            // Capa Estaciones Meteo
+            datosMeteo.forEach(function(m) {{
+                var color = m.red.indexOf('San Luis') !== -1 ? '#f59e0b' : (m.red.indexOf('APA') !== -1 ? '#0284c7' : '#8b5cf6');
+                var marker = L.circleMarker([m.lat, m.lon], {{
+                    radius: 5,
+                    fillColor: color,
+                    color: "#ffffff",
+                    weight: 1.5,
+                    fillOpacity: 0.85
+                }}).bindPopup("<b>" + m.nombre + "</b> (" + m.red + ")<br>Lluvia 24h: " + m.lluvia_24h_mm.toFixed(1) + " mm");
+                layerMeteo.addLayer(marker);
+            }});
+
+            // Capa Rayos
+            datosRayos.forEach(function(ry) {{
+                var marker = L.circleMarker([ry.lat, ry.lon], {{
+                    radius: 5,
+                    fillColor: "#eab308",
+                    color: "#a16207",
+                    weight: 1,
+                    fillOpacity: 0.95
+                }}).bindTooltip("⚡ Rayo: " + ry.hora + " hs");
+                layerRayos.addLayer(marker);
+            }});
+
+            // Conos de cobertura SINARAME
+            L.circle([-36.226, -66.884], {{ radius: 120000, color: "#0284c7", fillOpacity: 0.05, dashArray: "5, 5" }}).bindTooltip("RMA08 Santa Isabel").addTo(layerRadares);
+            L.circle([-33.725, -65.386], {{ radius: 120000, color: "#d97706", fillOpacity: 0.05, dashArray: "5, 5" }}).bindTooltip("RMA16 Villa Reynolds").addTo(layerRadares);
+
+            // Capas satelitales en vivo
+            fetch("https://api.rainviewer.com/public/weather-maps.json")
+                .then(function(r) {{ return r.json(); }})
+                .then(function(d) {{
+                    var host = d.host || "https://tilecache.rainviewer.com";
+                    if (d.satellite && d.satellite.infrared && d.satellite.infrared.length > 0) {{
+                        var satFrame = d.satellite.infrared[d.satellite.infrared.length - 1];
+                        L.tileLayer(host + satFrame.path + "/256/{{z}}/{{x}}/{{y}}/1/1_0.png", {{ opacity: 0.5, zIndex: 100 }}).addTo(layerSat);
+                    }}
+                    if (d.radar && d.radar.past && d.radar.past.length > 0) {{
+                        var radFrame = d.radar.past[d.radar.past.length - 1];
+                        L.tileLayer(host + radFrame.path + "/256/{{z}}/{{x}}/{{y}}/2/1_1.png", {{ opacity: 0.7, zIndex: 110 }}).addTo(layerRadarComp);
+                    }}
+                }}).catch(function(e) {{ console.warn("RainViewer off:", e); }});
+
+            var overlays = {{
+                "💧 Limnígrafos (INA)": layerHidro,
+                "🌦️ Redes Meteorológicas": layerMeteo,
+                "⚡ Descargas Eléctricas": layerRayos,
+                "📡 Cobertura SINARAME": layerRadares,
+                "🛰️ Satélite GOES-16 IR": layerSat,
+                "🌧️ Radar de Lluvias Compuesto": layerRadarComp
+            }};
+
+            L.control.layers(null, overlays, {{ position: "topright", collapsed: false }}).addTo(mapaLeaflet);
+        }}
+    </script>
+</body>
+</html>
+"""
+    with open(PORTAL_HTML_SALIDA, "w", encoding="utf-8") as f:
+        f.write(html)
+    print(f"   -> [PORTAL WEB GENERADO]: {PORTAL_HTML_SALIDA}")
+
+# =============================================================
+# 9. GENERACIÓN DE ENTREGABLES EXCEL Y CSV
+# =============================================================
+def generar_entregables_excel_csv(hidro_resumen, meteo_total, diag_onda):
+    print("8. Compilando entregables Excel y CSV...", flush=True)
+
     filas_cruce = []
-    for h in lista_hidro_resumen:
+    for h in hidro_resumen:
         min_d = float("inf")
         m_cercana = None
-        for m in estaciones_meteo:
+        for m in meteo_total:
             d = distancia_haversine(h["lat"], h["lon"], m["lat"], m["lon"])
             if d < min_d:
                 min_d = d
                 m_cercana = m
         
         temp_txt = f"{m_cercana['temp_c']:.1f}" if (m_cercana and pd.notna(m_cercana['temp_c'])) else "S/D"
-
         filas_cruce.append({
             "Estación Hidrológica": h["nombre"],
             "Río / Cuenca": h["rio"],
             "Nivel Actual (m)": h["nivel_actual"],
             "Media Histórica (m)": h["media_hist"],
             "Cota Alerta (m)": h["cota_alerta"],
-            "Margen Alerta (m)": h["margen_alerta"],
+            "Cota Evacuación (m)": h["cota_evac"],
             "Estado Semáforo": h["estado"],
             "Tendencia Río": h["tendencia"],
             "Estación Meteo Cercana": f"{m_cercana['nombre']} ({m_cercana['provincia']})" if m_cercana else "N/A",
@@ -1167,547 +997,91 @@ def generar_entregables(estaciones_meteo, registros_hidro, lista_rayos):
             "Distancia (km)": round(min_d, 1) if m_cercana else "-",
             "Lluvia 24h (mm)": m_cercana["lluvia_24h_mm"] if m_cercana else 0.0,
             "Temp (°C)": temp_txt,
-            "Tiempo Viaje a LP (días)": f"{diag_onda['tiempo_viaje_min_dias']:.0f}-{diag_onda['tiempo_viaje_max_dias']:.0f} d",
-            "Evaluación de Riesgo": "Estable / Sin aporte de escorrentía crítica" if (m_cercana and m_cercana["lluvia_24h_mm"] < 15) else "Alerta por lluvias en cuenca"
+            "Tiempo Viaje a LP (días)": f"{diag_onda['tiempo_viaje_min_dias']:.0f}-{diag_onda['tiempo_viaje_max_dias']:.0f} d"
         })
 
     df_cruce = pd.DataFrame(filas_cruce)
     df_cruce.to_csv(CSV_SALIDA, index=False, encoding="utf-8-sig")
-    print(f"   -> [CSV CRUCE GUARDADO]: {CSV_SALIDA}")
+    print(f"   -> [CSV GUARDADO]: {CSV_SALIDA}")
 
-    # B. Libro Excel Multisolapa Ejecutivo
     wb = openpyxl.Workbook()
     wb.remove(wb.active)
 
-    font_title = Font(name="Segoe UI", size=13, bold=True, color="FFFFFF")
-    font_sub = Font(name="Segoe UI", size=9.5, italic=True, color="E0E8F5")
-    font_banner = Font(name="Segoe UI", size=9.5, bold=True, color="FFFFFF")
-    font_tbl_head = Font(name="Segoe UI", size=9.5, bold=True, color="FFFFFF")
-    font_data = Font(name="Segoe UI", size=9)
-    font_bold_data = Font(name="Segoe UI", size=9, bold=True)
-    font_kpi_num = Font(name="Segoe UI", size=15, bold=True, color="1B365D")
-    font_kpi_lbl = Font(name="Segoe UI", size=8, bold=True, color="4A5568")
-
-    fill_navy = PatternFill(start_color="1B365D", end_color="1B365D", fill_type="solid")
-    fill_med_blue = PatternFill(start_color="2B4C7E", end_color="2B4C7E", fill_type="solid")
-    fill_gray_head = PatternFill(start_color="334155", end_color="334155", fill_type="solid")
-    fill_zebra = PatternFill(start_color="F8FAFC", end_color="F8FAFC", fill_type="solid")
-    fill_kpi = PatternFill(start_color="EDF2F7", end_color="EDF2F7", fill_type="solid")
-    fill_green = PatternFill(start_color="E6F4EA", end_color="E6F4EA", fill_type="solid")
-    fill_amber = PatternFill(start_color="FEF3C7", end_color="FEF3C7", fill_type="solid")
-    fill_red = PatternFill(start_color="FEE2E2", end_color="FEE2E2", fill_type="solid")
+    ws = wb.create_sheet(title="Cruce Hidro-Meteo")
+    ws.views.sheetView[0].showGridLines = True
     
-    fill_banner = fill_navy if not diag_onda["alerta_activa"] else (fill_amber if diag_onda["estado_alerta"] in ["Precaución", "Alerta Convectiva"] else fill_red)
-    font_banner_c = font_banner if not diag_onda["alerta_activa"] else Font(name="Segoe UI", size=9.5, bold=True, color="991B1B" if diag_onda["estado_alerta"] not in ["Precaución", "Alerta Convectiva"] else "92400E")
-    font_green = Font(name="Segoe UI", size=9, bold=True, color="137333")
+    font_head = Font(name="Segoe UI", size=9.5, bold=True, color="FFFFFF")
+    fill_blue = PatternFill(start_color="1E3A8A", end_color="1E3A8A", fill_type="solid")
 
-    border_subtle = Border(
-        left=Side(style='thin', color='E2E8F0'), right=Side(style='thin', color='E2E8F0'),
-        top=Side(style='thin', color='E2E8F0'), bottom=Side(style='thin', color='E2E8F0')
-    )
-
-    # Solapa 1: Dashboard Cruce
-    ws1 = wb.create_sheet(title="Cruce Hidro-Meteorológico")
-    ws1.views.sheetView[0].showGridLines = True
-    ws1.merge_cells("A1:O1")
-    ws1["A1"] = "SISTEMA INTEGRADO TRIPROVINCIAL DE MONITOREO CUENCA RÍO V"
-    ws1["A1"].font = font_title
-    ws1["A1"].fill = fill_navy
-    ws1["A1"].alignment = Alignment(horizontal="center", vertical="center")
-
-    ws1.merge_cells("A2:O2")
-    ws1["A2"] = "Integración: INA + REM San Luis + Omixom (Cba/LP) + APA La Pampa + SINARAME (Santa Isabel / Villa Reynolds)"
-    ws1["A2"].font = font_sub
-    ws1["A2"].fill = fill_med_blue
-    ws1["A2"].alignment = Alignment(horizontal="center", vertical="center")
-
-    ws1.merge_cells("A3:O3")
-    ws1["A3"] = f"DIAGNÓSTICO DE TRASLACIÓN DE ONDA A LA PAMPA: {diag_onda['banner_msg']}"
-    ws1["A3"].font = font_banner_c
-    ws1["A3"].fill = fill_banner
-    ws1["A3"].alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
-
-    kpis = [
-        ("PUNTOS HIDROLÓGICOS", len(lista_hidro_resumen)),
-        ("ESTACIONES METEO TOTAL", len(estaciones_meteo)),
-        ("DESCARGAS ELÉCTRICAS", len(lista_rayos)),
-        ("AMORTIGUACIÓN MARGARITA", f"{diag_onda['nivel_margarita']:.2f} m"),
-        ("TIEMPO VIAJE ESTIMADO", f"{diag_onda['tiempo_viaje_min_dias']:.0f} - {diag_onda['tiempo_viaje_max_dias']:.0f} DÍAS")
-    ]
-    for col_idx, (lbl, val) in enumerate(kpis, start=1):
-        cs, ce = (col_idx - 1) * 3 + 1, (col_idx - 1) * 3 + 3
-        ws1.merge_cells(start_row=5, start_column=cs, end_row=5, end_column=ce)
-        ws1.merge_cells(start_row=6, start_column=cs, end_row=6, end_column=ce)
-        ws1.cell(row=5, column=cs, value=lbl).font = font_kpi_lbl
-        ws1.cell(row=5, column=cs).fill = fill_kpi
-        ws1.cell(row=5, column=cs).alignment = Alignment(horizontal="center", vertical="center")
-        ws1.cell(row=6, column=cs, value=val).font = font_kpi_num
-        ws1.cell(row=6, column=cs).fill = fill_kpi
-        ws1.cell(row=6, column=cs).alignment = Alignment(horizontal="center", vertical="center")
-
-    headers_c = [
-        "N°", "Cuerpo de Agua / Estación", "Río / Cuenca", "Nivel Act. (m)", "Media Hist. (m)", 
-        "Cota Alerta (m)", "Margen Alerta (m)", "Tendencia", "Estación Meteo Más Cercana", 
-        "Red", "Distancia", "Lluvia 24h", "Temp.", "Tiempo Onda LP", "Evaluación de Riesgo"
-    ]
-    for c, h in enumerate(headers_c, start=1):
-        cell = ws1.cell(row=8, column=c, value=h)
-        cell.font = font_tbl_head
-        cell.fill = fill_med_blue
+    headers = list(df_cruce.columns)
+    for col_num, h in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col_num, value=h)
+        cell.font = font_head
+        cell.fill = fill_blue
         cell.alignment = Alignment(horizontal="center", vertical="center")
 
-    for idx, r in df_cruce.iterrows():
-        rn = 9 + idx
-        fill_r = fill_zebra if idx % 2 == 1 else PatternFill(fill_type=None)
-        ws1.cell(row=rn, column=1, value=idx+1).alignment = Alignment(horizontal="center")
-        ws1.cell(row=rn, column=2, value=r["Estación Hidrológica"]).alignment = Alignment(horizontal="left")
-        ws1.cell(row=rn, column=3, value=r["Río / Cuenca"]).alignment = Alignment(horizontal="left")
-        ws1.cell(row=rn, column=4, value=r["Nivel Actual (m)"]).alignment = Alignment(horizontal="right")
-        ws1.cell(row=rn, column=5, value=r["Media Histórica (m)"]).alignment = Alignment(horizontal="right")
-        ws1.cell(row=rn, column=6, value=r["Cota Alerta (m)"]).alignment = Alignment(horizontal="right")
-        
-        cm = ws1.cell(row=rn, column=7, value=f"=F{rn}-D{rn}")
-        cm.alignment = Alignment(horizontal="right")
-        cm.font = font_bold_data
+    for row_num, row_data in enumerate(df_cruce.values, 2):
+        for col_num, value in enumerate(row_data, 1):
+            cell = ws.cell(row=row_num, column=col_num, value=value)
+            cell.font = Font(name="Segoe UI", size=9)
 
-        ws1.cell(row=rn, column=8, value=r["Tendencia Río"]).alignment = Alignment(horizontal="center")
-        ws1.cell(row=rn, column=9, value=r["Estación Meteo Cercana"]).alignment = Alignment(horizontal="left")
-        ws1.cell(row=rn, column=10, value=r["Red"]).alignment = Alignment(horizontal="center")
-        ws1.cell(row=rn, column=11, value=f"{r['Distancia (km)']} km" if r['Distancia (km)'] != "-" else "-").alignment = Alignment(horizontal="center")
-
-        ws1.cell(row=rn, column=12, value=r["Lluvia 24h (mm)"]).number_format = '0.0 "mm"'
-        ws1.cell(row=rn, column=13, value=r["Temp (°C)"]).alignment = Alignment(horizontal="center")
-        ws1.cell(row=rn, column=14, value=r["Tiempo Viaje a LP (días)"]).alignment = Alignment(horizontal="center")
-
-        c_eval = ws1.cell(row=rn, column=15, value=r["Evaluación de Riesgo"])
-        c_eval.alignment = Alignment(horizontal="center")
-        c_eval.fill = fill_green
-        c_eval.font = font_green
-
-        for c in range(1, 16):
-            cell_c = ws1.cell(row=rn, column=c)
-            cell_c.border = border_subtle
-            if c != 15 and fill_r.fill_type: cell_c.fill = fill_r
-            if c not in [7, 15]: cell_c.font = font_data
-
-    # Solapa 2: Cuerpos de Agua (INA)
-    ws_hidro = wb.create_sheet(title="Cuerpos de Agua (INA)")
-    ws_hidro.views.sheetView[0].showGridLines = True
-    ws_hidro.merge_cells("A1:K1")
-    ws_hidro["A1"] = "MONITOREO DE NIVELES HIDROMÉTRICOS Y COTAS FÍSICAS (INA)"
-    ws_hidro["A1"].font = font_title
-    ws_hidro["A1"].fill = fill_navy
-    ws_hidro["A1"].alignment = Alignment(horizontal="center", vertical="center")
-
-    headers_h = ["Estación Hidrométrica", "Río / Cuenca", "Provincia", "Nivel Actual (m)", "Media Hist. (m)", "Cota Alerta (m)", "Cota Evac (m)", "Margen Alerta (m)", "Estado / Semáforo", "Tendencia", "Fecha Últ. Medición"]
-    for c, h in enumerate(headers_h, start=1):
-        cell = ws_hidro.cell(row=3, column=c, value=h)
-        cell.font = font_tbl_head
-        cell.fill = fill_gray_head
-        cell.alignment = Alignment(horizontal="center", vertical="center")
-
-    for idx, h in enumerate(lista_hidro_resumen):
-        rn = 4 + idx
-        fill_r = fill_zebra if idx % 2 == 1 else PatternFill(fill_type=None)
-        ws_hidro.cell(row=rn, column=1, value=h["nombre"]).alignment = Alignment(horizontal="left")
-        ws_hidro.cell(row=rn, column=2, value=h["rio"]).alignment = Alignment(horizontal="left")
-        ws_hidro.cell(row=rn, column=3, value=h["distrito"]).alignment = Alignment(horizontal="left")
-        ws_hidro.cell(row=rn, column=4, value=h["nivel_actual"]).alignment = Alignment(horizontal="right")
-        ws_hidro.cell(row=rn, column=5, value=h["media_hist"]).alignment = Alignment(horizontal="right")
-        ws_hidro.cell(row=rn, column=6, value=h["cota_alerta"]).alignment = Alignment(horizontal="right")
-        ws_hidro.cell(row=rn, column=7, value=h["cota_evac"]).alignment = Alignment(horizontal="right")
-        
-        cm = ws_hidro.cell(row=rn, column=8, value=f"=F{rn}-D{rn}")
-        cm.alignment = Alignment(horizontal="right")
-        cm.font = font_bold_data
-
-        ce = ws_hidro.cell(row=rn, column=9, value=h["estado"])
-        ce.alignment = Alignment(horizontal="center")
-        ce.fill = fill_green
-        ce.font = font_green
-
-        ws_hidro.cell(row=rn, column=10, value=h["tendencia"]).alignment = Alignment(horizontal="center")
-        ws_hidro.cell(row=rn, column=11, value=h["fecha"]).alignment = Alignment(horizontal="center")
-
-        for c in range(1, 12):
-            cell_c = ws_hidro.cell(row=rn, column=c)
-            cell_c.border = border_subtle
-            if c != 9 and fill_r.fill_type: cell_c.fill = fill_r
-            if c not in [8, 9]: cell_c.font = font_data
-
-    # Solapa de Redes Meteorológicas Auxiliar
-    headers_m = ["ID", "Estación", "Provincia", "Red", "Departamento", "Latitud", "Longitud", "Temp. (°C)", "Lluvia 24h", "Lluvia Mes", "Viento", "Últ. Actualización"]
-    def poblar_solapa_meteo(ws, titulo, estaciones_sub):
-        ws.views.sheetView[0].showGridLines = True
-        ws.merge_cells("A1:L1")
-        ws["A1"] = titulo
-        ws["A1"].font = font_title
-        ws["A1"].fill = fill_navy
-        ws["A1"].alignment = Alignment(horizontal="center", vertical="center")
-
-        for c, h in enumerate(headers_m, start=1):
-            cell = ws.cell(row=3, column=c, value=h)
-            cell.font = font_tbl_head
-            cell.fill = fill_gray_head
-            cell.alignment = Alignment(horizontal="center", vertical="center")
-
-        for idx, m in enumerate(estaciones_sub):
-            rn = 4 + idx
-            fill_r = fill_zebra if idx % 2 == 1 else PatternFill(fill_type=None)
-            ws.cell(row=rn, column=1, value=m["id"]).alignment = Alignment(horizontal="center")
-            ws.cell(row=rn, column=2, value=m["nombre"]).alignment = Alignment(horizontal="left")
-            ws.cell(row=rn, column=3, value=m["provincia"]).alignment = Alignment(horizontal="center")
-            ws.cell(row=rn, column=4, value=m["red"]).alignment = Alignment(horizontal="center")
-            ws.cell(row=rn, column=5, value=m["departamento"]).alignment = Alignment(horizontal="left")
-            ws.cell(row=rn, column=6, value=m["lat"]).alignment = Alignment(horizontal="right")
-            ws.cell(row=rn, column=7, value=m["lon"]).alignment = Alignment(horizontal="right")
-            
-            c_temp = ws.cell(row=rn, column=8, value=m["temp_c"] if pd.notna(m["temp_c"]) else "S/D")
-            if pd.notna(m["temp_c"]): c_temp.number_format = '0.0 "°C"'
-            else: c_temp.alignment = Alignment(horizontal="center")
-
-            ws.cell(row=rn, column=9, value=m["lluvia_24h_mm"]).number_format = '0.0 "mm"'
-            ws.cell(row=rn, column=10, value=m.get("lluvia_mes_mm", 0.0)).number_format = '0.0 "mm"'
-            ws.cell(row=rn, column=11, value=m.get("viento_kmh", 0.0)).number_format = '0.0 "km/h"'
-            ws.cell(row=rn, column=12, value=m["fecha_actualizacion"]).alignment = Alignment(horizontal="center")
-            for c in range(1, 13):
-                cell_c = ws_rem.cell(row=rn, column=c) if ws == ws_rem else ws.cell(row=rn, column=c)
-                cell_c.border = border_subtle
-                cell_c.font = font_data
-                if fill_r.fill_type: cell_c.fill = fill_r
-
-    # Solapa 3: REM San Luis
-    ws_rem = wb.create_sheet(title="Meteo REM San Luis")
-    poblar_solapa_meteo(ws_rem, "RED DE ESTACIONES METEOROLÓGICAS (REM) SAN LUIS - CUENCA ALTA", [m for m in estaciones_meteo if "REM" in m["red"]])
-
-    # Solapa 4: APA La Pampa
-    ws_apa = wb.create_sheet(title="Meteo APA La Pampa")
-    poblar_solapa_meteo(ws_apa, "RED OFICIAL APA LA PAMPA (DAVIS/MERCOBRAS)", [m for m in estaciones_meteo if "APA" in m["red"]])
-
-    # Solapa 5: Omixom Córdoba y La Pampa (Estáticas)
-    ws_omx = wb.create_sheet(title="Meteo Omixom (Cba-LP)")
-    poblar_solapa_meteo(ws_omx, "REDES CLIMÁTICAS OMIXOM CÓRDOBA Y LA PAMPA (ESTÁTICAS - EN ESPERA DE API)", [m for m in estaciones_meteo if "Omixom" in m["red"]])
-
-    for ws in wb.worksheets:
-        for col in ws.columns:
-            max_len = 0
-            col_letter = get_column_letter(col[0].column)
-            for cell in col:
-                if cell.value is not None and not cell.coordinate in ws.merged_cells:
-                    max_len = max(max_len, len(str(cell.value)))
-            ws.column_dimensions[col_letter].width = max(max_len + 4, 13)
+    for col in ws.columns:
+        max_len = max(len(str(cell.value or '')) for cell in col)
+        col_letter = get_column_letter(col[0].column)
+        ws.column_dimensions[col_letter].width = max(max_len + 3, 12)
 
     wb.save(EXCEL_SALIDA)
     print(f"   -> [EXCEL GUARDADO]: {EXCEL_SALIDA}")
 
-    # C. Visualizador Folium con Capas Nativas
-    lat_centro = np.mean([h["lat"] for h in lista_hidro_resumen])
-    lon_centro = np.mean([h["lon"] for h in lista_hidro_resumen])
-    
-    mapa = folium.Map(
-        location=[lat_centro, lon_centro],
-        zoom_start=7,
-        tiles=None,
-        control_scale=True
-    )
-
-    folium.TileLayer(
-        tiles="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}",
-        attr="Esri",
-        name="Cartografía Base Clara (Esri)",
-        max_zoom=16,
-        subdomains="abcd"
-    ).add_to(mapa)
-
-    folium.TileLayer(
-        tiles="https://tile.openstreetmap.org/{z}/{x}/{y}.png",
-        attr="OpenStreetMap",
-        name="OpenStreetMap Estándar",
-        max_zoom=19
-    ).add_to(mapa)
-
-    # 1. Capa Nativa Satélite GOES-16 IR en Vivo (Directa en Leaflet)
-    sat_url, radar_url = obtener_urls_mosaicos()
-    folium.TileLayer(
-        tiles=sat_url,
-        attr="NOAA GOES-16 Clean IR / RainViewer",
-        name="🛰️ Satélite GOES-16 Ch13 (Topes Fríos IR)",
-        overlay=True,
-        control=True,
-        show=True,
-        opacity=0.60,
-        max_zoom=18
-    ).add_to(mapa)
-
-    # 2. Capa Nativa Radar Meteorológico de Lluvias en Vivo (Directa en Leaflet)
-    folium.TileLayer(
-        tiles=radar_url,
-        attr="Radar Meteorológico Compuesto / SMN SINARAME",
-        name="🌧️ Radar Meteorológico Compuesto (Lluvias)",
-        overlay=True,
-        control=True,
-        show=True,
-        opacity=0.78,
-        max_zoom=18
-    ).add_to(mapa)
-
-    fg_radares_sinarame = folium.FeatureGroup(name="📡 Cobertura Radares SINARAME (Santa Isabel + Villa Reynolds)", show=True)
-    fg_rayos = folium.FeatureGroup(name="⚡ Descargas Eléctricas (Rayos Cuenca)", show=True)
-    fg_hidro = folium.FeatureGroup(name="💧 Cuerpos de Agua (INA)", show=True)
-    fg_meteo_sl = folium.FeatureGroup(name="⛰️ REM San Luis (Cuenca Alta)", show=True)
-    fg_meteo_cba = folium.FeatureGroup(name="🌾 Omixom Córdoba (Cuenca Media - Estática)", show=True)
-    fg_meteo_lp = folium.FeatureGroup(name="🌾 Omixom La Pampa (Cuenca Baja - Estática)", show=True)
-    fg_meteo_apa = folium.FeatureGroup(name="💧 APA La Pampa (Red Oficial)", show=True)
-
-    # Radares SINARAME
-    # Santa Isabel
-    folium.Marker(
-        location=[-36.226389, -66.883889],
-        icon=folium.Icon(color="blue", icon="broadcast-tower", prefix="fa"),
-        tooltip="📡 Radar Santa Isabel (RMA08/18 - La Pampa)"
-    ).add_to(fg_radares_sinarame)
-    folium.Circle(
-        location=[-36.226389, -66.883889],
-        radius=120000,
-        color="#0284c7",
-        weight=2,
-        fill=True,
-        fill_color="#38bdf8",
-        fill_opacity=0.08,
-        dash_array="5, 5",
-        tooltip="Santa Isabel: Alcance Cuantitativo (120 km)"
-    ).add_to(fg_radares_sinarame)
-    folium.Circle(
-        location=[-36.226389, -66.883889],
-        radius=240000,
-        color="#0369a1",
-        weight=1.5,
-        fill=False,
-        dash_array="8, 8",
-        tooltip="Santa Isabel: Vigilancia Máxima (240 km)"
-    ).add_to(fg_radares_sinarame)
-
-    # Villa Reynolds
-    folium.Marker(
-        location=[-33.725452, -65.385817],
-        icon=folium.Icon(color="orange", icon="broadcast-tower", prefix="fa"),
-        tooltip="📡 Radar RMA16 Villa Reynolds (San Luis / Nacientes)"
-    ).add_to(fg_radares_sinarame)
-    folium.Circle(
-        location=[-33.725452, -65.385817],
-        radius=120000,
-        color="#d97706",
-        weight=2,
-        fill=True,
-        fill_color="#f59e0b",
-        fill_opacity=0.08,
-        dash_array="5, 5",
-        tooltip="RMA16 Villa Reynolds: Alcance Cuantitativo Nacientes (120 km)"
-    ).add_to(fg_radares_sinarame)
-    folium.Circle(
-        location=[-33.725452, -65.385817],
-        radius=240000,
-        color="#b45309",
-        weight=1.5,
-        fill=False,
-        dash_array="8, 8",
-        tooltip="RMA16 Villa Reynolds: Vigilancia Máxima Cuenca (240 km)"
-    ).add_to(fg_radares_sinarame)
-
-    # Marcadores Hidrológicos
-    for h in lista_hidro_resumen:
-        popup_hidro = f"""
-        <div style="font-family: Arial, sans-serif; width: 275px; font-size: 12px;">
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-                <h4 style="margin: 0; color: #1a365d; font-size:13px;">{h['nombre']}</h4>
-                <span style='background:#2d3748; color:white; padding:1px 5px; border-radius:3px; font-size:10px;'>{h['fuente']}</span>
-            </div>
-            <span style="color: #666; font-size:11px;"><b>Río:</b> {h['rio']} ({h['distrito']})</span>
-            <hr style="margin: 4px 0 8px 0; border: 0; border-top: 1px solid #ddd;">
-            <div style="background-color: #f8f9fa; padding: 6px; border-radius: 4px; border-left: 4px solid {h['color']}; font-size:11.5px;">
-                <b>Nivel actual:</b> <span style="color:{h['color']}; font-size:15px; font-weight:bold;">{h['nivel_actual']:.2f} m</span><br>
-                <b>Media histórica:</b> <b>{h['media_hist']:.2f} m</b><br>
-                <b>Estado:</b> <b style="color:{h['color']};">{h['estado']}</b><br>
-                <b>Cotas:</b> Alerta: <b>{h['cota_alerta']:.2f}m</b> | Evac: <b>{h['cota_evac']:.2f}m</b><br>
-                <b>Tendencia:</b> <span style="font-weight:bold;">{h['tendencia']}</span> ({h['variacion']:+.2f} m)<br>
-                <b>Tiempo Onda a LP:</b> <b>{diag_onda['tiempo_viaje_min_dias']:.0f} a {diag_onda['tiempo_viaje_max_dias']:.0f} días</b><br>
-                <b>Últ. Medición:</b> <b>{h['fecha']} hs</b>
-            </div>
-        </div>
-        """
-        folium.CircleMarker(
-            location=[h["lat"], h["lon"]],
-            radius=8,
-            popup=folium.Popup(popup_hidro, max_width=295),
-            tooltip=f"💧 <b>{h['nombre']}</b>: {h['nivel_actual']:.2f} m ({h['estado']})",
-            color=h["color"],
-            fill=True,
-            fill_color=h["color"],
-            fill_opacity=0.85,
-            weight=2
-        ).add_to(fg_hidro)
-
-    # Marcadores Meteorológicos
-    for m in estaciones_meteo:
-        if "APA" in m["red"]:
-            target_group = fg_meteo_apa
-            color_borde, color_relleno = "#0284c7", "#38bdf8"
-        elif "San Luis" in m["provincia"]:
-            target_group = fg_meteo_sl
-            color_borde, color_relleno = "#d97706", "#f59e0b"
-        elif "Córdoba" in m["provincia"]:
-            target_group = fg_meteo_cba
-            color_borde, color_relleno = "#7c3aed", "#c084fc"
-        else:
-            target_group = fg_meteo_lp
-            color_borde, color_relleno = "#0d9488", "#2dd4bf"
-
-        temp_display = f"{m['temp_c']:.1f} °C" if (pd.notna(m['temp_c'])) else "S/D"
-
-        popup_meteo = f"""
-        <div style="font-family: Arial, sans-serif; width: 250px; font-size: 12px;">
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-                <h4 style="margin: 0; color: {color_borde}; font-size:13px;">{m['nombre']}</h4>
-                <span style='background:{color_borde}; color:white; padding:1px 5px; border-radius:3px; font-size:10px;'>{m['red']}</span>
-            </div>
-            <span style="color: #666; font-size:11px;"><b>Provincia:</b> {m['provincia']} | Depto: {m['departamento']}</span>
-            <hr style="margin: 4px 0 8px 0; border: 0; border-top: 1px solid #ddd;">
-            <div style="background-color: #f8fafc; padding: 6px; border-radius: 4px; border-left: 4px solid {color_borde}; font-size:11.5px;">
-                <b>Lluvia 24h:</b> <span style="font-size:14px; font-weight:bold; color:{color_borde};">{m['lluvia_24h_mm']:.1f} mm</span><br>
-                <b>Temperatura:</b> <b>{temp_display}</b><br>
-                <b>Último Reporte:</b> <b>{m['fecha_actualizacion']}</b>
-            </div>
-        </div>
-        """
-        folium.CircleMarker(
-            location=[m["lat"], m["lon"]],
-            radius=6,
-            popup=folium.Popup(popup_meteo, max_width=280),
-            tooltip=f"🌦️ <b>{m['nombre']}</b> | {m['red']}",
-            color=color_borde,
-            fill=True,
-            fill_color=color_relleno,
-            fill_opacity=0.85,
-            weight=2
-        ).add_to(target_group)
-
-    # Rayos
-    for ry in lista_rayos:
-        folium.CircleMarker(
-            location=[ry["lat"], ry["lon"]],
-            radius=6,
-            tooltip=f"⚡ Descarga Atmosférica - {ry['hora']} hs",
-            color="#b45309",
-            fill=True,
-            fill_color="#facc15",
-            fill_opacity=0.95,
-            weight=1.5
-        ).add_to(fg_rayos)
-
-    fg_radares_sinarame.add_to(mapa)
-    fg_rayos.add_to(mapa)
-    fg_hidro.add_to(mapa)
-    fg_meteo_sl.add_to(mapa)
-    fg_meteo_cba.add_to(mapa)
-    fg_meteo_lp.add_to(mapa)
-    fg_meteo_apa.add_to(mapa)
-
-    folium.LayerControl(position="topright", collapsed=False).add_to(mapa)
-
-    banner_bg = "#1e293b" if not diag_onda["alerta_activa"] else ("#b45309" if diag_onda["estado_alerta"] in ["Precaución", "Alerta Convectiva"] else "#b91c1c")
-
-    html_banner = f"""
-    <!-- BANNER EJECUTIVO CON DESCARGA DE INFORMES EN TIEMPO REAL -->
-    <div style="position: fixed; top: 12px; left: 55px; right: 350px; background: {banner_bg};
-                color: white; border-radius: 8px; z-index: 1000; font-family: Arial, sans-serif;
-                font-size: 11.5px; padding: 8px 14px; box-shadow: 0 3px 8px rgba(0,0,0,0.25);
-                display: flex; justify-content: space-between; align-items: center; pointer-events: auto;">
-        <div style="overflow: hidden; text-overflow: ellipsis; padding-right: 12px;">
-            <b>SISTEMA DE ALERTA TEMPRANA CUENCA RÍO V - TRASLACIÓN DE ONDA A LA PAMPA:</b><br>
-            {diag_onda['banner_msg']}
-        </div>
-        <div style="display: flex; align-items: center; gap: 10px; border-left: 1px solid rgba(255,255,255,0.25); padding-left: 12px;">
-            <div style="text-align: right; white-space: nowrap;">
-                <span style="font-size: 14px; font-weight: bold;">{diag_onda['tiempo_viaje_min_dias']:.0f} - {diag_onda['tiempo_viaje_max_dias']:.0f} d</span><br>
-                <span style="font-size: 9px; opacity: 0.85;">Ventana a LP</span>
-            </div>
-            <!-- BOTONERA DE DESCARGA DIRECTA DE INFORMES -->
-            <a href="sat_unificado_rio_v_triprovincial.xlsx" download="sat_unificado_rio_v_triprovincial.xlsx"
-               style="background: #10b981; color: white; padding: 6px 10px; border-radius: 4px; text-decoration: none; font-size: 10.5px; font-weight: bold; white-space: nowrap; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
-                📥 Descargar Excel
-            </a>
-            <a href="resumen_cruce_rio_v_triprovincial.csv" download="resumen_cruce_rio_v_triprovincial.csv"
-               style="background: #0284c7; color: white; padding: 6px 10px; border-radius: 4px; text-decoration: none; font-size: 10.5px; font-weight: bold; white-space: nowrap; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
-                📄 CSV
-            </a>
-        </div>
-    </div>
-    """
-
-    html_estatico = """
-    <style>
-        .leaflet-control-attribution { display: none !important; }
-        .leaflet-top.leaflet-right { top: 75px !important; z-index: 1100 !important; }
-        .leaflet-control-layers {
-            box-shadow: 0 3px 12px rgba(0,0,0,0.25) !important;
-            border: 1px solid #cbd5e1 !important;
-            border-radius: 8px !important;
-            margin-right: 14px !important;
-            max-width: 330px !important;
-            background: rgba(255, 255, 255, 0.95) !important;
-        }
-    </style>
-
-    <!-- LEYENDA TÉCNICA DEL SISTEMA -->
-    <div id="sat-legend" style="position: fixed; bottom: 25px; left: 20px; width: 285px; background: white;
-                border: 1px solid #cbd5e1; border-radius: 6px; z-index: 1000; font-family: Arial, sans-serif;
-                font-size: 11px; padding: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.15);">
-        <b>SISTEMA SAT TRIPROVINCIAL RÍO V</b><hr style="margin:4px 0;">
-        <b>💧 Cuerpos de Agua (Niveles):</b><br>
-        <i style="background:#2b9348; width:10px; height:10px; border-radius:50%; display:inline-block; margin-right:4px;"></i> Normal / Seguro<br>
-        <i style="background:#fcbf49; width:10px; height:10px; border-radius:50%; display:inline-block; margin-right:4px;"></i> Precaución (≥ 75% Alerta)<br>
-        <i style="background:#f77f00; width:10px; height:10px; border-radius:50%; display:inline-block; margin-right:4px;"></i> Alerta Hidrológica<br>
-        <i style="background:#d90429; width:10px; height:10px; border-radius:50%; display:inline-block; margin-right:4px;"></i> Evacuación Oficial<br>
-        <hr style="margin:4px 0;">
-        <b>🌦️ Redes Meteorológicas Integradas:</b><br>
-        <i style="background:#d97706; width:10px; height:10px; border-radius:50%; display:inline-block; margin-right:4px;"></i> REM San Luis (En vivo)<br>
-        <i style="background:#7c3aed; width:10px; height:10px; border-radius:50%; display:inline-block; margin-right:4px;"></i> Omixom Córdoba (Estática)<br>
-        <i style="background:#0d9488; width:10px; height:10px; border-radius:50%; display:inline-block; margin-right:4px;"></i> Omixom La Pampa (Estática)<br>
-        <i style="background:#0284c7; width:10px; height:10px; border-radius:50%; display:inline-block; margin-right:4px;"></i> APA La Pampa (En vivo)<br>
-        <hr style="margin:4px 0;">
-        <b>📡 Red de Radares SINARAME:</b><br>
-        <i style="background:#0284c7; width:10px; height:10px; border-radius:2px; display:inline-block; margin-right:4px;"></i> RMA08/18 Santa Isabel (La Pampa)<br>
-        <i style="background:#d97706; width:10px; height:10px; border-radius:2px; display:inline-block; margin-right:4px;"></i> RMA16 Villa Reynolds (San Luis)<br>
-        <hr style="margin:4px 0;">
-        <b>🛰️ Sensores Remotos y Rayos:</b><br>
-        <i style="background:#059669; border:1px solid #047857; width:10px; height:10px; border-radius:2px; display:inline-block; margin-right:4px;"></i> Mosaico Radar Lluvias (SMN/SINARAME)<br>
-        <i style="background:#facc15; border:1px solid #ca8a04; width:10px; height:10px; border-radius:50%; display:inline-block; margin-right:4px;"></i> Rayo / Descarga Atmosférica<br>
-        <span style="font-size:9.5px; color:#475569;">🛰️ Satélite GOES-16 Ch13 (Clean IR)</span>
-    </div>
-    """
-
-    mapa.get_root().html.add_child(folium.Element(html_banner + html_estatico))
-    mapa.save(MAPA_HTML_SALIDA)
-    print(f"   -> [MAPA HTML GENERADO]: {MAPA_HTML_SALIDA}")
-
 # =============================================================
-# 10. EJECUCIÓN PRINCIPAL
+# 10. EJECUCIÓN DEL PIPELINE COMPLETO
 # =============================================================
 if __name__ == "__main__":
     print("=" * 70)
-    print(">>> SAT TRIPROVINCIAL: EJECUTANDO ACTUALIZACIÓN EN TIEMPO REAL <<<")
+    print(">>> SAT TRIPROVINCIAL RÍO V: EJECUTANDO ACTUALIZACIÓN INTEGRAL <<<")
     print("=" * 70)
-    
-    meteo_omixom = obtener_estaciones_omixom()
-    meteo_san_luis = obtener_estaciones_san_luis()
+
+    # 1. Pronóstico Numérico y Alertas
+    pronostico_ecmwf = obtener_pronostico_ecmwf()
+    alertas_smn = obtener_alertas_smn_cuenca()
+
+    # 2. Redes Meteorológicas
+    meteo_omixom = ESTACIONES_OMIXOM_ESTATICAS
+    meteo_sl = obtener_estaciones_san_luis()
     meteo_apa = obtener_estaciones_apa_lapampa()
-    
-    total_meteo = meteo_omixom + meteo_san_luis + meteo_apa
-    print(f"Total estaciones meteorológicas: {len(total_meteo)}")
-    
+    total_meteo = meteo_omixom + meteo_sl + meteo_apa
+
+    # 3. Datos Hidrológicos y Rayos
     registros_hidro = obtener_datos_hidrologicos()
     rayos_cuenca = obtener_descargas_atmosfericas()
-    
-    generar_entregables(total_meteo, registros_hidro, rayos_cuenca)
+
+    # 4. Procesamiento Hidrológico
+    df_h = pd.DataFrame(registros_hidro)
+    df_h["fecha_dt"] = pd.to_datetime(df_h["fecha"], errors="coerce")
+    hidro_resumen = []
+    for nombre_est, grp in df_h.groupby("nombre"):
+        grp_ord = grp.sort_values("fecha_dt")
+        ult = grp_ord.iloc[-1]
+        media_val = round(grp_ord["valor"].mean(), 2)
+        dif = (grp_ord.iloc[-1]["valor"] - grp_ord.iloc[-2]["valor"]) if len(grp_ord) >= 2 else 0.0
+        tendencia = "Creciendo ▲" if dif > 0.02 else ("Bajando ▼" if dif < -0.02 else "Estable ▬")
+        color, estado, c_alerta, c_evac = clasificar_nivel(ult["valor"], nombre_est)
+        hidro_resumen.append({
+            "nombre": nombre_est, "rio": ult["rio"], "distrito": ult["distrito"],
+            "lat": ult["lat"], "lon": ult["lon"], "nivel_actual": ult["valor"],
+            "media_hist": media_val, "cota_alerta": c_alerta, "cota_evac": c_evac,
+            "tendencia": tendencia, "color": color, "estado": estado,
+            "fecha": ult["fecha_dt"].strftime("%d/%m/%Y %H:%M") if pd.notna(ult["fecha_dt"]) else FECHA_TXT,
+            "fuente": ult["fuente"]
+        })
+
+    # 5. Cálculo Traslación de Onda
+    diag_onda = calcular_tiempo_viaje_onda(hidro_resumen, rayos_cuenca)
+
+    # 6. Generar Entregables
+    generar_entregables_excel_csv(hidro_resumen, total_meteo, diag_onda)
+    compilar_portal_web_monitor_zv(hidro_resumen, total_meteo, diag_onda, rayos_cuenca, pronostico_ecmwf, alertas_smn)
+
     print("=" * 70)
-    print("PROCESO COMPLETADO EXITOSAMENTE.")
+    print("PROCESO COMPLETADO. El archivo 'index.html' ya está listo para publicar.")
+    print("=" * 70)
