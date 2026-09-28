@@ -2,11 +2,13 @@ name: Actualizar SAT Rio V en Tiempo Real
 
 on:
   schedule:
-    - cron: '*/10 * * * *'  # Cada 10 minutos
+    - cron: '*/30 * * * *'  # Cada 30 minutos (recomendado para optimizar cuota de minutos de GitHub)
   workflow_dispatch:
 
 permissions:
   contents: write
+  pages: write
+  id-token: write
 
 jobs:
   actualizar:
@@ -21,25 +23,35 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+          cache: 'pip'
 
       - name: Instalar dependencias
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          if [ -f requirements.txt ]; then
+            pip install -r requirements.txt
+          else
+            pip install pandas numpy requests beautifulsoup4 openpyxl
+          fi
 
       - name: Ejecutar Extractor y Generador
         run: |
-          python sat_unificado_hidro_meteo.py || python sat_unificado_hidro_meteo_v8_completo.py
-
-      - name: Preparar archivos para publicacion web
-        run: |
-          cp mapa_sat_rio_v_triprovincial.html index.html 2>/dev/null || true
+          python sat_unificado_hidro_meteo.py
 
       - name: Publicar cambios en GitHub Pages
         run: |
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          
+          # Elimina el archivo viejo para que no sobreescriba ni moleste
+          git rm -f mapa_sat_rio_v_triprovincial.html 2>/dev/null || true
+          
+          # Agrega el index.html nuevo generado por el script y los reportes
           git add index.html sat_unificado_rio_v_triprovincial.xlsx resumen_cruce_rio_v_triprovincial.csv
-          git commit -m "Actualizacion automatica SAT [skip ci]" || exit 0
-          git pull --rebase origin main || true
-          git push origin main
+          
+          # Commit y push SIN [skip ci] para que GitHub Pages se active automáticamente
+          if ! git diff --staged --quiet; then
+            git commit -m "Auto-actualizacion SAT Rio V [$(date -u '+%Y-%m-%d %H:%M UTC')]"
+            git pull --rebase origin main || true
+            git push origin main
+          fi
