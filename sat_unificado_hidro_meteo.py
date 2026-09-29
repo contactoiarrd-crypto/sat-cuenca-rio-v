@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-SISTEMA DE ALERTA TEMPRANA TRIPROVINCIAL: CUENCA RÍO V (SAN LUIS - CÓRDOBA - LA PAMPA)
-Monitoreo Hidrometeorológico Online, Pronóstico ECMWF, Alertas SMN (Scraping + API) y Web Monitor ZV.
+SAT RÍO QUINTO — SISTEMA DE ALERTA TEMPRANA TRIPROVINCIAL (LA PAMPA · CÓRDOBA · SAN LUIS)
+Soporte para la toma de decisiones hídricas y gestión del riesgo de inundación en el norte pampeano.
+Articulación Técnica Interprovincial e Interamericana (IIARRD - INA - SNIH - APA - REM - SMN).
 """
 import os
 import sys
@@ -93,15 +94,15 @@ timestart_str = (ahora - timedelta(days=4)).strftime("%Y-%m-%d")
 timeend_str = (ahora + timedelta(days=1)).strftime("%Y-%m-%d")
 
 ESTACIONES_INA_CATALOGO = {
-    6444: {"nombre": "Trapiche - Hosteria El Trapiche", "rio": "Río Trapiche (Afluente)", "distrito": "San Luis", "lat": -33.105833, "lon": -66.063333},
-    6441: {"nombre": "Quinto - Dique Villa Mercedes", "rio": "Río Quinto", "distrito": "San Luis", "lat": -33.653889, "lon": -65.533611},
-    6472: {"nombre": "Quinto - Av Circunvalación", "rio": "Río Quinto", "distrito": "San Luis", "lat": -33.739167, "lon": -65.376944},
-    6445: {"nombre": "Quinto - Justo Daract", "rio": "Río Quinto", "distrito": "San Luis", "lat": -33.918611, "lon": -65.151667},
-    6624: {"nombre": "Aº El Aji - RN Nº35 y RN Nº7", "rio": "Afluente Río Quinto", "distrito": "Córdoba / LP", "lat": -33.931111, "lon": -64.396389},
-    6622: {"nombre": "Quinto - R.N. 35", "rio": "Río Quinto", "distrito": "Córdoba / LP", "lat": -34.216389, "lon": -64.386111},
-    6623: {"nombre": "Quinto - Canal Devoto RP 4", "rio": "Río Quinto / Canal Devoto", "distrito": "Córdoba / LP", "lat": -33.933056, "lon": -63.449167},
-    6391: {"nombre": "Laguna La Margarita", "rio": "Cuenca Río Quinto", "distrito": "Córdoba / LP", "lat": -34.653333, "lon": -63.723056},
-    2809: {"nombre": "Quinto - RP Nº26", "rio": "Río Quinto", "distrito": "Córdoba / LP", "lat": -34.762778, "lon": -63.645000}
+    6444: {"nombre": "Trapiche - Hosteria El Trapiche", "rio": "Río Trapiche (Afluente)", "distrito": "San Luis", "tramo": "Cuenca Alta (San Luis)", "lat": -33.105833, "lon": -66.063333},
+    6441: {"nombre": "Quinto - Dique Villa Mercedes", "rio": "Río Quinto", "distrito": "San Luis", "tramo": "Cuenca Alta (San Luis)", "lat": -33.653889, "lon": -65.533611},
+    6472: {"nombre": "Quinto - Av Circunvalación", "rio": "Río Quinto", "distrito": "San Luis", "tramo": "Cuenca Alta (San Luis)", "lat": -33.739167, "lon": -65.376944},
+    6445: {"nombre": "Quinto - Justo Daract", "rio": "Río Quinto", "distrito": "San Luis", "tramo": "Cuenca Alta (San Luis)", "lat": -33.918611, "lon": -65.151667},
+    6624: {"nombre": "Aº El Aji - RN Nº35 y RN Nº7", "rio": "Afluente Río Quinto", "distrito": "Córdoba / LP", "tramo": "Cuenca Media (Córdoba)", "lat": -33.931111, "lon": -64.396389},
+    6622: {"nombre": "Quinto - R.N. 35", "rio": "Río Quinto", "distrito": "Córdoba / LP", "tramo": "Cuenca Media (Córdoba)", "lat": -34.216389, "lon": -64.386111},
+    6623: {"nombre": "Quinto - Canal Devoto RP 4", "rio": "Río Quinto / Canal Devoto", "distrito": "Córdoba / LP", "tramo": "Cuenca Media (Córdoba)", "lat": -33.933056, "lon": -63.449167},
+    6391: {"nombre": "Laguna La Margarita", "rio": "Cuenca Río Quinto", "distrito": "Córdoba / LP", "tramo": "Cuenca Media (Córdoba)", "lat": -34.653333, "lon": -63.723056},
+    2809: {"nombre": "Quinto - RP Nº26", "rio": "Río Quinto", "distrito": "Córdoba / LP", "tramo": "Ingreso Cuenca Baja (La Pampa)", "lat": -34.762778, "lon": -63.645000}
 }
 
 UMBRALES_NOMINALES = {
@@ -119,7 +120,7 @@ UMBRALES_NOMINALES = {
 }
 
 # =============================================================
-# 4. FUNCIONES DE TRASLACIÓN DE ONDA
+# 4. FUNCIONES DE TRASLACIÓN DE ONDA Y CAPACIDAD DE AMORTIGUACIÓN
 # =============================================================
 def distancia_haversine(lat1, lon1, lat2, lon2):
     R = 6371.0
@@ -138,14 +139,13 @@ def clasificar_nivel(valor, nombre_estacion):
             break
     
     umbral_precaucion = round(c_alerta * 0.75, 2)
-    if valor < umbral_precaucion:
-        return "#10b981", "Normal", c_alerta, c_evac
-    elif valor >= c_evac:
-        return "#ef4444", "Evacuación", c_alerta, c_evac
+    # Matriz sin ambigüedades: Verde (Ordinario), Amarillo (Alerta Preventiva), Rojo (Emergencia)
+    if valor >= c_evac:
+        return "#ef4444", "Emergencia / Evacuación", c_alerta, c_evac
     elif valor >= c_alerta:
-        return "#f97316", "Alerta Hidrológica", c_alerta, c_evac
+        return "#f59e0b", "Alerta Preventiva", c_alerta, c_evac
     else:
-        return "#eab308", "Precaución", c_alerta, c_evac
+        return "#10b981", "Vigilancia Ordinaria", c_alerta, c_evac
 
 def calcular_tiempo_viaje_onda(lista_hidro_resumen, lista_rayos=[]):
     dict_h = {h["nombre"]: h for h in lista_hidro_resumen}
@@ -154,40 +154,35 @@ def calcular_tiempo_viaje_onda(lista_hidro_resumen, lista_rayos=[]):
     margarita = next((h for k, h in dict_h.items() if "Margarita" in k), None)
     rn35 = next((h for k, h in dict_h.items() if "R.N. 35" in k), None)
     rp26 = next((h for k, h in dict_h.items() if "RP Nº26" in k or "RP 26" in k), None)
-    devoto = next((h for k, h in dict_h.items() if "Devoto" in k), None)
 
     origen_alerta = None
     nivel_origen = 0.0
     cota_alerta_origen = 0.0
-    estado_alerta_origen = "Normal"
+    estado_alerta_origen = "Vigilancia Ordinaria"
     fecha_deteccion = ahora.strftime("%d/%m/%Y %H:%M")
 
-    for punto in [daract, dique_vm, rn35, devoto, rp26]:
-        if punto and punto["estado"] in ["Alerta Hidrológica", "Evacuación"]:
+    for punto in [daract, dique_vm, rn35, rp26]:
+        if punto and punto["estado"] in ["Alerta Preventiva", "Emergencia / Evacuación"]:
             origen_alerta = punto["nombre"]
             nivel_origen = punto["nivel_actual"]
             cota_alerta_origen = punto["cota_alerta"]
             estado_alerta_origen = punto["estado"]
             fecha_deteccion = punto["fecha"]
             break
-        elif punto and punto["estado"] == "Precaución" and not origen_alerta:
-            origen_alerta = punto["nombre"]
-            nivel_origen = punto["nivel_actual"]
-            cota_alerta_origen = punto["cota_alerta"]
-            estado_alerta_origen = punto["estado"]
-            fecha_deteccion = punto["fecha"]
 
     nivel_margarita = margarita["nivel_actual"] if margarita else 1.43
     cota_alerta_margarita = margarita["cota_alerta"] if margarita else 2.40
+    margen_remanente_margarita = round(max(0.0, cota_alerta_margarita - nivel_margarita), 2)
+    porcentaje_ocupacion_margarita = min(100, int((nivel_margarita / cota_alerta_margarita) * 100))
 
     if nivel_margarita < 1.00:
-        factor_almacenamiento = "Alta Retención (Bañados secos / Lagunas deprimidas)"
+        factor_almacenamiento = "ALTA RETENCIÓN (Bañados deprimidos)"
         ajuste_dias = 4.0
-    elif nivel_margarita >= 2.00 or (cota_alerta_margarita - nivel_margarita <= 0.40):
-        factor_almacenamiento = "Saturación Crítica (Efecto vaso lleno)"
+    elif nivel_margarita >= 2.00 or margen_remanente_margarita <= 0.40:
+        factor_almacenamiento = "SATURACIÓN CRÍTICA (Efecto vaso lleno)"
         ajuste_dias = -3.0
     else:
-        factor_almacenamiento = "Retención Media Ordinaria"
+        factor_almacenamiento = "AMORTIGUACIÓN REGULAR"
         ajuste_dias = 0.0
 
     if origen_alerta and ("Villa Mercedes" in origen_alerta or "Trapiche" in origen_alerta):
@@ -196,7 +191,7 @@ def calcular_tiempo_viaje_onda(lista_hidro_resumen, lista_rayos=[]):
         t_base_min, t_base_max = 7.0, 10.0
     elif origen_alerta and "R.N. 35" in origen_alerta:
         t_base_min, t_base_max = 5.0, 8.0
-    elif origen_alerta and ("Devoto" in origen_alerta or "RP Nº26" in origen_alerta or "Margarita" in origen_alerta):
+    elif origen_alerta and "RP Nº26" in origen_alerta:
         t_base_min, t_base_max = 3.0, 6.0
     else:
         t_base_min, t_base_max = 7.0, 10.0
@@ -207,35 +202,53 @@ def calcular_tiempo_viaje_onda(lista_hidro_resumen, lista_rayos=[]):
     f_llegada_min = ahora + timedelta(days=t_est_min)
     f_llegada_max = ahora + timedelta(days=t_est_max)
 
-    alerta_activa = estado_alerta_origen in ["Alerta Hidrológica", "Evacuación", "Precaución"]
+    alerta_activa = estado_alerta_origen in ["Alerta Preventiva", "Emergencia / Evacuación"]
     rayos_cuenca_alta = [r for r in lista_rayos if r.get("lat", 0) > -34.5]
     alerta_convectiva = len(rayos_cuenca_alta) >= 8
+
+    # Protocolos de acción (SOP / Recomendaciones) según estándar de Protección Civil
+    if estado_alerta_origen == "Emergencia / Evacuación":
+        protocolo_nivel = "ROJO — ACCIÓN INMEDIATA Y PRE-EMERGENCIA"
+        protocolo_desc = "Activación del Comité Provincial de Emergencias Hídricas. Alerta vial en RN 35 y pasos bajos de Meridiano V. Relevamiento continuo de bordos de contención y terraplenes en Realicó, Intendente Alvear e Ing. Luiggi. Guardia permanente en compuertas de derivación."
+    elif estado_alerta_origen == "Alerta Preventiva" or alerta_convectiva:
+        protocolo_nivel = "AMARILLO — PRE-ALERTA Y ENLACE TÉCNICO"
+        protocolo_desc = "Enlace técnico directo con Recursos Hídricos de Córdoba y San Luis. Seguimiento cada 3 horas de erogaciones y caudales en Presa El Chañar y vertedero de Laguna La Margarita. Verificación preventiva de alcantarillas y luces de puentes en red vial terciaria del norte pampeano."
+    else:
+        protocolo_nivel = "VERDE — VIGILANCIA ORDINARIA"
+        protocolo_desc = "Monitoreo automatizado continuo de rutina. Verificación ordinaria del estado de compuertas y canales de alivio interprovinciales. Sin movilización operativa extraordinaria requerida."
 
     return {
         "alerta_activa": alerta_activa,
         "alerta_convectiva": alerta_convectiva,
-        "origen_alerta": origen_alerta or ("Actividad Convectiva" if alerta_convectiva else "Sin evento crítico"),
+        "origen_alerta": origen_alerta or ("Detección de celdas convectivas" if alerta_convectiva else "Sin anomalía en nacientes"),
         "nivel_origen": nivel_origen,
         "estado_alerta": estado_alerta_origen,
         "fecha_deteccion": fecha_deteccion,
         "nivel_margarita": nivel_margarita,
+        "cota_alerta_margarita": cota_alerta_margarita,
+        "margen_remanente_margarita": margen_remanente_margarita,
+        "porcentaje_ocupacion_margarita": porcentaje_ocupacion_margarita,
         "factor_almacenamiento": factor_almacenamiento,
         "tiempo_viaje_min_dias": t_est_min,
         "tiempo_viaje_max_dias": t_est_max,
         "fecha_arribo_estimada_str": f"{f_llegada_min.strftime('%d/%m')} al {f_llegada_max.strftime('%d/%m/%Y')}",
-        "rayos_nacientes": len(rayos_cuenca_alta)
+        "rayos_nacientes": len(rayos_cuenca_alta),
+        "protocolo_nivel": protocolo_nivel,
+        "protocolo_desc": protocolo_desc
     }
 
 # =============================================================
-# 5. MODELO NUMÉRICO ECMWF
+# 5. MODELO NUMÉRICO ECMWF (ORDENADO CON ENFOQUE PAMPEANO)
 # =============================================================
 NODOS_ECMWF = [
-    {"nombre": "Villa Mercedes (Nacientes)", "lat": -33.67, "lon": -65.46, "provincia": "San Luis"},
-    {"nombre": "General Levalle (Media)", "lat": -34.00, "lon": -63.92, "provincia": "Córdoba"},
-    {"nombre": "Jovita (Media-Baja)", "lat": -34.52, "lon": -63.97, "provincia": "Córdoba"},
-    {"nombre": "Realicó (Cuenca Baja)", "lat": -35.04, "lon": -64.24, "provincia": "La Pampa"},
-    {"nombre": "Intendente Alvear", "lat": -35.24, "lon": -63.59, "provincia": "La Pampa"},
-    {"nombre": "Punta Alta (La Pampa)", "lat": -35.21, "lon": -64.45, "provincia": "La Pampa"}
+    # Prioridad: Localidades Pampeanas y Nodos de Ingreso
+    {"nombre": "Realicó", "lat": -35.04, "lon": -64.24, "provincia": "La Pampa", "region": "Norte Pampeano (RN 35)"},
+    {"nombre": "Intendente Alvear", "lat": -35.24, "lon": -63.59, "provincia": "La Pampa", "region": "Norte Pampeano (Meridiano V)"},
+    {"nombre": "Punta Alta (Rancul)", "lat": -35.21, "lon": -64.45, "provincia": "La Pampa", "region": "Norte Pampeano (RP 9)"},
+    # Cabecera y Cuenca Media
+    {"nombre": "Villa Mercedes", "lat": -33.67, "lon": -65.46, "provincia": "San Luis", "region": "Cabecera / Nacientes"},
+    {"nombre": "General Levalle", "lat": -34.00, "lon": -63.92, "provincia": "Córdoba", "region": "Cuenca Media (Aporte)"},
+    {"nombre": "Jovita", "lat": -34.52, "lon": -63.97, "provincia": "Córdoba", "region": "Cuenca Media-Baja"}
 ]
 
 def obtener_pronostico_ecmwf():
@@ -266,6 +279,7 @@ def obtener_pronostico_ecmwf():
                 resultados.append({
                     "nodo": p["nombre"],
                     "provincia": p["provincia"],
+                    "region": p["region"],
                     "lat": p["lat"],
                     "lon": p["lon"],
                     "lluvia_hoy": lluvia_hoy,
@@ -279,7 +293,7 @@ def obtener_pronostico_ecmwf():
     return resultados
 
 # =============================================================
-# 6. EXTRACCIÓN ROBUSTA DE ALERTAS SMN
+# 6. EXTRACCIÓN ROBUSTA DE ALERTAS SMN (SCRAPING + MULTI-ENDPOINT)
 # =============================================================
 def normalizar_texto_alerta(t):
     if not t: return ""
@@ -299,8 +313,7 @@ def obtener_alertas_smn_cuenca(pronostico_ecmwf=[]):
     ]
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-        "Accept-Language": "es-ES,es;q=0.9"
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8"
     }
 
     try:
@@ -309,7 +322,7 @@ def obtener_alertas_smn_cuenca(pronostico_ecmwf=[]):
         if r_web.status_code == 200:
             soup = BeautifulSoup(r_web.text, "html.parser")
             texto_completo = normalizar_texto_alerta(soup.get_text(separator=" "))
-            for prov in ["san luis", "cordoba", "la pampa"]:
+            for prov in ["la pampa", "cordoba", "san luis"]:
                 if prov in texto_completo and any(d in texto_completo for d in deptos_cuenca):
                     nivel = "Amarillo"
                     if "alerta naranja" in texto_completo or "nivel naranja" in texto_completo:
@@ -321,7 +334,7 @@ def obtener_alertas_smn_cuenca(pronostico_ecmwf=[]):
                         "zona": f"Cuenca Río V ({prov.title()})",
                         "fenomeno": "Tormentas y Precipitaciones",
                         "nivel": nivel,
-                        "descripcion": f"Alerta oficial vigente emitida por el SMN para el sector de {prov.title()} por tormentas con posible caída de granizo e intensas ráfagas."
+                        "descripcion": f"Alerta oficial emitida por el SMN para el sector de {prov.title()} por tormentas con posible caída de granizo e intensas ráfagas."
                     })
                     break
     except Exception as e:
@@ -357,12 +370,12 @@ def obtener_alertas_smn_cuenca(pronostico_ecmwf=[]):
     if not alertas:
         nodos_con_lluvia = [p for p in pronostico_ecmwf if p.get("lluvia_maniana", 0) >= 20.0 or p.get("lluvia_hoy", 0) >= 25.0]
         if nodos_con_lluvia:
-            print("   -> [SMN VIGILANCIA]: Activando alerta preventiva por condiciones de inestabilidad detectadas.", flush=True)
+            print("   -> [SMN VIGILANCIA]: Alerta preventiva ante inestabilidad detectada en ECMWF.", flush=True)
             alertas.append({
                 "zona": f"Cuenca Río V ({nodos_con_lluvia[0]['provincia']})",
                 "fenomeno": "Tormentas Aisladas / Precipitaciones",
                 "nivel": "Amarillo",
-                "descripcion": f"Condición de inestabilidad y vigilancia en cuenca ({nodos_con_lluvia[0]['nodo']} prevé {nodos_con_lluvia[0]['lluvia_maniana']} mm). Posibles tormentas de variada intensidad."
+                "descripcion": f"Vigilancia meteorológica operativa en cuenca ({nodos_con_lluvia[0]['nodo']} prevé {nodos_con_lluvia[0]['lluvia_maniana']} mm). Posibles tormentas de variada intensidad."
             })
 
     print(f"   -> [SMN OFICIAL]: {len(alertas)} alertas consolidadas para la cuenca.")
@@ -515,7 +528,7 @@ def obtener_datos_hidrologicos():
                     if f is not None and v is not None:
                         out.append({
                             "fecha": str(f).replace("T", " "), "valor": float(v),
-                            "nombre": s["nombre"], "distrito": s["distrito"],
+                            "nombre": s["nombre"], "distrito": s["distrito"], "tramo": s["tramo"],
                             "rio": s["rio"], "lat": s["lat"], "lon": s["lon"], "fuente": "INA"
                         })
         except Exception: pass
@@ -536,6 +549,7 @@ def obtener_datos_hidrologicos():
                 "valor": base_niveles.get(sc, 1.00),
                 "nombre": info["nombre"],
                 "distrito": info["distrito"],
+                "tramo": info["tramo"],
                 "rio": info["rio"],
                 "lat": info["lat"],
                 "lon": info["lon"],
@@ -565,15 +579,13 @@ def obtener_descargas_atmosfericas():
     return rayos
 
 # =============================================================
-# 9. COMPILADOR DEL PORTAL WEB (HTML DIRECTO ESTILO MONITOR ZV)
+# 9. COMPILADOR DEL PORTAL WEB OPERATIVO (ESTILO MONITOR ZV REFINADO)
 # =============================================================
 def compilar_portal_web_monitor_zv(hidro_resumen, meteo_total, diag_onda, rayos, pronostico_ecmwf, alertas_smn):
-    print("7. Generando interfaz web unificada (Estilo Monitor ZV)...", flush=True)
+    print("7. Generando interfaz institucional ejecutiva para toma de decisiones...", flush=True)
 
-    # 1. Alertas de Lluvia y Pronóstico (Panel)
+    # 1. Alertas de Lluvia y Pronóstico
     alertas_lluvia_html = ""
-
-    # Alertas oficiales del SMN
     if alertas_smn:
         for al in alertas_smn:
             color_badge = "bg-red-200 text-red-800" if al['nivel'] == "Rojo" else ("bg-orange-200 text-orange-800" if al['nivel'] == "Naranja" else "bg-amber-200 text-amber-800")
@@ -587,92 +599,110 @@ def compilar_portal_web_monitor_zv(hidro_resumen, meteo_total, diag_onda, rayos,
             </div>
             """
 
-    # Pronóstico numérico ECMWF
     for p in pronostico_ecmwf:
         if p["lluvia_maniana"] >= 15.0:
             alertas_lluvia_html += f"""
             <div class="flex items-center justify-between p-3.5 rounded-lg bg-[#fdf2f2] border border-[#f8b4b4] text-[#9b1c1c] text-sm">
                 <div class="flex items-center space-x-3">
                     <span class="text-base text-red-500 font-bold">⚠</span>
-                    <span><b>Lluvia pronosticada (ECMWF):</b> {p['nodo']} — se prevé <b>{p['lluvia_maniana']:.1f} mm</b> para mañana.</span>
+                    <span><b>Lluvia pronosticada (ECMWF):</b> {p['nodo']} ({p['region']}) — se prevé <b>{p['lluvia_maniana']:.1f} mm</b> para mañana.</span>
                 </div>
-                <button onclick="this.parentElement.remove()" class="text-gray-400 hover:text-gray-600 text-xs">✕</button>
+                <span class="text-xs font-semibold px-2 py-0.5 bg-red-100 text-red-700 rounded">Precipitación Crítica</span>
             </div>
             """
-
-    # Lluvias observadas en vivo en REM o APA
-    lluvias_significativas = [m for m in meteo_total if m.get("lluvia_24h_mm", 0) >= 20.0]
-    for m in lluvias_significativas:
-        alertas_lluvia_html += f"""
-        <div class="flex items-center justify-between p-3.5 rounded-lg bg-[#fdf2f2] border border-[#f8b4b4] text-[#9b1c1c] text-sm">
-            <div class="flex items-center space-x-3">
-                <span class="text-base text-red-500 font-bold">⚠</span>
-                <span><b>Lluvia registrada (24h):</b> {m['nombre']} ({m['red']}) — acumulado de <b>{m['lluvia_24h_mm']:.1f} mm</b>.</span>
-            </div>
-            <span class="text-xs font-bold px-2 py-0.5 bg-rose-200 text-rose-800 rounded">Observado</span>
-        </div>
-        """
 
     if not alertas_lluvia_html:
         alertas_lluvia_html = """
         <div class="flex items-center justify-between p-3.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-900 text-sm">
             <div class="flex items-center space-x-3">
                 <span class="text-base text-emerald-600 font-bold">✔</span>
-                <span><b>Sin alertas meteorológicas críticas:</b> No se registran lluvias torrenciales inmediatas ni alertas vigentes para la cuenca.</span>
+                <span><b>Sin alertas meteorológicas críticas:</b> No se registran lluvias torrenciales inmediatas en nacientes ni alertas vigentes para el norte pampeano.</span>
             </div>
-            <span class="text-xs font-bold px-2 py-0.5 bg-emerald-200 text-emerald-800 rounded">Normal</span>
+            <span class="text-xs font-bold px-2 py-0.5 bg-emerald-200 text-emerald-800 rounded">Vigilancia Ordinaria</span>
         </div>
         """
 
-    # 2. Tarjeta Traslación de Onda
-    if diag_onda["alerta_activa"]:
-        onda_card = f"""
-        <div class="flex items-center justify-between p-3.5 rounded-lg bg-[#fdf2f2] border border-[#f8b4b4] text-[#9b1c1c] text-sm">
-            <div class="flex items-center space-x-3">
-                <span class="text-base text-red-500 font-bold">⚠</span>
-                <span><b>Alerta Hidrológica activa en {diag_onda['origen_alerta']}:</b> Nivel {diag_onda['nivel_origen']:.2f} m. Tiempo estimado de arribo a límite pampeano: <b>{diag_onda['tiempo_viaje_min_dias']:.0f} a {diag_onda['tiempo_viaje_max_dias']:.0f} días</b> (Arribo previsto: {diag_onda['fecha_arribo_estimada_str']}). {diag_onda['factor_almacenamiento']}.</span>
+    # 2. Tarjeta del Semáforo Unificado (Sin contradicciones técnicas)
+    if diag_onda["estado_alerta"] == "Emergencia / Evacuación":
+        semaforo_card = f"""
+        <div class="p-4 rounded-xl bg-red-50 border-2 border-red-500 text-red-950 flex justify-between items-center">
+            <div class="space-y-1">
+                <div class="flex items-center space-x-2">
+                    <span class="w-3.5 h-3.5 rounded-full bg-red-600 animate-ping"></span>
+                    <span class="text-sm font-black uppercase tracking-wider text-red-700">Estado de Gestión: EMERGENCIA / ACCIÓN OPERATIVA</span>
+                </div>
+                <p class="text-sm font-medium">Puntos de control superando cotas de desborde ({diag_onda['origen_alerta']}: {diag_onda['nivel_origen']:.2f} m). Tiempo estimado de arribo a límite pampeano: <b>{diag_onda['tiempo_viaje_min_dias']:.0f} a {diag_onda['tiempo_viaje_max_dias']:.0f} días</b> ({diag_onda['fecha_arribo_estimada_str']}).</p>
             </div>
-            <span class="text-xs font-bold px-2.5 py-1 bg-red-200 text-red-800 rounded">{diag_onda['estado_alerta']}</span>
+            <span class="text-xs font-bold px-3 py-1.5 bg-red-600 text-white rounded-lg uppercase shadow">Nivel Rojo</span>
+        </div>
+        """
+    elif diag_onda["estado_alerta"] == "Alerta Preventiva" or diag_onda["alerta_convectiva"]:
+        semaforo_card = f"""
+        <div class="p-4 rounded-xl bg-amber-50 border-2 border-amber-500 text-amber-950 flex justify-between items-center">
+            <div class="space-y-1">
+                <div class="flex items-center space-x-2">
+                    <span class="w-3.5 h-3.5 rounded-full bg-amber-500"></span>
+                    <span class="text-sm font-black uppercase tracking-wider text-amber-800">Estado de Gestión: ALERTA PREVENTIVA</span>
+                </div>
+                <p class="text-sm font-medium">Incremento de escorrentía en San Luis / Córdoba. Ventana de traslado calculada a La Pampa: <b>{diag_onda['tiempo_viaje_min_dias']:.0f} a {diag_onda['tiempo_viaje_max_dias']:.0f} días</b>. Monitoreo reforzado de compuertas y bañados.</p>
+            </div>
+            <span class="text-xs font-bold px-3 py-1.5 bg-amber-500 text-white rounded-lg uppercase shadow">Nivel Amarillo</span>
         </div>
         """
     else:
-        onda_card = f"""
-        <div class="flex items-center justify-between p-3.5 rounded-lg bg-[#fefce8] border border-[#fef08a] text-[#713f12] text-sm">
-            <div class="flex items-center space-x-3">
-                <span class="w-2.5 h-4 bg-amber-500 rounded-sm inline-block"></span>
-                <span class="font-bold">Alerta moderada</span>
-                <span>— Ventana teórica estimada hacia La Pampa: <b>{diag_onda['tiempo_viaje_min_dias']:.0f} a {diag_onda['tiempo_viaje_max_dias']:.0f} días</b> ante eventual pulso en Justo Daract. Laguna La Margarita: <b>{diag_onda['nivel_margarita']:.2f} m</b> ({diag_onda['factor_almacenamiento']}).</span>
+        semaforo_card = f"""
+        <div class="p-4 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-950 flex justify-between items-center">
+            <div class="space-y-1">
+                <div class="flex items-center space-x-2">
+                    <span class="w-3.5 h-3.5 rounded-full bg-emerald-500"></span>
+                    <span class="text-sm font-black uppercase tracking-wider text-emerald-800">Estado de Gestión: VIGILANCIA ORDINARIA</span>
+                </div>
+                <p class="text-sm font-medium">Cuenca en régimen normal ordinario. Todos los nudos de control por debajo de cotas de alerta. Ventana teórica estimada a La Pampa ante eventual pulso en Justo Daract: <b>{diag_onda['tiempo_viaje_min_dias']:.0f} a {diag_onda['tiempo_viaje_max_dias']:.0f} días</b>.</p>
             </div>
-            <span class="text-xs font-bold px-2.5 py-1 bg-amber-200 text-amber-800 rounded">En Observación</span>
+            <span class="text-xs font-bold px-3 py-1.5 bg-emerald-600 text-white rounded-lg uppercase shadow">Nivel Verde</span>
         </div>
         """
 
-    # 3. Filas Tabla Limnígrafos
+    # 3. Filas Tabla Limnígrafos (Agrupada por Tramos y con semáforo en celda)
+    tramos_orden = ["Cuenca Alta (San Luis)", "Cuenca Media (Córdoba)", "Ingreso Cuenca Baja (La Pampa)"]
     filas_limnigrafos = ""
-    for h in hidro_resumen:
-        badge_c = "bg-green-100 text-green-700" if h["estado"] == "Normal" else ("bg-amber-100 text-amber-800" if h["estado"] == "Precaución" else "bg-red-100 text-red-800")
+    for tramo in tramos_orden:
+        sub_est = [h for h in hidro_resumen if h.get("tramo") == tramo]
+        if not sub_est: continue
         filas_limnigrafos += f"""
-        <tr class="hover:bg-gray-50 transition border-b border-gray-100">
-            <td class="px-4 py-3 font-semibold text-gray-800">{h['nombre']}</td>
-            <td class="px-4 py-3 text-gray-500">{h['rio']} ({h['distrito']})</td>
-            <td class="px-4 py-3 text-right font-bold text-gray-900">{h['nivel_actual']:.2f} m</td>
-            <td class="px-4 py-3 text-right text-gray-600">{h['media_hist']:.2f} m</td>
-            <td class="px-4 py-3 text-right text-amber-700 font-semibold">{h['cota_alerta']:.2f} m</td>
-            <td class="px-4 py-3 text-right text-rose-700 font-semibold">{h['cota_evac']:.2f} m</td>
-            <td class="px-4 py-3 text-center"><span class="px-2 py-0.5 rounded text-xs font-medium {badge_c}">{h['estado']}</span></td>
-            <td class="px-4 py-3 text-center font-medium text-gray-700">{h['tendencia']}</td>
-            <td class="px-4 py-3 text-center text-xs text-gray-400">{h['fecha']}</td>
+        <tr class="bg-slate-100 font-bold text-slate-700 text-xs uppercase tracking-wider">
+            <td colspan="8" class="px-4 py-2 bg-slate-200/80">{tramo}</td>
         </tr>
         """
+        for h in sub_est:
+            badge_c = "bg-green-100 text-green-700" if "Vigilancia" in h["estado"] else ("bg-amber-100 text-amber-800" if "Preventiva" in h["estado"] else "bg-red-100 text-red-800")
+            margen_alerta = round(h['cota_alerta'] - h['nivel_actual'], 2)
+            color_nivel = "text-emerald-700 font-bold" if margen_alerta > 0.60 else ("text-amber-600 font-bold" if margen_alerta > 0 else "text-red-600 font-black")
+            filas_limnigrafos += f"""
+            <tr class="hover:bg-gray-50 transition border-b border-gray-100 text-sm">
+                <td class="px-4 py-2.5 font-semibold text-gray-800">{h['nombre']}</td>
+                <td class="px-4 py-2.5 text-gray-500">{h['rio']}</td>
+                <td class="px-4 py-2.5 text-right {color_nivel}">{h['nivel_actual']:.2f} m</td>
+                <td class="px-4 py-2.5 text-right text-gray-600">{h['cota_alerta']:.2f} m</td>
+                <td class="px-4 py-2.5 text-right font-medium {'text-emerald-600' if margen_alerta > 0 else 'text-red-600'}">{margen_alerta:+.2f} m</td>
+                <td class="px-4 py-2.5 text-center"><span class="px-2 py-0.5 rounded text-xs font-semibold {badge_c}">{h['estado']}</span></td>
+                <td class="px-4 py-2.5 text-center font-medium text-gray-700">{h['tendencia']}</td>
+                <td class="px-4 py-2.5 text-center text-xs text-gray-400">{h['fecha']}</td>
+            </tr>
+            """
 
-    # 4. Tarjetas Nodos ECMWF
+    # 4. Tarjetas Nodos ECMWF (Priorizadas: Norte Pampeano primero)
     cards_ecmwf = ""
     for p in pronostico_ecmwf:
+        badge_pampa = '<span class="text-[10px] font-bold px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded">LA PAMPA</span>' if "La Pampa" in p["provincia"] else ''
         cards_ecmwf += f"""
-        <div class="p-4 rounded-xl border border-gray-200 bg-white shadow-sm flex flex-col justify-between">
+        <div class="p-4 rounded-xl border {'border-blue-300 bg-blue-50/20' if 'La Pampa' in p['provincia'] else 'border-gray-200 bg-white'} shadow-sm flex flex-col justify-between">
             <div>
-                <span class="text-xs font-semibold uppercase text-slate-400">{p['provincia']}</span>
-                <h4 class="text-base font-bold text-gray-800">{p['nodo']}</h4>
+                <div class="flex justify-between items-center">
+                    <span class="text-xs font-semibold text-slate-500">{p['region']}</span>
+                    {badge_pampa}
+                </div>
+                <h4 class="text-base font-bold text-gray-900 mt-1">{p['nodo']}</h4>
             </div>
             <div class="grid grid-cols-3 gap-2 mt-4 text-center border-t border-gray-100 pt-3">
                 <div class="bg-gray-50 p-2 rounded-lg">
@@ -700,15 +730,15 @@ def compilar_portal_web_monitor_zv(hidro_resumen, meteo_total, diag_onda, rayos,
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Monitor del clima — Cuenca Río V</title>
+    <title>SAT Río Quinto — Alerta Temprana Triprovincial (La Pampa - Córdoba - San Luis)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
-        body {{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background-color: #ffffff; }}
+        body {{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background-color: #f8fafc; }}
         .tab-btn {{
             padding: 8px 16px;
-            font-size: 14px;
+            font-size: 13.5px;
             color: #4b5563;
             border-radius: 8px;
             font-weight: 500;
@@ -716,200 +746,257 @@ def compilar_portal_web_monitor_zv(hidro_resumen, meteo_total, diag_onda, rayos,
             cursor: pointer;
             white-space: nowrap;
         }}
-        .tab-btn:hover {{
-            color: #111827;
-            background-color: #f3f4f6;
-        }}
+        .tab-btn:hover {{ color: #111827; background-color: #f1f5f9; }}
         .tab-btn.active {{
             background-color: #ffffff;
-            color: #111827;
-            font-weight: 600;
+            color: #1e3a8a;
+            font-weight: 700;
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
         }}
-        #mapa-container {{ height: calc(100vh - 180px); min-height: 540px; width: 100%; border-radius: 8px; }}
+        #mapa-container {{ height: calc(100vh - 195px); min-height: 540px; width: 100%; border-radius: 8px; }}
+        @media print {{
+            header, nav, #btn-pdf, #btn-excel, #tab-mapa, button {{ display: none !important; }}
+            body {{ background: white !important; font-size: 11px !important; }}
+            .no-print {{ display: none !important; }}
+            #boletin-print-header {{ display: block !important; }}
+            main {{ padding: 0 !important; max-width: 100% !important; }}
+        }}
     </style>
 </head>
 <body class="text-slate-800 antialiased min-h-screen flex flex-col">
 
-    <!-- HEADER ESTILO MONITOR ZV -->
-    <header class="bg-white border-b border-gray-200 px-8 py-3.5 flex justify-between items-center sticky top-0 z-50">
-        <div class="flex items-center space-x-3">
-            <svg class="w-6 h-6 text-slate-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 00-9.78 2.096A4.001 4.001 0 003 15z"></path>
-            </svg>
-            <h1 class="text-xl font-bold tracking-tight text-slate-900">Monitor del clima</h1>
+    <!-- HEADER INSTITUCIONAL Y TÉCNICO -->
+    <header class="bg-white border-b border-gray-200 px-6 py-3.5 flex justify-between items-center sticky top-0 z-50 shadow-sm">
+        <div class="flex items-center space-x-3.5">
+            <div class="w-10 h-10 rounded-lg bg-blue-900 text-white flex items-center justify-center font-black text-lg shadow-sm">
+                V
+            </div>
+            <div>
+                <div class="flex items-center space-x-2">
+                    <h1 class="text-lg font-black tracking-tight text-slate-900 leading-tight">SAT Río Quinto — Sistema de Alerta Temprana Triprovincial</h1>
+                    <span class="text-[11px] font-bold uppercase px-2 py-0.5 bg-blue-100 text-blue-800 rounded">La Pampa · Córdoba · San Luis</span>
+                </div>
+                <p class="text-xs text-slate-500 font-medium">Herramienta de soporte para la toma de decisiones hídricas y gestión del riesgo en el norte pampeano | <span class="text-slate-700 font-semibold">Articulación Técnica IIARRD - INA - APA - REM - SMN</span></p>
+            </div>
         </div>
-        <div class="flex items-center space-x-3">
-            <button onclick="location.reload()" class="inline-flex items-center space-x-2 text-sm font-medium px-3.5 py-1.5 rounded-lg border border-gray-300 hover:bg-gray-50 text-gray-700 transition">
-                <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
-                <span>Actualizar</span>
+        <div class="flex items-center space-x-2.5">
+            <button onclick="window.print()" id="btn-pdf" class="inline-flex items-center space-x-1.5 text-xs font-bold px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-900 text-white transition shadow-sm">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+                <span>Boletín de Situación (PDF)</span>
             </button>
-            <a href="{EXCEL_SALIDA}" download class="inline-flex items-center space-x-1.5 text-sm font-medium px-3.5 py-1.5 rounded-lg border border-gray-300 hover:bg-gray-50 text-gray-700 transition">
-                <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
-                <span>Descargar</span>
+            <a href="{EXCEL_SALIDA}" download id="btn-excel" class="inline-flex items-center space-x-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border border-gray-300 hover:bg-gray-50 text-gray-700 transition">
+                <svg class="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                <span>Descargar Excel</span>
             </a>
+            <button onclick="location.reload()" class="p-1.5 rounded-lg border border-gray-300 hover:bg-gray-50 text-gray-600 transition" title="Actualizar datos">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+            </button>
         </div>
     </header>
 
-    <!-- NAVEGACIÓN EN PESTAÑAS (ESTILO MONITOR ZV) -->
-    <nav class="bg-[#f3f4f6] px-8 py-2 border-b border-gray-200">
-        <div class="flex space-x-1 overflow-x-auto">
-            <button onclick="cambiarTab('panel')" id="btn-panel" class="tab-btn active">Panel</button>
-            <button onclick="cambiarTab('precipitaciones')" id="btn-precipitaciones" class="tab-btn">Precipitaciones</button>
-            <button onclick="cambiarTab('cuencas')" id="btn-cuencas" class="tab-btn">Cuencas</button>
-            <button onclick="cambiarTab('limnigrafos')" id="btn-limnigrafos" class="tab-btn">Limnígrafos</button>
-            <button onclick="cambiarTab('traslacion')" id="btn-traslacion" class="tab-btn">Onda de tormenta</button>
-            <button onclick="cambiarTab('mapa')" id="btn-mapa" class="tab-btn">Visor Cartográfico</button>
-            <button onclick="cambiarTab('archivo')" id="btn-archivo" class="tab-btn">Archivo</button>
-            <button onclick="cambiarTab('documentacion')" id="btn-documentacion" class="tab-btn">Documentación</button>
+    <!-- NAVEGACIÓN EN PESTAÑAS -->
+    <nav class="bg-slate-200/80 px-6 py-2 border-b border-gray-200 sticky top-[61px] z-40">
+        <div class="flex space-x-1.5 overflow-x-auto max-w-7xl mx-auto">
+            <button onclick="cambiarTab('panel')" id="btn-panel" class="tab-btn active">Tablero de Control</button>
+            <button onclick="cambiarTab('traslacion')" id="btn-traslacion" class="tab-btn">Onda de Crecida & Tránsito</button>
+            <button onclick="cambiarTab('precipitaciones')" id="btn-precipitaciones" class="tab-btn">Pronóstico ECMWF & Lluvias</button>
+            <button onclick="cambiarTab('limnigrafos')" id="btn-limnigrafos" class="tab-btn">Red Limnimétrica (INA / SNIH)</button>
+            <button onclick="cambiarTab('mapa')" id="btn-mapa" class="tab-btn">Visor Cartográfico SIG</button>
+            <button onclick="cambiarTab('archivo')" id="btn-archivo" class="tab-btn">Informes & Archivo</button>
+            <button onclick="cambiarTab('documentacion')" id="btn-documentacion" class="tab-btn">Protocolo & Documentación</button>
         </div>
     </nav>
 
-    <!-- ÁREA DE CONTENIDO -->
-    <main class="flex-1 p-8 max-w-7xl mx-auto w-full">
+    <!-- ÁREA DE CONTENIDO PRINCIPAL -->
+    <main class="flex-1 p-6 max-w-7xl mx-auto w-full space-y-6">
 
-        <!-- 1. SOLAPA: PANEL (IDÉNTICO A LA IMAGEN) -->
+        <!-- 1. SOLAPA: TABLERO DE CONTROL (PANEL OPERATIVO) -->
         <section id="tab-panel" class="space-y-6">
 
-            <!-- BLOQUE: LLUVIAS (FONDO ROSA / BORDES ROJOS) -->
-            <div class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
-                <div class="px-5 py-3.5 border-b border-gray-200 flex justify-between items-center cursor-pointer bg-white">
-                    <div class="flex items-center space-x-2 text-slate-900 font-semibold text-sm">
-                        <svg class="w-4 h-4 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 00-9.78 2.096A4.001 4.001 0 003 15z"></path></svg>
-                        <span>Lluvias & Alertas Meteorológicas</span>
+            <!-- A. SEMÁFORO DE GESTIÓN (ESTANDARIZADO SIN AMBIGÜEDADES) -->
+            {semaforo_card}
+
+            <!-- B. TIMELINE DINÁMICO DE TRASLACIÓN DE ONDA HACIA LA PAMPA -->
+            <div class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-4">
+                <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                    <div>
+                        <h3 class="text-sm font-black uppercase tracking-wider text-slate-800">Ventana Hidrológica de Traslación hacia el Límite Pampeano</h3>
+                        <p class="text-xs text-slate-500">Estimación de tiempo de tránsito para anticipación de maniobra en canales y terraplenes del norte provincial.</p>
                     </div>
-                    <span class="text-gray-400 text-xs font-bold">›</span>
+                    <div class="text-right">
+                        <span class="text-2xl font-black text-blue-900">{diag_onda['tiempo_viaje_min_dias']:.0f} - {diag_onda['tiempo_viaje_max_dias']:.0f} DÍAS</span>
+                        <p class="text-[11px] font-semibold text-slate-500">Ventana calculada</p>
+                    </div>
+                </div>
+
+                <!-- DIAGRAMA SECUENCIAL DE CUENCA -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-1">
+                    <!-- Nudo 1: Nacientes -->
+                    <div class="p-3.5 rounded-lg border border-slate-200 bg-slate-50 flex items-center space-x-3">
+                        <div class="w-8 h-8 rounded-full bg-slate-800 text-white flex items-center justify-center font-bold text-xs shrink-0">1</div>
+                        <div>
+                            <span class="text-[10px] font-bold uppercase text-slate-500">Nacientes (San Luis)</span>
+                            <h4 class="text-sm font-bold text-slate-800 leading-tight">Justo Daract / V. Mercedes</h4>
+                            <p class="text-xs text-slate-600 mt-0.5">Estado: <span class="font-bold text-emerald-600">{diag_onda['estado_alerta']}</span></p>
+                        </div>
+                    </div>
+                    <!-- Nudo 2: Amortiguación Margarita -->
+                    <div class="p-3.5 rounded-lg border border-blue-200 bg-blue-50/50 flex items-center space-x-3">
+                        <div class="w-8 h-8 rounded-full bg-blue-800 text-white flex items-center justify-center font-bold text-xs shrink-0">2</div>
+                        <div class="w-full">
+                            <div class="flex justify-between items-center">
+                                <span class="text-[10px] font-bold uppercase text-blue-800">Regulación (Córdoba)</span>
+                                <span class="text-[10px] font-bold px-1.5 py-0.2 bg-blue-200 text-blue-900 rounded">{diag_onda['porcentaje_ocupacion_margarita']}% Cota</span>
+                            </div>
+                            <h4 class="text-sm font-bold text-slate-900 leading-tight">Laguna La Margarita</h4>
+                            <p class="text-xs text-slate-600 mt-0.5">Margen libre: <b class="text-blue-900">{diag_onda['margen_remanente_margarita']:.2f} m</b> hasta vertedero</p>
+                        </div>
+                    </div>
+                    <!-- Nudo 3: Ingreso a La Pampa -->
+                    <div class="p-3.5 rounded-lg border border-emerald-200 bg-emerald-50/50 flex items-center space-x-3">
+                        <div class="w-8 h-8 rounded-full bg-emerald-700 text-white flex items-center justify-center font-bold text-xs shrink-0">3</div>
+                        <div>
+                            <span class="text-[10px] font-bold uppercase text-emerald-800">Ingreso a La Pampa</span>
+                            <h4 class="text-sm font-bold text-slate-900 leading-tight">RP 26 / Meridiano V / RN 35</h4>
+                            <p class="text-xs text-slate-600 mt-0.5">Arribo estimado: <b class="text-emerald-900">{diag_onda['fecha_arribo_estimada_str']}</b></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- C. PROTOCOLO OPERATIVO DE ACCIÓN (SOP) PARA LA PAMPA -->
+            <div class="bg-white border-l-4 border-blue-900 border-y border-r border-slate-200 rounded-xl p-5 shadow-sm">
+                <div class="flex justify-between items-start">
+                    <div class="space-y-1">
+                        <span class="text-[11px] font-black uppercase tracking-wider text-blue-900">Protocolo de Respuesta Operativa (SOP Protección Civil / APA)</span>
+                        <h4 class="text-base font-bold text-slate-900">{diag_onda['protocolo_nivel']}</h4>
+                        <p class="text-xs text-slate-600 max-w-4xl leading-relaxed">{diag_onda['protocolo_desc']}</p>
+                    </div>
+                    <span class="text-[10px] font-bold text-slate-400 uppercase">Marco UNDRR / Sendai</span>
+                </div>
+            </div>
+
+            <!-- D. ALERTAS METEOROLÓGICAS (SMN) Y PRECIPITACIÓN PREVISTA -->
+            <div class="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+                <div class="px-5 py-3 border-b border-slate-100 flex justify-between items-center bg-slate-50/60">
+                    <span class="text-xs font-bold text-slate-800 uppercase tracking-wider">Alertas Tempranas Oficiales (SMN) y Precipitaciones de Riesgo</span>
+                    <span class="text-xs text-slate-400">Actualizado {FECHA_TXT}</span>
                 </div>
                 <div class="p-4 space-y-2.5">
                     {alertas_lluvia_html}
                 </div>
             </div>
 
-            <!-- BLOQUE: ONDA DE CRECIDA -->
-            <div class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
-                <div class="px-5 py-3.5 border-b border-gray-200 flex justify-between items-center cursor-pointer bg-white">
-                    <div class="flex items-center space-x-2 text-slate-900 font-semibold text-sm">
-                        <svg class="w-4 h-4 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-                        <span>Onda de crecida & Traslación a La Pampa</span>
-                    </div>
-                    <span class="text-gray-400 text-xs font-bold">›</span>
-                </div>
-                <div class="p-4">
-                    {onda_card}
-                </div>
-            </div>
-
-            <!-- BLOQUE: LIMNÍGRAFOS -->
-            <div class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
-                <div class="px-5 py-3.5 border-b border-gray-200 flex justify-between items-center cursor-pointer bg-white">
-                    <div class="flex items-center space-x-2 text-slate-900 font-semibold text-sm">
-                        <svg class="w-4 h-4 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
-                        <span>Limnígrafos</span>
-                    </div>
-                    <span class="text-gray-400 text-xs font-bold">›</span>
-                </div>
-                <div class="p-4">
-                    <div class="flex items-center p-3.5 rounded-lg bg-[#fefce8] border border-[#fef08a] text-[#713f12] text-sm space-x-3">
-                        <span class="w-2.5 h-4 bg-amber-500 rounded-sm inline-block"></span>
-                        <span class="font-bold">Alerta moderada</span>
-                        <span>— Niveles normales a moderados en Río Quinto. Todos los nudos por debajo de las cotas de evacuación oficial.</span>
-                    </div>
-                </div>
-            </div>
-
         </section>
 
-        <!-- 2. SOLAPA: PRECIPITACIONES & ECMWF -->
+        <!-- 2. SOLAPA: ONDA DE CRECIDA & TRÁNSITO -->
+        <section id="tab-traslacion" class="hidden bg-white border border-slate-200 rounded-xl p-6 shadow-sm space-y-6">
+            <div>
+                <h2 class="text-base font-black text-slate-900 uppercase tracking-wide">Dinámica Hidráulica y Traslación de Onda Triprovincial</h2>
+                <p class="text-xs text-slate-500 mt-0.5">Comportamiento del flujo de escorrentía a lo largo del Río Quinto hacia los bañados y lagunas pampeanas.</p>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 bg-slate-50 border border-slate-200 rounded-xl p-6 text-center">
+                <div>
+                    <span class="text-xs font-bold text-slate-500 uppercase">Ventana de Alerta a La Pampa</span>
+                    <p class="text-3xl font-black text-blue-900 mt-1">{diag_onda['tiempo_viaje_min_dias']:.0f} a {diag_onda['tiempo_viaje_max_dias']:.0f} Días</p>
+                    <span class="text-xs text-slate-500">Tiempo de maniobra preventiva</span>
+                </div>
+                <div>
+                    <span class="text-xs font-bold text-slate-500 uppercase">Capacidad Remanente Margarita</span>
+                    <p class="text-3xl font-black text-blue-900 mt-1">{diag_onda['margen_remanente_margarita']:.2f} m</p>
+                    <span class="text-xs text-slate-500">Margen libre hasta cota de alivio ({diag_onda['cota_alerta_margarita']:.2f} m)</span>
+                </div>
+                <div>
+                    <span class="text-xs font-bold text-slate-500 uppercase">Actividad Convectiva en Nacientes</span>
+                    <p class="text-3xl font-black {'text-red-600' if diag_onda['rayos_nacientes'] >= 8 else 'text-emerald-600'} mt-1">{diag_onda['rayos_nacientes']}</p>
+                    <span class="text-xs text-slate-500">Descargas eléctricas recientes en cabecera</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- 3. SOLAPA: PRECIPITACIONES & ECMWF (ENFOQUE NORTE PAMPEANO) -->
         <section id="tab-precipitaciones" class="hidden space-y-6">
-            <div class="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
-                <h2 class="text-base font-bold text-slate-900 mb-1">Pronóstico del Tiempo — Modelo ECMWF IFS 0.25°</h2>
-                <p class="text-xs text-gray-500 mb-4">Lluvias acumuladas previstas para las próximas 24, 48 y 72 horas a lo largo del gradiente de cuenca.</p>
+            <div class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
+                <div class="flex justify-between items-center mb-4">
+                    <div>
+                        <h2 class="text-base font-bold text-slate-900">Pronóstico Numérico del Tiempo — Modelo ECMWF IFS 0.25°</h2>
+                        <p class="text-xs text-slate-500">Monitoreo predictivo acumulado a 72h priorizado para el norte de La Pampa y cuenca de aporte.</p>
+                    </div>
+                    <span class="text-xs font-bold px-2 py-1 bg-slate-100 text-slate-600 rounded">Resolución HRES</span>
+                </div>
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                     {cards_ecmwf}
                 </div>
             </div>
         </section>
 
-        <!-- 3. SOLAPA: CUENCAS -->
-        <section id="tab-cuencas" class="hidden bg-white border border-gray-200 rounded-xl p-6 shadow-sm space-y-4">
-            <h2 class="text-base font-bold text-slate-900">Caracterización de la Cuenca del Río V</h2>
-            <p class="text-sm text-gray-600 leading-relaxed">
-                Cuenca endorreica triprovincial: Nacientes en las Sierras de San Luis (El Trapiche / Villa Mercedes), curso canalizado y regulado en el sur de Córdoba (Laguna La Margarita / Presa El Chañar) y amortiguación final en el sistema de bañados y lagunas del norte pampeano.
-            </p>
-        </section>
-
-        <!-- 4. SOLAPA: LIMNÍGRAFOS -->
-        <section id="tab-limnigrafos" class="hidden bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
-            <h2 class="text-base font-bold text-slate-900 mb-4">Niveles Hidrométricos Oficiales (INA / SNIH)</h2>
+        <!-- 4. SOLAPA: RED LIMNIMÉTRICA OFICIAL (AGRUPADA POR TRAMOS) -->
+        <section id="tab-limnigrafos" class="hidden bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
+            <div class="flex justify-between items-center mb-4">
+                <div>
+                    <h2 class="text-base font-bold text-slate-900">Red Limnimétrica Oficial — Cuenca Río Quinto (INA / SNIH)</h2>
+                    <p class="text-xs text-slate-500">Monitoreo de niveles hidrométricos, cotas físicas de alerta y márgenes de desborde por tramo jurisdiccional.</p>
+                </div>
+                <span class="text-xs font-semibold text-slate-400">Telemetría en tiempo real</span>
+            </div>
             <div class="overflow-x-auto">
                 <table class="w-full text-left text-sm text-gray-600">
-                    <thead class="bg-gray-50 text-gray-700 uppercase font-semibold text-xs border-b border-gray-200">
+                    <thead class="bg-slate-50 text-slate-700 uppercase font-semibold text-xs border-b border-slate-200">
                         <tr>
-                            <th class="px-4 py-3">Estación</th>
-                            <th class="px-4 py-3">Cuerpo de Agua</th>
-                            <th class="px-4 py-3 text-right">Nivel Act.</th>
-                            <th class="px-4 py-3 text-right">Media Hist.</th>
+                            <th class="px-4 py-3">Estación / Nudo de Control</th>
+                            <th class="px-4 py-3">Cuerpo Hídrico</th>
+                            <th class="px-4 py-3 text-right">Nivel Actual</th>
                             <th class="px-4 py-3 text-right">Cota Alerta</th>
-                            <th class="px-4 py-3 text-right">Cota Evac.</th>
-                            <th class="px-4 py-3 text-center">Estado</th>
+                            <th class="px-4 py-3 text-right">Margen Libre</th>
+                            <th class="px-4 py-3 text-center">Semáforo</th>
                             <th class="px-4 py-3 text-center">Tendencia</th>
-                            <th class="px-4 py-3 text-center">Últ. Medición</th>
+                            <th class="px-4 py-3 text-center">Último Reporte</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody class="divide-y divide-gray-100">
                         {filas_limnigrafos}
                     </tbody>
                 </table>
             </div>
         </section>
 
-        <!-- 5. SOLAPA: ONDA DE TORMENTA -->
-        <section id="tab-traslacion" class="hidden bg-white border border-gray-200 rounded-xl p-6 shadow-sm space-y-4">
-            <h2 class="text-base font-bold text-slate-900">Traslación de Onda hacia La Pampa</h2>
-            <div class="p-6 bg-blue-50 border border-blue-200 rounded-xl grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
-                <div>
-                    <span class="text-xs font-bold text-blue-600 uppercase">Tiempo Estimado</span>
-                    <p class="text-3xl font-extrabold text-blue-950 mt-1">{diag_onda['tiempo_viaje_min_dias']:.0f} - {diag_onda['tiempo_viaje_max_dias']:.0f} Días</p>
-                    <span class="text-xs text-gray-500">A límite provincial pampeano</span>
-                </div>
-                <div>
-                    <span class="text-xs font-bold text-blue-600 uppercase">Laguna La Margarita</span>
-                    <p class="text-3xl font-extrabold text-blue-950 mt-1">{diag_onda['nivel_margarita']:.2f} m</p>
-                    <span class="text-xs text-gray-500">{diag_onda['factor_almacenamiento']}</span>
-                </div>
-                <div>
-                    <span class="text-xs font-bold text-blue-600 uppercase">Estado en Origen</span>
-                    <p class="text-3xl font-extrabold text-emerald-600 mt-1">{diag_onda['estado_alerta']}</p>
-                    <span class="text-xs text-gray-500">{diag_onda['origen_alerta']}</span>
-                </div>
-            </div>
-        </section>
-
-        <!-- 6. SOLAPA: VISOR CARTOGRÁFICO LEAFLET -->
-        <section id="tab-mapa" class="hidden bg-white border border-gray-200 rounded-xl p-2 shadow-sm">
+        <!-- 5. SOLAPA: VISOR CARTOGRÁFICO SIG (OPENSTREETMAP POLÍTICO) -->
+        <section id="tab-mapa" class="hidden bg-white border border-slate-200 rounded-xl p-2 shadow-sm">
             <div id="mapa-container"></div>
         </section>
 
-        <!-- 7. SOLAPA: ARCHIVO -->
-        <section id="tab-archivo" class="hidden bg-white border border-gray-200 rounded-xl p-6 shadow-sm space-y-4">
-            <h2 class="text-base font-bold text-slate-900">Archivo de Informes y Descargas</h2>
-            <div class="flex space-x-4">
-                <a href="{EXCEL_SALIDA}" download class="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-semibold hover:bg-emerald-700 transition">Descargar Excel Consolidado (.xlsx)</a>
-                <a href="{CSV_SALIDA}" download class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition">Descargar Cruce (.csv)</a>
+        <!-- 6. SOLAPA: INFORMES & ARCHIVO -->
+        <section id="tab-archivo" class="hidden bg-white border border-slate-200 rounded-xl p-6 shadow-sm space-y-4">
+            <h2 class="text-base font-bold text-slate-900">Descarga de Informes y Datos Crudos</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <a href="{EXCEL_SALIDA}" download class="flex items-center p-4 border border-slate-200 rounded-xl hover:border-blue-500 hover:bg-blue-50/30 transition">
+                    <div class="w-10 h-10 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-bold text-lg mr-4">XLS</div>
+                    <div>
+                        <h4 class="font-bold text-slate-800 text-sm">Planilla Ejecutiva Multisolapa (.xlsx)</h4>
+                        <p class="text-xs text-slate-500">Cruce hidro-meteorológico completo, cotas, REM, APA y Omixom.</p>
+                    </div>
+                </a>
+                <a href="{CSV_SALIDA}" download class="flex items-center p-4 border border-slate-200 rounded-xl hover:border-blue-500 hover:bg-blue-50/30 transition">
+                    <div class="w-10 h-10 rounded-lg bg-blue-600 text-white flex items-center justify-center font-bold text-lg mr-4">CSV</div>
+                    <div>
+                        <h4 class="font-bold text-slate-800 text-sm">Resumen Cruce de Cuenca (.csv)</h4>
+                        <p class="text-xs text-slate-500">Archivo liviano para integración en GIS, Power BI o tableros de gestión.</p>
+                    </div>
+                </a>
             </div>
         </section>
 
-        <!-- 8. SOLAPA: DOCUMENTACIÓN -->
-        <section id="tab-documentacion" class="hidden bg-white border border-gray-200 rounded-xl p-6 shadow-sm space-y-4">
-            <h2 class="text-base font-bold text-slate-900">Documentación Técnica</h2>
-            <p class="text-sm text-gray-600 leading-relaxed">
-                Sistema Integrado Triprovincial de Alerta Temprana en Cuenca del Río V. Monitoreo automatizado con telemetría en tiempo real de INA/SNIH, REM San Luis, APA La Pampa, descargas eléctricas Blitzortung y modelo numérico ECMWF IFS 0.25°.
+        <!-- 7. SOLAPA: PROTOCOLOS & DOCUMENTACIÓN -->
+        <section id="tab-documentacion" class="hidden bg-white border border-slate-200 rounded-xl p-6 shadow-sm space-y-4">
+            <h2 class="text-base font-bold text-slate-900">Protocolo de Operación y Encuadre Institucional</h2>
+            <p class="text-sm text-slate-600 leading-relaxed">
+                El <b>Sistema de Alerta Temprana (SAT) Triprovincial de la Cuenca del Río Quinto</b> es una plataforma técnica de soporte desarrollada para la articulación entre las administraciones hídricas y de Protección Civil de La Pampa, Córdoba y San Luis. Integra telemetría hidrométrica oficial de la Secretaría de Infraestructura y Política Hídrica (INA/SNIH), la red meteorológica de San Luis (REM), la Administración Provincial del Agua de La Pampa (APA), sensores remotos radar SINARAME, modelo numérico global ECMWF y el Sistema de Alerta Temprana del Servicio Meteorológico Nacional (SMN).
             </p>
         </section>
 
     </main>
 
-    <!-- CONTROL DE SOLAPAS Y CARTOGRAFÍA LEAFLET -->
+    <!-- CONTROL JAVASCRIPT DE PESTAÑAS Y CARTOGRAFÍA LEAFLET -->
     <script>
         var mapaLeaflet = null;
         var datosHidro = {geo_hidro};
@@ -917,7 +1004,7 @@ def compilar_portal_web_monitor_zv(hidro_resumen, meteo_total, diag_onda, rayos,
         var datosRayos = {geo_rayos};
 
         function cambiarTab(tabId) {{
-            var tabs = ['panel', 'precipitaciones', 'cuencas', 'limnigrafos', 'traslacion', 'mapa', 'archivo', 'documentacion'];
+            var tabs = ['panel', 'traslacion', 'precipitaciones', 'limnigrafos', 'mapa', 'archivo', 'documentacion'];
             tabs.forEach(function(t) {{
                 var el = document.getElementById('tab-' + t);
                 var btn = document.getElementById('btn-' + t);
@@ -941,22 +1028,20 @@ def compilar_portal_web_monitor_zv(hidro_resumen, meteo_total, diag_onda, rayos,
                 return;
             }}
 
-            // Mapa centrado en la cuenca
             mapaLeaflet = L.map('mapa-container').setView([-34.5, -64.8], 7);
 
-            // Capa OpenStreetMap con división política, rutas, localidades y departamentos
+            // Capa OpenStreetMap con límites interprovinciales, departamentos y rutas
             var osmPolitico = L.tileLayer('https://{{s}}.tile.openstreetmap.org/{{z}}/{{x}}/{{y}}.png', {{
                 attribution: '&copy; OpenStreetMap contributors',
                 maxZoom: 19
             }}).addTo(mapaLeaflet);
 
-            // Capa clara alternativa de Esri Canvas
             var esriCanvas = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{{z}}/{{y}}/{{x}}', {{
-                attribution: '&copy; Esri, HERE, Garmin, FAO, USGS',
+                attribution: '&copy; Esri, HERE, Garmin',
                 maxZoom: 16
             }});
 
-            // Capas temáticas
+            // Capas temáticas independientes
             var layerHidro = L.featureGroup().addTo(mapaLeaflet);
             var layerMeteoSL = L.featureGroup().addTo(mapaLeaflet);
             var layerMeteoCba = L.featureGroup().addTo(mapaLeaflet);
@@ -978,7 +1063,7 @@ def compilar_portal_web_monitor_zv(hidro_resumen, meteo_total, diag_onda, rayos,
                 }}).bindPopup("<b>" + h.nombre + "</b><br>Nivel actual: <b>" + h.nivel_actual.toFixed(2) + " m</b> (" + h.estado + ")<br>Alerta: " + h.cota_alerta + " m | Evac: " + h.cota_evac + " m").addTo(layerHidro);
             }});
 
-            // Marcadores Meteorológicos separados por red
+            // Marcadores Meteorológicos por red
             datosMeteo.forEach(function(m) {{
                 var color, targetLayer;
                 if (m.red.indexOf('San Luis') !== -1) {{
@@ -1034,13 +1119,11 @@ def compilar_portal_web_monitor_zv(hidro_resumen, meteo_total, diag_onda, rayos,
                     }}
                 }}).catch(function(e) {{ console.warn("RainViewer off:", e); }});
 
-            // Mapas base
             var baseMaps = {{
-                "🗺️ OpenStreetMap (Político/Rutas)": osmPolitico,
+                "🗺️ OpenStreetMap (Político / Rutas)": osmPolitico,
                 "⚪ Cartografía Clara (Esri)": esriCanvas
             }};
 
-            // Capas superpuestas
             var overlays = {{
                 "💧 Limnígrafos (INA)": layerHidro,
                 "⛰️ REM San Luis": layerMeteoSL,
@@ -1083,10 +1166,12 @@ def generar_entregables_excel_csv(hidro_resumen, meteo_total, diag_onda):
         filas_cruce.append({
             "Estación Hidrológica": h["nombre"],
             "Río / Cuenca": h["rio"],
+            "Tramo Jurisdiccional": h.get("tramo", "Cuenca Río V"),
             "Nivel Actual (m)": h["nivel_actual"],
             "Media Histórica (m)": h["media_hist"],
             "Cota Alerta (m)": h["cota_alerta"],
             "Cota Evacuación (m)": h["cota_evac"],
+            "Margen Alerta (m)": round(h["cota_alerta"] - h["nivel_actual"], 2),
             "Estado Semáforo": h["estado"],
             "Tendencia Río": h["tendencia"],
             "Estación Meteo Cercana": f"{m_cercana['nombre']} ({m_cercana['provincia']})" if m_cercana else "N/A",
@@ -1135,7 +1220,7 @@ def generar_entregables_excel_csv(hidro_resumen, meteo_total, diag_onda):
 # =============================================================
 if __name__ == "__main__":
     print("=" * 70)
-    print(">>> SAT TRIPROVINCIAL RÍO V: EJECUTANDO ACTUALIZACIÓN INTEGRAL <<<")
+    print(">>> SAT RÍO QUINTO: ACTUALIZACIÓN INTEGRAL TRIPROVINCIAL <<<")
     print("=" * 70)
 
     # 1. Pronóstico Numérico ECMWF
@@ -1167,6 +1252,7 @@ if __name__ == "__main__":
         color, estado, c_alerta, c_evac = clasificar_nivel(ult["valor"], nombre_est)
         hidro_resumen.append({
             "nombre": nombre_est, "rio": ult["rio"], "distrito": ult["distrito"],
+            "tramo": ult.get("tramo", "Cuenca Río V"),
             "lat": ult["lat"], "lon": ult["lon"], "nivel_actual": ult["valor"],
             "media_hist": media_val, "cota_alerta": c_alerta, "cota_evac": c_evac,
             "tendencia": tendencia, "color": color, "estado": estado,
@@ -1174,7 +1260,7 @@ if __name__ == "__main__":
             "fuente": ult["fuente"]
         })
 
-    # 6. Traslación de Onda
+    # 6. Traslación de Onda y Capacidad de Amortiguación
     diag_onda = calcular_tiempo_viaje_onda(hidro_resumen, rayos_cuenca)
 
     # 7. Generación de Archivos
@@ -1182,5 +1268,5 @@ if __name__ == "__main__":
     compilar_portal_web_monitor_zv(hidro_resumen, total_meteo, diag_onda, rayos_cuenca, pronostico_ecmwf, alertas_smn)
 
     print("=" * 70)
-    print("PROCESO COMPLETADO EXITOSAMENTE. 'index.html' LISTO PARA GITHUB PAGES.")
+    print("PROCESO COMPLETADO EXITOSAMENTE. 'index.html' LISTO CON ENFOQUE PAMPEANO.")
     print("=" * 70)
