@@ -1,10 +1,10 @@
-﻿Estación Hidrológica,Río / Cuenca,Nivel Actual (m),Media Histórica (m),Cota Alerta (m),Cota Evacuación (m),Estado Semáforo,Tendencia Río,Estación Meteo Cercana,Red,Distancia (km),Lluvia 24h (mm),Temp (°C),Tiempo Viaje a LP (días)
-Aº El Aji - RN Nº35 y RN Nº7,Afluente Río Quinto,0.63,0.63,1.9,2.4,Normal,Estable ▬,Vicuña Mackenna (Córdoba),Omixom Córdoba,5.8,0.0,S/D,7-10 d
-Laguna La Margarita,Cuenca Río Quinto,1.33,1.34,2.4,3.0,Normal,Estable ▬,Hipólito Bouchard (Córdoba),Omixom Córdoba,21.0,0.0,S/D,7-10 d
-Quinto - Av Circunvalación,Río Quinto,0.13,0.11,2.5,3.2,Normal,Estable ▬,Villa Reynolds (San Luis),REM San Luis,1.7,0.1,13.5,7-10 d
-Quinto - Canal Devoto RP 4,Río Quinto / Canal Devoto,1.04,0.96,2.8,3.4,Normal,Creciendo ▲,Río Bamba (Córdoba),Omixom Córdoba,29.4,0.0,S/D,7-10 d
-Quinto - Dique Villa Mercedes,Río Quinto,1.09,1.08,2.8,3.5,Normal,Estable ▬,Villa Mercedes (San Luis),REM San Luis,3.8,0.1,13.6,7-10 d
-Quinto - Justo Daract,Río Quinto,1.77,1.75,2.9,3.6,Normal,Estable ▬,Justo Daract (San Luis),REM San Luis,7.8,0.0,14.3,7-10 d
-Quinto - R.N. 35,Río Quinto,1.14,1.15,2.6,3.2,Normal,Estable ▬,Nicolás Bruzzone (Córdoba),Omixom Córdoba,25.1,0.0,S/D,7-10 d
-Quinto - RP Nº26,Río Quinto,0.68,0.67,2.2,2.8,Normal,Creciendo ▲,Hipólito Bouchard (Córdoba),Omixom Córdoba,14.4,0.0,S/D,7-10 d
-Trapiche - Hosteria El Trapiche,Río Trapiche (Afluente),0.3,0.3,1.8,2.3,Normal,Estable ▬,El Trapiche (San Luis),REM San Luis,0.6,0.0,11.6,7-10 d
+﻿Estación Hidrológica,Río / Cuenca,Tramo Jurisdiccional,Nivel Actual (m),Media Histórica (m),Cota Alerta (m),Cota Evacuación (m),Margen Alerta (m),Estado Semáforo,Tendencia Río,Estación Meteo Cercana,Red,Distancia (km),Lluvia 24h (mm),Temp (°C),Tiempo Viaje a LP (días)
+Aº El Aji - RN Nº35 y RN Nº7,Afluente Río Quinto,Cuenca Media (Córdoba),0.63,0.63,1.9,2.4,1.27,Vigilancia Ordinaria,Estable ▬,Vicuña Mackenna (Córdoba),Omixom Córdoba,5.8,0.0,S/D,7-10 d
+Laguna La Margarita,Cuenca Río Quinto,Cuenca Media (Córdoba),1.33,1.34,2.4,3.0,1.07,Vigilancia Ordinaria,Estable ▬,Hipólito Bouchard (Córdoba),Omixom Córdoba,21.0,0.0,S/D,7-10 d
+Quinto - Av Circunvalación,Río Quinto,Cuenca Alta (San Luis),0.11,0.11,2.5,3.2,2.39,Vigilancia Ordinaria,Bajando ▼,Villa Reynolds (San Luis),REM San Luis,1.7,0.1,13.5,7-10 d
+Quinto - Canal Devoto RP 4,Río Quinto / Canal Devoto,Cuenca Media (Córdoba),1.04,0.96,2.8,3.4,1.76,Vigilancia Ordinaria,Creciendo ▲,Río Bamba (Córdoba),Omixom Córdoba,29.4,0.0,S/D,7-10 d
+Quinto - Dique Villa Mercedes,Río Quinto,Cuenca Alta (San Luis),1.08,1.08,2.8,3.5,1.72,Vigilancia Ordinaria,Estable ▬,Villa Mercedes (San Luis),REM San Luis,3.8,0.1,13.6,7-10 d
+Quinto - Justo Daract,Río Quinto,Cuenca Alta (San Luis),1.77,1.75,2.9,3.6,1.13,Vigilancia Ordinaria,Estable ▬,Justo Daract (San Luis),REM San Luis,7.8,0.1,14.2,7-10 d
+Quinto - R.N. 35,Río Quinto,Cuenca Media (Córdoba),1.14,1.15,2.6,3.2,1.46,Vigilancia Ordinaria,Estable ▬,Nicolás Bruzzone (Córdoba),Omixom Córdoba,25.1,0.0,S/D,7-10 d
+Quinto - RP Nº26,Río Quinto,Ingreso Cuenca Baja (La Pampa),0.68,0.67,2.2,2.8,1.52,Vigilancia Ordinaria,Creciendo ▲,Hipólito Bouchard (Córdoba),Omixom Córdoba,14.4,0.0,S/D,7-10 d
+Trapiche - Hosteria El Trapiche,Río Trapiche (Afluente),Cuenca Alta (San Luis),0.3,0.3,1.8,2.3,1.5,Vigilancia Ordinaria,Estable ▬,El Trapiche (San Luis),REM San Luis,0.6,0.0,11.4,7-10 d
