@@ -2,7 +2,7 @@ name: Actualizar SAT Rio V en Tiempo Real
 
 on:
   schedule:
-    - cron: '*/10 * * * *'  # Corre automáticamente cada 10 minutos
+    - cron: '*/10 * * * *'  # Cada 10 minutos
   workflow_dispatch:
 
 permissions:
@@ -25,16 +25,12 @@ jobs:
           python-version: '3.11'
           cache: 'pip'
 
-      - name: Instalar dependencias
+      - name: Instalar dependencias completas
         run: |
           python -m pip install --upgrade pip
-          if [ -f requirements.txt ]; then
-            pip install -r requirements.txt
-          else
-            pip install pandas numpy requests beautifulsoup4 openpyxl
-          fi
+          pip install pandas numpy requests beautifulsoup4 openpyxl urllib3
 
-      - name: Ejecutar Extractor y Generador
+      - name: Ejecutar Extractor y Generador Web
         run: |
           python sat_unificado_hidro_meteo.py
 
@@ -43,15 +39,17 @@ jobs:
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
           
-          # Elimina el mapa viejo para que no sobreescriba ni cause conflicto
+          # Limpieza del archivo viejo de Folium si existiera
           git rm -f mapa_sat_rio_v_triprovincial.html 2>/dev/null || true
           
-          # Agrega el index.html generado directamente por el script y los reportes
+          # Agregar los archivos actualizados
           git add index.html sat_unificado_rio_v_triprovincial.xlsx resumen_cruce_rio_v_triprovincial.csv
           
-          # Commit y push sin [skip ci] para disparar el deployment de GitHub Pages
+          # Solo hacer commit y push si efectivamente hubo cambios
           if ! git diff --staged --quiet; then
             git commit -m "Auto-actualizacion SAT Rio V [$(date -u '+%Y-%m-%d %H:%M UTC')]"
             git pull --rebase origin main || true
             git push origin main
+          else
+            echo "Sin cambios detectados en este ciclo."
           fi
