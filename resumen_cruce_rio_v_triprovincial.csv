@@ -1,10 +1,10 @@
-﻿Estación Hidrológica,Río / Cuenca,Tramo Jurisdiccional,Nivel Actual (m),Media Histórica (m),Cota Alerta (m),Cota Evacuación (m),Margen Alerta (m),Estado Semáforo,Tendencia Río,Estación Meteo Cercana,Red,Distancia (km),Lluvia 24h (mm),Temp (°C),Tiempo Viaje a LP (días)
-Aº El Aji - RN Nº35 y RN Nº7,Afluente Río Quinto,Cuenca Media (Córdoba),0.67,0.64,1.9,2.4,1.23,Vigilancia Preventiva / Calma Hidrológica,Estable ▬,Vicuña Mackenna (Córdoba),Omixom Córdoba,5.8,0.0,S/D,7-10 d
-Laguna La Margarita,Cuenca Río Quinto,Cuenca Media (Córdoba),1.38,1.35,2.4,3.0,1.02,Vigilancia Preventiva / Calma Hidrológica,Bajando ▼,Hipólito Bouchard (Córdoba),Omixom Córdoba,21.0,0.0,S/D,7-10 d
-Quinto - Av Circunvalación,Río Quinto,Cuenca Alta (San Luis),0.12,0.1,2.5,3.2,2.38,Vigilancia Preventiva / Calma Hidrológica,Estable ▬,Villa Reynolds (San Luis),REM San Luis,1.7,0.0,15.8,7-10 d
-Quinto - Canal Devoto RP 4,Río Quinto / Canal Devoto,Cuenca Media (Córdoba),1.01,0.98,2.8,3.4,1.79,Vigilancia Preventiva / Calma Hidrológica,Estable ▬,Río Bamba (Córdoba),Omixom Córdoba,29.4,0.0,S/D,7-10 d
-Quinto - Dique Villa Mercedes,Río Quinto,Cuenca Alta (San Luis),1.07,1.07,2.8,3.5,1.73,Vigilancia Preventiva / Calma Hidrológica,Estable ▬,Villa Mercedes (San Luis),REM San Luis,3.8,0.0,15.1,7-10 d
-Quinto - Justo Daract,Río Quinto,Cuenca Alta (San Luis),1.78,1.77,2.9,3.6,1.12,Vigilancia Preventiva / Calma Hidrológica,Estable ▬,Justo Daract (San Luis),REM San Luis,7.8,0.0,15.2,7-10 d
-Quinto - R.N. 35,Río Quinto,Cuenca Media (Córdoba),1.18,1.14,2.6,3.2,1.42,Vigilancia Preventiva / Calma Hidrológica,Estable ▬,Nicolás Bruzzone (Córdoba),Omixom Córdoba,25.1,0.0,S/D,7-10 d
-Quinto - RP Nº26,Río Quinto,Ingreso Cuenca Baja (La Pampa),0.63,0.65,2.2,2.8,1.57,Vigilancia Preventiva / Calma Hidrológica,Estable ▬,Hipólito Bouchard (Córdoba),Omixom Córdoba,14.4,0.0,S/D,7-10 d
-Trapiche - Hosteria El Trapiche,Río Trapiche (Afluente),Cuenca Alta (San Luis),0.35,0.31,1.8,2.3,1.45,Vigilancia Preventiva / Calma Hidrológica,Estable ▬,El Trapiche (San Luis),REM San Luis,0.6,0.0,12.4,7-10 d
+﻿Estacion Hidrologica,Rio / Cuenca,Tramo Jurisdiccional,Nivel Actual (m),Media Historica (m),Cota Alerta (m),Cota Evacuacion (m),Margen Alerta (m),Estado Semaforo,Tendencia Rio,Estacion Meteo Cercana,Red,Distancia (km),Lluvia 24h (mm),Temp (C),Tiempo Viaje a LP (dias)
+Ao El Aji - RN No35 y RN No7,Afluente Rio Quinto,Cuenca Media (Cordoba),0.67,0.64,1.9,2.4,1.23,Vigilancia Preventiva / Calma Hidrologica,Estable =,Vicuna Mackenna (Cordoba),Omixom Cordoba,5.8,0.0,S/D,7-10 d
+Laguna La Margarita,Cuenca Rio Quinto,Cuenca Media (Cordoba),1.38,1.35,2.4,3.0,1.02,Vigilancia Preventiva / Calma Hidrologica,Bajando -,Hipolito Bouchard (Cordoba),Omixom Cordoba,21.0,0.0,S/D,7-10 d
+Quinto - Av Circunvalacion,Rio Quinto,Cuenca Alta (San Luis),0.12,0.1,1.6,2.2,1.48,Vigilancia Preventiva / Calma Hidrologica,Estable =,Villa Reynolds (San Luis),REM San Luis,1.7,0.0,18.1,7-10 d
+Quinto - Canal Devoto RP 4,Rio Quinto / Canal Devoto,Cuenca Media (Cordoba),1.0,0.98,2.8,3.4,1.8,Vigilancia Preventiva / Calma Hidrologica,Estable =,Rio Bamba (Cordoba),Omixom Cordoba,29.4,0.0,S/D,7-10 d
+Quinto - Dique Villa Mercedes,Rio Quinto,Cuenca Alta (San Luis),1.08,1.07,2.8,3.5,1.72,Vigilancia Preventiva / Calma Hidrologica,Estable =,Villa Mercedes (San Luis),REM San Luis,3.8,0.0,16.2,7-10 d
+Quinto - Justo Daract,Rio Quinto,Cuenca Alta (San Luis),1.78,1.77,2.9,3.6,1.12,Vigilancia Preventiva / Calma Hidrologica,Estable =,Justo Daract (San Luis),REM San Luis,7.8,0.0,16.8,7-10 d
+Quinto - R.N. 35,Rio Quinto,Cuenca Media (Cordoba),1.19,1.14,2.6,3.2,1.41,Vigilancia Preventiva / Calma Hidrologica,Estable =,Nicolas Bruzzone (Cordoba),Omixom Cordoba,25.1,0.0,S/D,7-10 d
+Quinto - RP No26,Rio Quinto,Ingreso Cuenca Baja (La Pampa),0.63,0.65,2.2,2.8,1.57,Vigilancia Preventiva / Calma Hidrologica,Estable =,Hipolito Bouchard (Cordoba),Omixom Cordoba,14.4,0.0,S/D,7-10 d
+Trapiche - Hosteria El Trapiche,Rio Trapiche (Afluente),Cuenca Alta (San Luis),0.35,0.31,1.8,2.3,1.45,Vigilancia Preventiva / Calma Hidrologica,Estable =,El Trapiche (San Luis),REM San Luis,0.6,0.0,14.3,7-10 d
