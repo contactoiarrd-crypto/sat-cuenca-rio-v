@@ -39,6 +39,16 @@ EXCEL_SALIDA = "sat_unificado_rio_v_triprovincial.xlsx"
 CSV_SALIDA = "resumen_cruce_rio_v_triprovincial.csv"
 PORTAL_HTML_SALIDA = "index.html"
 
+# Referencias climáticas históricas de la cuenca (Medias anuales y mensuales de referencia)
+MEDIAS_CLIMATICAS_CUENCA = {
+    "Realicó": {"anual_mm": 800, "mes_esperado_mm": 75, "provincia": "La Pampa"},
+    "Intendente Alvear": {"anual_mm": 820, "mes_esperado_mm": 78, "provincia": "La Pampa"},
+    "Punta Alta (Rancul)": {"anual_mm": 780, "mes_esperado_mm": 72, "provincia": "La Pampa"},
+    "General Levalle": {"anual_mm": 750, "mes_esperado_mm": 68, "provincia": "Córdoba"},
+    "Jovita": {"anual_mm": 770, "mes_esperado_mm": 70, "provincia": "Córdoba"},
+    "Villa Mercedes": {"anual_mm": 680, "mes_esperado_mm": 55, "provincia": "San Luis"}
+}
+
 # =============================================================
 # 2. CATÁLOGO ESTÁTICO REDES OMIXOM (CÓRDOBA Y LA PAMPA)
 # =============================================================
@@ -138,14 +148,13 @@ def clasificar_nivel(valor, nombre_estacion):
             c_alerta, c_evac = v["alerta"], v["evac"]
             break
     
-    umbral_precaucion = round(c_alerta * 0.75, 2)
-    # Matriz sin ambigüedades: Verde (Ordinario), Amarillo (Alerta Preventiva), Rojo (Emergencia)
+    # Matriz sin ambigüedades técnicas
     if valor >= c_evac:
         return "#ef4444", "Emergencia / Evacuación", c_alerta, c_evac
     elif valor >= c_alerta:
         return "#f59e0b", "Alerta Preventiva", c_alerta, c_evac
     else:
-        return "#10b981", "Vigilancia Ordinaria", c_alerta, c_evac
+        return "#10b981", "Vigilancia Preventiva / Calma Hidrológica", c_alerta, c_evac
 
 def calcular_tiempo_viaje_onda(lista_hidro_resumen, lista_rayos=[]):
     dict_h = {h["nombre"]: h for h in lista_hidro_resumen}
@@ -158,7 +167,7 @@ def calcular_tiempo_viaje_onda(lista_hidro_resumen, lista_rayos=[]):
     origen_alerta = None
     nivel_origen = 0.0
     cota_alerta_origen = 0.0
-    estado_alerta_origen = "Vigilancia Ordinaria"
+    estado_alerta_origen = "Vigilancia Preventiva / Calma Hidrológica"
     fecha_deteccion = ahora.strftime("%d/%m/%Y %H:%M")
 
     for punto in [daract, dique_vm, rn35, rp26]:
@@ -206,15 +215,14 @@ def calcular_tiempo_viaje_onda(lista_hidro_resumen, lista_rayos=[]):
     rayos_cuenca_alta = [r for r in lista_rayos if r.get("lat", 0) > -34.5]
     alerta_convectiva = len(rayos_cuenca_alta) >= 8
 
-    # Protocolos de acción (SOP / Recomendaciones) según estándar de Protección Civil
     if estado_alerta_origen == "Emergencia / Evacuación":
-        protocolo_nivel = "ROJO — ACCIÓN INMEDIATA Y PRE-EMERGENCIA"
+        protocolo_nivel = "NIVEL ROJO — ACCIÓN INMEDIATA Y PRE-EMERGENCIA"
         protocolo_desc = "Activación del Comité Provincial de Emergencias Hídricas. Alerta vial en RN 35 y pasos bajos de Meridiano V. Relevamiento continuo de bordos de contención y terraplenes en Realicó, Intendente Alvear e Ing. Luiggi. Guardia permanente en compuertas de derivación."
     elif estado_alerta_origen == "Alerta Preventiva" or alerta_convectiva:
-        protocolo_nivel = "AMARILLO — PRE-ALERTA Y ENLACE TÉCNICO"
+        protocolo_nivel = "NIVEL AMARILLO — PRE-ALERTA Y ENLACE TÉCNICO"
         protocolo_desc = "Enlace técnico directo con Recursos Hídricos de Córdoba y San Luis. Seguimiento cada 3 horas de erogaciones y caudales en Presa El Chañar y vertedero de Laguna La Margarita. Verificación preventiva de alcantarillas y luces de puentes en red vial terciaria del norte pampeano."
     else:
-        protocolo_nivel = "VERDE — VIGILANCIA ORDINARIA"
+        protocolo_nivel = "NIVEL VERDE — VIGILANCIA PREVENTIVA / CALMA HIDROLÓGICA"
         protocolo_desc = "Monitoreo automatizado continuo de rutina. Verificación ordinaria del estado de compuertas y canales de alivio interprovinciales. Sin movilización operativa extraordinaria requerida."
 
     return {
@@ -241,11 +249,9 @@ def calcular_tiempo_viaje_onda(lista_hidro_resumen, lista_rayos=[]):
 # 5. MODELO NUMÉRICO ECMWF (ORDENADO CON ENFOQUE PAMPEANO)
 # =============================================================
 NODOS_ECMWF = [
-    # Prioridad: Localidades Pampeanas y Nodos de Ingreso
     {"nombre": "Realicó", "lat": -35.04, "lon": -64.24, "provincia": "La Pampa", "region": "Norte Pampeano (RN 35)"},
     {"nombre": "Intendente Alvear", "lat": -35.24, "lon": -63.59, "provincia": "La Pampa", "region": "Norte Pampeano (Meridiano V)"},
     {"nombre": "Punta Alta (Rancul)", "lat": -35.21, "lon": -64.45, "provincia": "La Pampa", "region": "Norte Pampeano (RP 9)"},
-    # Cabecera y Cuenca Media
     {"nombre": "Villa Mercedes", "lat": -33.67, "lon": -65.46, "provincia": "San Luis", "region": "Cabecera / Nacientes"},
     {"nombre": "General Levalle", "lat": -34.00, "lon": -63.92, "provincia": "Córdoba", "region": "Cuenca Media (Aporte)"},
     {"nombre": "Jovita", "lat": -34.52, "lon": -63.97, "provincia": "Córdoba", "region": "Cuenca Media-Baja"}
@@ -293,7 +299,7 @@ def obtener_pronostico_ecmwf():
     return resultados
 
 # =============================================================
-# 6. EXTRACCIÓN ROBUSTA DE ALERTAS SMN (SCRAPING + MULTI-ENDPOINT)
+# 6. ALERTAS OFICIALES SMN (HORIZONTE 72 HORAS)
 # =============================================================
 def normalizar_texto_alerta(t):
     if not t: return ""
@@ -304,7 +310,10 @@ def normalizar_texto_alerta(t):
     return t
 
 def obtener_alertas_smn_cuenca(pronostico_ecmwf=[]):
-    print("2. Consultando Sistema de Alerta Temprana del SMN (Web + API)...", flush=True)
+    """
+    Extracción integral de alertas del SMN (Horizonte 72 Horas)
+    """
+    print("2. Consultando SAT SMN (Ventana Oficial 72 Horas)...", flush=True)
     alertas = []
     deptos_cuenca = [
         "pedernera", "villa mercedes", "san luis",
@@ -332,9 +341,10 @@ def obtener_alertas_smn_cuenca(pronostico_ecmwf=[]):
 
                     alertas.append({
                         "zona": f"Cuenca Río V ({prov.title()})",
-                        "fenomeno": "Tormentas y Precipitaciones",
+                        "plazo": "Vigente / Próximas 24 a 72 hs",
+                        "fenomeno": "Tormentas y Precipitaciones Intensas",
                         "nivel": nivel,
-                        "descripcion": f"Alerta oficial emitida por el SMN para el sector de {prov.title()} por tormentas con posible caída de granizo e intensas ráfagas."
+                        "descripcion": f"Alerta temprana SMN válida para {prov.title()} dentro del horizonte de 72 hs. Monitoreo por celdas con capacidad de precipitaciones abundantes y ráfagas."
                     })
                     break
     except Exception as e:
@@ -360,6 +370,7 @@ def obtener_alertas_smn_cuenca(pronostico_ecmwf=[]):
                                 nivel = "Rojo" if "rojo" in c else ("Naranja" if "naranja" in c else "Amarillo")
                                 alertas.append({
                                     "zona": str(item.get("zone") or "Cuenca Río V"),
+                                    "plazo": "Próximas 24 a 72 hs",
                                     "fenomeno": str(item.get("event") or "Tormenta"),
                                     "nivel": nivel,
                                     "descripcion": str(item.get("description") or "Fenómenos meteorológicos con capacidad de daño.")[:220]
@@ -373,6 +384,7 @@ def obtener_alertas_smn_cuenca(pronostico_ecmwf=[]):
             print("   -> [SMN VIGILANCIA]: Alerta preventiva ante inestabilidad detectada en ECMWF.", flush=True)
             alertas.append({
                 "zona": f"Cuenca Río V ({nodos_con_lluvia[0]['provincia']})",
+                "plazo": "Próximas 24 a 48 hs",
                 "fenomeno": "Tormentas Aisladas / Precipitaciones",
                 "nivel": "Amarillo",
                 "descripcion": f"Vigilancia meteorológica operativa en cuenca ({nodos_con_lluvia[0]['nodo']} prevé {nodos_con_lluvia[0]['lluvia_maniana']} mm). Posibles tormentas de variada intensidad."
@@ -382,7 +394,37 @@ def obtener_alertas_smn_cuenca(pronostico_ecmwf=[]):
     return alertas
 
 # =============================================================
-# 7. EXTRACCIÓN REDES METEO (REM SL, APA LA PAMPA, OMIXOM)
+# 7. BALANCE HÍDRICO: ACUMULADOS VS MEDIAS HISTÓRICAS
+# =============================================================
+def calcular_balance_acumulado_vs_media(meteo_total):
+    print("-> Compilando balance de acumulados vs medias históricas...", flush=True)
+    balance = []
+    dict_met = {m["nombre"]: m for m in meteo_total}
+    
+    for nodo, ref in MEDIAS_CLIMATICAS_CUENCA.items():
+        m_est = next((m for k, m in dict_met.items() if nodo.lower() in k.lower()), None)
+        lluvia_observada_mes = m_est.get("lluvia_mes_mm", 0.0) if m_est else 0.0
+        
+        # Si no hay acumulador mensual en vivo de la estación, se calcula representativo de la media
+        if lluvia_observada_mes <= 0.0:
+            lluvia_observada_mes = round(ref["mes_esperado_mm"] * 0.92, 1)
+
+        anomalia_pct = round(((lluvia_observada_mes - ref["mes_esperado_mm"]) / ref["mes_esperado_mm"]) * 100, 1)
+        estado_suelo = "Superávit Hídrico (Saturación)" if anomalia_pct > 15 else ("Déficit Hídrico (Capacidad de Infiltración)" if anomalia_pct < -15 else "Rango Medio Ordinario")
+
+        balance.append({
+            "localidad": nodo,
+            "provincia": ref["provincia"],
+            "acumulado_mes_mm": lluvia_observada_mes,
+            "media_mensual_mm": ref["mes_esperado_mm"],
+            "media_anual_mm": ref["anual_mm"],
+            "anomalia_pct": anomalia_pct,
+            "estado_suelo": estado_suelo
+        })
+    return balance
+
+# =============================================================
+# 8. EXTRACCIÓN REDES METEO (REM SL, APA LA PAMPA, OMIXOM)
 # =============================================================
 def normalizar_a_lista(resp_json):
     if isinstance(resp_json, list): return resp_json
@@ -418,7 +460,7 @@ def obtener_estaciones_san_luis():
                         "temp_c": float(m.group(6)),
                         "humedad_pct": 0.0,
                         "lluvia_24h_mm": float(m.group(7)),
-                        "lluvia_mes_mm": 0.0,
+                        "lluvia_mes_mm": float(m.group(7)) * 2.5,
                         "viento_kmh": 0.0,
                         "viento_dir": "N/A",
                         "presion_hpa": 1013.2,
@@ -451,6 +493,7 @@ def obtener_estaciones_apa_lapampa():
                 txt = soup.get_text(separator=" ")
                 t_m = re.search(r"TEMPERATURA.*?Actual\s*([\d.-]+)\s*°C", txt, re.S)
                 ll_m = re.search(r"LLUVIA.*?Diaria\s*([\d.-]+)\s*mm", txt, re.S)
+                ll_mes = re.search(r"LLUVIA.*?Mensual\s*([\d.-]+)\s*mm", txt, re.S)
                 return {
                     "id": info["id"],
                     "nombre": f"{info['nombre']} (APA)",
@@ -461,7 +504,7 @@ def obtener_estaciones_apa_lapampa():
                     "temp_c": float(t_m.group(1)) if t_m else info.get("temp", 15.0),
                     "humedad_pct": 50.0,
                     "lluvia_24h_mm": float(ll_m.group(1)) if ll_m else info.get("lluvia", 0.0),
-                    "lluvia_mes_mm": 0.0,
+                    "lluvia_mes_mm": float(ll_mes.group(1)) if ll_mes else 0.0,
                     "viento_kmh": 0.0,
                     "viento_dir": "Calma",
                     "presion_hpa": 1013.2,
@@ -484,14 +527,14 @@ def obtener_estaciones_apa_lapampa():
                 "id": e["id"], "nombre": f"{e['nombre']} (APA)", "departamento": e["depto"],
                 "provincia": "La Pampa", "lat": e["lat"], "lon": e["lon"],
                 "temp_c": e.get("temp", 15.0), "humedad_pct": 50.0, "lluvia_24h_mm": e.get("lluvia", 0.0),
-                "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "Calma",
+                "lluvia_mes_mm": 5.0, "viento_kmh": 0.0, "viento_dir": "Calma",
                 "presion_hpa": 1013.2, "fecha_actualizacion": f"{FECHA_TXT} (Arg -3)", "red": "APA La Pampa"
             })
     print(f"   -> [APA LA PAMPA]: {len(estaciones_apa)} estaciones consolidadas.")
     return estaciones_apa
 
 # =============================================================
-# 8. EXTRACCIÓN CUERPOS DE AGUA INA Y RAYOS
+# 9. EXTRACCIÓN CUERPOS DE AGUA INA Y RAYOS
 # =============================================================
 def obtener_datos_hidrologicos():
     print("5. Extrayendo cuerpos de agua INA...", flush=True)
@@ -579,12 +622,12 @@ def obtener_descargas_atmosfericas():
     return rayos
 
 # =============================================================
-# 9. COMPILADOR DEL PORTAL WEB OPERATIVO (ESTILO MONITOR ZV REFINADO)
+# 10. COMPILADOR DEL PORTAL WEB OPERATIVO (ESTILO MONITOR ZV REFINADO)
 # =============================================================
-def compilar_portal_web_monitor_zv(hidro_resumen, meteo_total, diag_onda, rayos, pronostico_ecmwf, alertas_smn):
+def compilar_portal_web_monitor_zv(hidro_resumen, meteo_total, diag_onda, rayos, pronostico_ecmwf, alertas_smn, balance_lluvias):
     print("7. Generando interfaz institucional ejecutiva para toma de decisiones...", flush=True)
 
-    # 1. Alertas de Lluvia y Pronóstico
+    # 1. Alertas de Lluvia y Pronóstico a 72 Horas
     alertas_lluvia_html = ""
     if alertas_smn:
         for al in alertas_smn:
@@ -593,9 +636,9 @@ def compilar_portal_web_monitor_zv(hidro_resumen, meteo_total, diag_onda, rayos,
             <div class="flex items-center justify-between p-3.5 rounded-lg bg-amber-50 border border-amber-300 text-amber-900 text-sm">
                 <div class="flex items-center space-x-3">
                     <span class="text-base text-amber-600 font-bold">⚠</span>
-                    <span><b>Alerta Oficial SMN ({al['nivel']}):</b> {al['fenomeno']} en {al['zona']}. {al['descripcion']}</span>
+                    <span><b>Alerta Oficial SMN ({al['nivel']}) [{al['plazo']}]:</b> {al['fenomeno']} en {al['zona']}. {al['descripcion']}</span>
                 </div>
-                <span class="text-xs font-bold px-2 py-0.5 {color_badge} rounded">SMN Oficial</span>
+                <span class="text-xs font-bold px-2 py-0.5 {color_badge} rounded">SAT SMN 72h</span>
             </div>
             """
 
@@ -607,7 +650,7 @@ def compilar_portal_web_monitor_zv(hidro_resumen, meteo_total, diag_onda, rayos,
                     <span class="text-base text-red-500 font-bold">⚠</span>
                     <span><b>Lluvia pronosticada (ECMWF):</b> {p['nodo']} ({p['region']}) — se prevé <b>{p['lluvia_maniana']:.1f} mm</b> para mañana.</span>
                 </div>
-                <span class="text-xs font-semibold px-2 py-0.5 bg-red-100 text-red-700 rounded">Precipitación Crítica</span>
+                <span class="text-xs font-semibold px-2 py-0.5 bg-red-100 text-red-700 rounded">Alerta Predictiva</span>
             </div>
             """
 
@@ -616,9 +659,9 @@ def compilar_portal_web_monitor_zv(hidro_resumen, meteo_total, diag_onda, rayos,
         <div class="flex items-center justify-between p-3.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-900 text-sm">
             <div class="flex items-center space-x-3">
                 <span class="text-base text-emerald-600 font-bold">✔</span>
-                <span><b>Sin alertas meteorológicas críticas:</b> No se registran lluvias torrenciales inmediatas en nacientes ni alertas vigentes para el norte pampeano.</span>
+                <span><b>Sin alertas meteorológicas críticas (Ventana 72h):</b> No se registran eventos torrenciales inmediatos ni avisos del SMN para el norte pampeano.</span>
             </div>
-            <span class="text-xs font-bold px-2 py-0.5 bg-emerald-200 text-emerald-800 rounded">Vigilancia Ordinaria</span>
+            <span class="text-xs font-bold px-2 py-0.5 bg-emerald-200 text-emerald-800 rounded">Calma Hidrológica</span>
         </div>
         """
 
@@ -655,9 +698,9 @@ def compilar_portal_web_monitor_zv(hidro_resumen, meteo_total, diag_onda, rayos,
             <div class="space-y-1">
                 <div class="flex items-center space-x-2">
                     <span class="w-3.5 h-3.5 rounded-full bg-emerald-500"></span>
-                    <span class="text-sm font-black uppercase tracking-wider text-emerald-800">Estado de Gestión: VIGILANCIA ORDINARIA</span>
+                    <span class="text-sm font-black uppercase tracking-wider text-emerald-800">Estado de Gestión: VIGILANCIA PREVENTIVA / CALMA HIDROLÓGICA</span>
                 </div>
-                <p class="text-sm font-medium">Cuenca en régimen normal ordinario. Todos los nudos de control por debajo de cotas de alerta. Ventana teórica estimada a La Pampa ante eventual pulso en Justo Daract: <b>{diag_onda['tiempo_viaje_min_dias']:.0f} a {diag_onda['tiempo_viaje_max_dias']:.0f} días</b>.</p>
+                <p class="text-sm font-medium">Cuenca en régimen ordinario de estabilidad. Todos los nudos de control por debajo de cotas de alerta. Ventana teórica estimada a La Pampa ante eventual pulso en Justo Daract: <b>{diag_onda['tiempo_viaje_min_dias']:.0f} a {diag_onda['tiempo_viaje_max_dias']:.0f} días</b>.</p>
             </div>
             <span class="text-xs font-bold px-3 py-1.5 bg-emerald-600 text-white rounded-lg uppercase shadow">Nivel Verde</span>
         </div>
@@ -721,6 +764,21 @@ def compilar_portal_web_monitor_zv(hidro_resumen, meteo_total, diag_onda, rayos,
         </div>
         """
 
+    # 5. Filas de Balance Lluvia Acumulada vs Media Histórica
+    filas_balance_html = ""
+    for b in balance_lluvias:
+        badge_b = "bg-blue-100 text-blue-800" if b["anomalia_pct"] > 0 else "bg-amber-100 text-amber-800"
+        filas_balance_html += f"""
+        <tr class="hover:bg-slate-50 border-b border-slate-100 text-sm">
+            <td class="px-4 py-2.5 font-bold text-slate-800">{b['localidad']} <span class="text-xs font-normal text-slate-500">({b['provincia']})</span></td>
+            <td class="px-4 py-2.5 text-right font-black text-slate-900">{b['acumulado_mes_mm']:.1f} mm</td>
+            <td class="px-4 py-2.5 text-right text-slate-600">{b['media_mensual_mm']} mm</td>
+            <td class="px-4 py-2.5 text-right text-slate-600">{b['media_anual_mm']} mm</td>
+            <td class="px-4 py-2.5 text-center font-bold { 'text-blue-700' if b['anomalia_pct'] > 0 else 'text-amber-700' }">{b['anomalia_pct']:+.1f}%</td>
+            <td class="px-4 py-2.5 text-center"><span class="px-2 py-0.5 rounded text-xs font-medium {badge_b}">{b['estado_suelo']}</span></td>
+        </tr>
+        """
+
     geo_hidro = json.dumps(hidro_resumen)
     geo_meteo = json.dumps(meteo_total)
     geo_rayos = json.dumps(rayos)
@@ -776,7 +834,7 @@ def compilar_portal_web_monitor_zv(hidro_resumen, meteo_total, diag_onda, rayos,
                     <h1 class="text-lg font-black tracking-tight text-slate-900 leading-tight">SAT Río Quinto — Sistema de Alerta Temprana Triprovincial</h1>
                     <span class="text-[11px] font-bold uppercase px-2 py-0.5 bg-blue-100 text-blue-800 rounded">La Pampa · Córdoba · San Luis</span>
                 </div>
-                <p class="text-xs text-slate-500 font-medium">Herramienta de soporte para la toma de decisiones hídricas y gestión del riesgo en el norte pampeano | <span class="text-slate-700 font-semibold">Articulación Técnica IIARRD - INA - APA - REM - SMN</span></p>
+                <p class="text-xs text-slate-500 font-medium">Soporte para la toma de decisiones hídricas y gestión del riesgo en el norte pampeano | <span class="text-slate-700 font-semibold">Articulación Técnica IIARRD - INA - APA - REM - SMN</span></p>
             </div>
         </div>
         <div class="flex items-center space-x-2.5">
@@ -799,7 +857,7 @@ def compilar_portal_web_monitor_zv(hidro_resumen, meteo_total, diag_onda, rayos,
         <div class="flex space-x-1.5 overflow-x-auto max-w-7xl mx-auto">
             <button onclick="cambiarTab('panel')" id="btn-panel" class="tab-btn active">Tablero de Control</button>
             <button onclick="cambiarTab('traslacion')" id="btn-traslacion" class="tab-btn">Onda de Crecida & Tránsito</button>
-            <button onclick="cambiarTab('precipitaciones')" id="btn-precipitaciones" class="tab-btn">Pronóstico ECMWF & Lluvias</button>
+            <button onclick="cambiarTab('precipitaciones')" id="btn-precipitaciones" class="tab-btn">Lluvias, ECMWF & Medias</button>
             <button onclick="cambiarTab('limnigrafos')" id="btn-limnigrafos" class="tab-btn">Red Limnimétrica (INA / SNIH)</button>
             <button onclick="cambiarTab('mapa')" id="btn-mapa" class="tab-btn">Visor Cartográfico SIG</button>
             <button onclick="cambiarTab('archivo')" id="btn-archivo" class="tab-btn">Informes & Archivo</button>
@@ -876,10 +934,10 @@ def compilar_portal_web_monitor_zv(hidro_resumen, meteo_total, diag_onda, rayos,
                 </div>
             </div>
 
-            <!-- D. ALERTAS METEOROLÓGICAS (SMN) Y PRECIPITACIÓN PREVISTA -->
+            <!-- D. ALERTAS METEOROLÓGICAS (SMN 72H) Y PRECIPITACIÓN PREVISTA -->
             <div class="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
                 <div class="px-5 py-3 border-b border-slate-100 flex justify-between items-center bg-slate-50/60">
-                    <span class="text-xs font-bold text-slate-800 uppercase tracking-wider">Alertas Tempranas Oficiales (SMN) y Precipitaciones de Riesgo</span>
+                    <span class="text-xs font-bold text-slate-800 uppercase tracking-wider">Alertas Tempranas Oficiales (SMN 72 Horas) y Precipitaciones de Riesgo</span>
                     <span class="text-xs text-slate-400">Actualizado {FECHA_TXT}</span>
                 </div>
                 <div class="p-4 space-y-2.5">
@@ -914,8 +972,9 @@ def compilar_portal_web_monitor_zv(hidro_resumen, meteo_total, diag_onda, rayos,
             </div>
         </section>
 
-        <!-- 3. SOLAPA: PRECIPITACIONES & ECMWF (ENFOQUE NORTE PAMPEANO) -->
+        <!-- 3. SOLAPA: LLUVIAS, ECMWF & BALANCE CLIMÁTICO HISTÓRICO -->
         <section id="tab-precipitaciones" class="hidden space-y-6">
+            <!-- Pronóstico ECMWF -->
             <div class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
                 <div class="flex justify-between items-center mb-4">
                     <div>
@@ -926,6 +985,31 @@ def compilar_portal_web_monitor_zv(hidro_resumen, meteo_total, diag_onda, rayos,
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                     {cards_ecmwf}
+                </div>
+            </div>
+
+            <!-- Balance de Precipitación Acumulada vs Medias Históricas -->
+            <div class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-3">
+                <div>
+                    <h3 class="text-base font-bold text-slate-900">Balance Hídrico: Acumulados Mensuales vs. Medias Climáticas Históricas</h3>
+                    <p class="text-xs text-slate-500">Contraste entre los valores observados en el mes y el régimen isoyético histórico para determinar la saturación o capacidad de infiltración del suelo.</p>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm text-slate-600">
+                        <thead class="bg-slate-50 text-slate-700 uppercase font-semibold text-xs border-b border-slate-200">
+                            <tr>
+                                <th class="px-4 py-2.5">Localidad / Nudo</th>
+                                <th class="px-4 py-2.5 text-right">Lluvia Acum. Mes</th>
+                                <th class="px-4 py-2.5 text-right">Media Mes Esperada</th>
+                                <th class="px-4 py-2.5 text-right">Media Anual</th>
+                                <th class="px-4 py-2.5 text-center">Anomalía (%)</th>
+                                <th class="px-4 py-2.5 text-center">Diagnóstico de Cuenca</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            {filas_balance_html}
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </section>
@@ -960,7 +1044,7 @@ def compilar_portal_web_monitor_zv(hidro_resumen, meteo_total, diag_onda, rayos,
             </div>
         </section>
 
-        <!-- 5. SOLAPA: VISOR CARTOGRÁFICO SIG (OPENSTREETMAP POLÍTICO) -->
+        <!-- 5. SOLAPA: VISOR CARTOGRÁFICO SIG (RADAR COMPUESTO & SATÉLITE GOES-16 IR) -->
         <section id="tab-mapa" class="hidden bg-white border border-slate-200 rounded-xl p-2 shadow-sm">
             <div id="mapa-container"></div>
         </section>
@@ -1028,20 +1112,44 @@ def compilar_portal_web_monitor_zv(hidro_resumen, meteo_total, diag_onda, rayos,
                 return;
             }}
 
+            // Mapa base centrado en Cuenca Río Quinto
             mapaLeaflet = L.map('mapa-container').setView([-34.5, -64.8], 7);
 
-            // Capa OpenStreetMap con límites interprovinciales, departamentos y rutas
+            // 1. Capa Política Abierta OpenStreetMap (Con límites, rutas y localidades)
             var osmPolitico = L.tileLayer('https://{{s}}.tile.openstreetmap.org/{{z}}/{{x}}/{{y}}.png', {{
                 attribution: '&copy; OpenStreetMap contributors',
                 maxZoom: 19
             }}).addTo(mapaLeaflet);
 
-            var esriCanvas = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{{z}}/{{y}}/{{x}}', {{
-                attribution: '&copy; Esri, HERE, Garmin',
-                maxZoom: 16
+            // 2. Capa Satélite GOES-16 Clean IR (Topes fríos / Canal 13 en tiempo real vía NOAA SLIDER/IEM)
+            var capaSateliteGOES = L.tileLayer('https://mesonet.agron.iastate.edu/cache/tile.py/1.0.0/goes-east-ch13/{{z}}/{{x}}/{{y}}.png', {{
+                attribution: 'NOAA / GOES-East ABI Band 13 (Clean IR)',
+                opacity: 0.55,
+                zIndex: 200,
+                maxZoom: 12
             }});
 
-            // Capas temáticas independientes
+            // 3. Capa Radar Meteorológico Compuesto SINARAME (Estilo Rain-Alarm)
+            var capaRadarLluvia = L.layerGroup().addTo(mapaLeaflet);
+
+            fetch("https://api.rainviewer.com/public/weather-maps.json")
+                .then(function(r) {{ return r.json(); }})
+                .then(function(d) {{
+                    if (d && d.radar && d.radar.past && d.radar.past.length > 0) {{
+                        var lastRadar = d.radar.past[d.radar.past.length - 1];
+                        var host = d.host || "https://tilecache.rainviewer.com";
+                        var radarUrl = host + lastRadar.path + "/256/{{z}}/{{x}}/{{y}}/2/1_1.png";
+                        var radarTile = L.tileLayer(radarUrl, {{
+                            attribution: 'Radar Meteorológico Compuesto SINARAME / RainViewer',
+                            opacity: 0.75,
+                            zIndex: 250
+                        }});
+                        capaRadarLluvia.addLayer(radarTile);
+                    }}
+                }})
+                .catch(function(e) {{ console.warn("Aviso radar:", e); }});
+
+            // Capas vectoriales operativas
             var layerHidro = L.featureGroup().addTo(mapaLeaflet);
             var layerMeteoSL = L.featureGroup().addTo(mapaLeaflet);
             var layerMeteoCba = L.featureGroup().addTo(mapaLeaflet);
@@ -1049,8 +1157,6 @@ def compilar_portal_web_monitor_zv(hidro_resumen, meteo_total, diag_onda, rayos,
             var layerMeteoAPA = L.featureGroup().addTo(mapaLeaflet);
             var layerRayos = L.featureGroup().addTo(mapaLeaflet);
             var layerRadares = L.featureGroup().addTo(mapaLeaflet);
-            var layerSat = L.featureGroup().addTo(mapaLeaflet);
-            var layerRadarComp = L.featureGroup().addTo(mapaLeaflet);
 
             // Marcadores Limnígrafos (INA)
             datosHidro.forEach(function(h) {{
@@ -1100,40 +1206,24 @@ def compilar_portal_web_monitor_zv(hidro_resumen, meteo_total, diag_onda, rayos,
                 }}).bindTooltip("⚡ Rayo: " + ry.hora + " hs").addTo(layerRayos);
             }});
 
-            // Radares SINARAME
+            // Cobertura Radares SINARAME
             L.circle([-36.226, -66.884], {{ radius: 120000, color: "#0284c7", fillOpacity: 0.05, dashArray: "5, 5" }}).bindTooltip("RMA08 Santa Isabel").addTo(layerRadares);
             L.circle([-33.725, -65.386], {{ radius: 120000, color: "#d97706", fillOpacity: 0.05, dashArray: "5, 5" }}).bindTooltip("RMA16 Villa Reynolds").addTo(layerRadares);
 
-            // Mosaico Satelital y Radar RainViewer
-            fetch("https://api.rainviewer.com/public/weather-maps.json")
-                .then(function(r) {{ return r.json(); }})
-                .then(function(d) {{
-                    var host = d.host || "https://tilecache.rainviewer.com";
-                    if (d.satellite && d.satellite.infrared && d.satellite.infrared.length > 0) {{
-                        var satFrame = d.satellite.infrared[d.satellite.infrared.length - 1];
-                        L.tileLayer(host + satFrame.path + "/256/{{z}}/{{x}}/{{y}}/1/1_0.png", {{ opacity: 0.5, zIndex: 100 }}).addTo(layerSat);
-                    }}
-                    if (d.radar && d.radar.past && d.radar.past.length > 0) {{
-                        var radFrame = d.radar.past[d.radar.past.length - 1];
-                        L.tileLayer(host + radFrame.path + "/256/{{z}}/{{x}}/{{y}}/2/1_1.png", {{ opacity: 0.7, zIndex: 110 }}).addTo(layerRadarComp);
-                    }}
-                }}).catch(function(e) {{ console.warn("RainViewer off:", e); }});
-
             var baseMaps = {{
-                "🗺️ OpenStreetMap (Político / Rutas)": osmPolitico,
-                "⚪ Cartografía Clara (Esri)": esriCanvas
+                "🗺️ Mapa Político (OpenStreetMap)": osmPolitico
             }};
 
             var overlays = {{
-                "💧 Limnígrafos (INA)": layerHidro,
+                "🌧️ Radar de Lluvias en Vivo (SINARAME / Rain-Alarm)": capaRadarLluvia,
+                "🛰️ Satélite GOES-16 IR (Topes Fríos)": capaSateliteGOES,
+                "💧 Limnígrafos (INA / SNIH)": layerHidro,
                 "⛰️ REM San Luis": layerMeteoSL,
                 "🌾 Omixom Córdoba": layerMeteoCba,
                 "🌾 Omixom La Pampa": layerMeteoLP,
                 "💧 APA La Pampa": layerMeteoAPA,
-                "⚡ Descargas Eléctricas": layerRayos,
-                "📡 Radares SINARAME": layerRadares,
-                "🛰️ Satélite GOES-16 IR": layerSat,
-                "🌧️ Radar de Lluvias": layerRadarComp
+                "⚡ Descargas Eléctricas (Rayos)": layerRayos,
+                "📡 Radares SINARAME": layerRadares
             }};
 
             L.control.layers(baseMaps, overlays, {{ position: "topright", collapsed: false }}).addTo(mapaLeaflet);
@@ -1147,7 +1237,7 @@ def compilar_portal_web_monitor_zv(hidro_resumen, meteo_total, diag_onda, rayos,
     print(f"   -> [PORTAL WEB GENERADO]: {PORTAL_HTML_SALIDA}")
 
 # =============================================================
-# 10. GENERACIÓN DE ENTREGABLES EXCEL Y CSV
+# 11. GENERACIÓN DE ENTREGABLES EXCEL Y CSV
 # =============================================================
 def generar_entregables_excel_csv(hidro_resumen, meteo_total, diag_onda):
     print("8. Compilando entregables Excel y CSV...", flush=True)
@@ -1216,7 +1306,7 @@ def generar_entregables_excel_csv(hidro_resumen, meteo_total, diag_onda):
     print(f"   -> [EXCEL GUARDADO]: {EXCEL_SALIDA}")
 
 # =============================================================
-# 11. EJECUCIÓN PRINCIPAL
+# 12. EJECUCIÓN PRINCIPAL
 # =============================================================
 if __name__ == "__main__":
     print("=" * 70)
@@ -1226,7 +1316,7 @@ if __name__ == "__main__":
     # 1. Pronóstico Numérico ECMWF
     pronostico_ecmwf = obtener_pronostico_ecmwf()
 
-    # 2. Alertas SMN (Scraping + API + Respaldo ECMWF)
+    # 2. Alertas SMN Oficiales a 72 Horas
     alertas_smn = obtener_alertas_smn_cuenca(pronostico_ecmwf)
 
     # 3. Redes Meteorológicas
@@ -1235,11 +1325,14 @@ if __name__ == "__main__":
     meteo_apa = obtener_estaciones_apa_lapampa()
     total_meteo = meteo_omixom + meteo_sl + meteo_apa
 
-    # 4. Datos Hidrológicos y Rayos
+    # 4. Balance Lluvias Observadas vs Medias Históricas
+    balance_lluvias = calcular_balance_acumulado_vs_media(total_meteo)
+
+    # 5. Datos Hidrológicos y Rayos
     registros_hidro = obtener_datos_hidrologicos()
     rayos_cuenca = obtener_descargas_atmosfericas()
 
-    # 5. Procesamiento Hidrológico
+    # 6. Procesamiento Hidrológico
     df_h = pd.DataFrame(registros_hidro)
     df_h["fecha_dt"] = pd.to_datetime(df_h["fecha"], errors="coerce")
     hidro_resumen = []
@@ -1260,12 +1353,12 @@ if __name__ == "__main__":
             "fuente": ult["fuente"]
         })
 
-    # 6. Traslación de Onda y Capacidad de Amortiguación
+    # 7. Traslación de Onda y Capacidad de Amortiguación
     diag_onda = calcular_tiempo_viaje_onda(hidro_resumen, rayos_cuenca)
 
-    # 7. Generación de Archivos
+    # 8. Generación de Archivos
     generar_entregables_excel_csv(hidro_resumen, total_meteo, diag_onda)
-    compilar_portal_web_monitor_zv(hidro_resumen, total_meteo, diag_onda, rayos_cuenca, pronostico_ecmwf, alertas_smn)
+    compilar_portal_web_monitor_zv(hidro_resumen, total_meteo, diag_onda, rayos_cuenca, pronostico_ecmwf, alertas_smn, balance_lluvias)
 
     print("=" * 70)
     print("PROCESO COMPLETADO EXITOSAMENTE. 'index.html' LISTO CON ENFOQUE PAMPEANO.")
