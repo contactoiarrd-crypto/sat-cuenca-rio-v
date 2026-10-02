@@ -1,10 +1,10 @@
 ﻿Estación Hidrológica,Río / Cuenca,Tramo Jurisdiccional,Nivel Actual (m),Media Histórica (m),Cota Alerta (m),Cota Evacuación (m),Margen Alerta (m),Estado Semáforo,Tendencia Río,Estación Meteo Cercana,Red,Distancia (km),Lluvia 24h (mm),Temp (°C),Tiempo Viaje a LP (días)
-Aº El Aji - RN Nº35 y RN Nº7,Afluente Río Quinto,Cuenca Media (Córdoba),0.68,0.64,1.9,2.4,1.22,Vigilancia Preventiva / Calma Hidrológica,Estable ▬,Vicuña Mackenna (Córdoba),Omixom Córdoba,5.8,0.0,S/D,7-10 d
-Laguna La Margarita,Cuenca Río Quinto,Cuenca Media (Córdoba),1.37,1.35,2.4,3.0,1.03,Vigilancia Preventiva / Calma Hidrológica,Estable ▬,Hipólito Bouchard (Córdoba),Omixom Córdoba,21.0,0.0,S/D,7-10 d
-Quinto - Av Circunvalación,Río Quinto,Cuenca Alta (San Luis),0.12,0.1,2.5,3.2,2.38,Vigilancia Preventiva / Calma Hidrológica,Estable ▬,Villa Reynolds (San Luis),REM San Luis,1.7,0.0,10.6,7-10 d
-Quinto - Canal Devoto RP 4,Río Quinto / Canal Devoto,Cuenca Media (Córdoba),1.01,0.98,2.8,3.4,1.79,Vigilancia Preventiva / Calma Hidrológica,Estable ▬,Río Bamba (Córdoba),Omixom Córdoba,29.4,0.0,S/D,7-10 d
-Quinto - Dique Villa Mercedes,Río Quinto,Cuenca Alta (San Luis),1.08,1.07,2.8,3.5,1.72,Vigilancia Preventiva / Calma Hidrológica,Estable ▬,Villa Mercedes (San Luis),REM San Luis,3.8,0.0,11.4,7-10 d
-Quinto - Justo Daract,Río Quinto,Cuenca Alta (San Luis),1.79,1.77,2.9,3.6,1.11,Vigilancia Preventiva / Calma Hidrológica,Estable ▬,Justo Daract (San Luis),REM San Luis,7.8,0.0,17.1,7-10 d
-Quinto - R.N. 35,Río Quinto,Cuenca Media (Córdoba),1.17,1.15,2.6,3.2,1.43,Vigilancia Preventiva / Calma Hidrológica,Estable ▬,Nicolás Bruzzone (Córdoba),Omixom Córdoba,25.1,0.0,S/D,7-10 d
-Quinto - RP Nº26,Río Quinto,Ingreso Cuenca Baja (La Pampa),0.66,0.65,2.2,2.8,1.54,Vigilancia Preventiva / Calma Hidrológica,Creciendo ▲,Hipólito Bouchard (Córdoba),Omixom Córdoba,14.4,0.0,S/D,7-10 d
-Trapiche - Hosteria El Trapiche,Río Trapiche (Afluente),Cuenca Alta (San Luis),0.33,0.31,1.8,2.3,1.47,Vigilancia Preventiva / Calma Hidrológica,Estable ▬,El Trapiche (San Luis),REM San Luis,0.6,0.0,4.3,7-10 d
+Aº El Aji - RN Nº35 y RN Nº7,Afluente Río Quinto,Cuenca Media (Córdoba),0.68,0.65,1.9,2.4,1.22,Vigilancia Preventiva / Calma Hidrológica,Estable ▬,Vicuña Mackenna (Córdoba),Omixom Córdoba,5.8,0.0,S/D,7-10 d
+Laguna La Margarita,Cuenca Río Quinto,Cuenca Media (Córdoba),1.38,1.36,2.4,3.0,1.02,Vigilancia Preventiva / Calma Hidrológica,Estable ▬,Hipólito Bouchard (Córdoba),Omixom Córdoba,21.0,0.0,S/D,7-10 d
+Quinto - Av Circunvalación,Río Quinto,Cuenca Alta (San Luis),0.12,0.1,2.5,3.2,2.38,Vigilancia Preventiva / Calma Hidrológica,Estable ▬,Villa Reynolds (San Luis),REM San Luis,1.7,0.0,8.1,7-10 d
+Quinto - Canal Devoto RP 4,Río Quinto / Canal Devoto,Cuenca Media (Córdoba),1.04,0.99,2.8,3.4,1.76,Vigilancia Preventiva / Calma Hidrológica,Creciendo ▲,Río Bamba (Córdoba),Omixom Córdoba,29.4,0.0,S/D,7-10 d
+Quinto - Dique Villa Mercedes,Río Quinto,Cuenca Alta (San Luis),1.08,1.06,2.8,3.5,1.72,Vigilancia Preventiva / Calma Hidrológica,Estable ▬,Villa Mercedes (San Luis),REM San Luis,3.8,0.0,12.5,7-10 d
+Quinto - Justo Daract,Río Quinto,Cuenca Alta (San Luis),1.8,1.77,2.9,3.6,1.1,Vigilancia Preventiva / Calma Hidrológica,Estable ▬,Justo Daract (San Luis),REM San Luis,7.8,0.0,17.1,7-10 d
+Quinto - R.N. 35,Río Quinto,Cuenca Media (Córdoba),1.16,1.15,2.6,3.2,1.44,Vigilancia Preventiva / Calma Hidrológica,Estable ▬,Nicolás Bruzzone (Córdoba),Omixom Córdoba,25.1,0.0,S/D,7-10 d
+Quinto - RP Nº26,Río Quinto,Ingreso Cuenca Baja (La Pampa),0.67,0.65,2.2,2.8,1.53,Vigilancia Preventiva / Calma Hidrológica,Estable ▬,Hipólito Bouchard (Córdoba),Omixom Córdoba,14.4,0.0,S/D,7-10 d
+Trapiche - Hosteria El Trapiche,Río Trapiche (Afluente),Cuenca Alta (San Luis),0.32,0.32,1.8,2.3,1.48,Vigilancia Preventiva / Calma Hidrológica,Estable ▬,El Trapiche (San Luis),REM San Luis,0.6,0.0,11.1,7-10 d
