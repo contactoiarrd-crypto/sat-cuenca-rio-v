@@ -295,8 +295,22 @@ def obtener_pronostico_ecmwf():
     return resultados
 
 # =============================================================
-# 6. PARSER OFICIAL CAP / RSS CON POLÍGONOS VECTORIALES
+# 6. PARSER OFICIAL SAT SMN (API REST JSON Y POLÍGONOS GEOJSON)
 # =============================================================
+
+# Diccionario de fenómenos según id numérico del SAT
+EVENTOS_SMN_NOMBRES = {
+    41: "Tormentas fuertes o severas",
+    42: "Vientos fuertes",
+    39: "Lluvias abundantes",
+    40: "Nevadas",
+    45: "Viento Zonda",
+    46: "Temperaturas extremas (Frío)",
+    47: "Temperaturas extremas (Calor)",
+    37: "Condición meteorológica general",
+    54: "Visibilidad reducida"
+}
+
 def punto_en_poligono(lat, lon, vertices):
     """Algoritmo Ray-Casting para determinar si una coordenada está dentro del polígono."""
     n = len(vertices)
@@ -337,118 +351,121 @@ def poligono_interseca_cuenca(vertices_poligono):
 
 def obtener_alertas_smn_cuenca(pronostico_ecmwf=[]):
     """
-    Lee https://ssl.smn.gob.ar/CAP/AR.php en tiempo real.
-    Devuelve las alertas textuales y los polígonos vectoriales para el mapa.
+    Consume la API REST del SAT (https://ws1.smn.gob.ar/v1/warning/alert/area)
+    y cruza las alertas a 24, 48 y 72 hs con los polígonos vectoriales de la cuenca.
     """
-    print("2. Consultando feed oficial CAP del SMN (https://ssl.smn.gob.ar/CAP/AR.php)...", flush=True)
+    print("2. Consultando API REST oficial del SAT (ws1.smn.gob.ar)...", flush=True)
     alertas = []
     poligonos_cap = []
-    
+
     headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        "Accept": "application/json, text/plain, */*",
+        "Referer": "https://www.smn.gob.ar/alertas"
     }
-    url_indice = "https://ssl.smn.gob.ar/CAP/AR.php"
-    links_alertas = []
 
+    url_api_alertas = "https://ws1.smn.gob.ar/v1/warning/alert/area?mode=alert&compact=true"
+    
+    # 1. Obtenemos el estado de alertas de la API
+    datos_alertas = []
     try:
-        r = session.get(url_indice, headers=headers, timeout=10)
+        r = session.get(url_api_alertas, headers=headers, timeout=12)
         if r.status_code == 200:
-            soup_indice = BeautifulSoup(r.text, "html.parser")
-            for a in soup_indice.find_all("a", href=True):
-                href = a["href"].strip()
-                if "AR" in href or "CAP" in href or ".php" in href or ".xml" in href:
-                    if not href.startswith("http"):
-                        href = f"https://ssl.smn.gob.ar/CAP/{href.lstrip('/')}"
-                    if href not in links_alertas and href != url_indice:
-                        links_alertas.append(href)
+            datos_alertas = r.json()
     except Exception as e:
-        print(f"   [AVISO ÍNDICE SMN]: {e}")
+        print(f"   [AVISO API SMN]: {e}")
 
-    def _procesar_alerta_hija(url_hija):
+    # 2. Obtenemos o cargamos las geometrías de las áreas
+    # Si tenés el archivo de geometrías guardado localmente en tu repositorio, lo carga directo
+    geometrias_por_area = {}
+    archivo_geo_cache = "geometrias_sat_smn.json"
+    
+    if os.path.exists(archivo_geo_cache):
         try:
-            r_hija = session.get(url_hija, headers=headers, timeout=6)
-            if r_hija.status_code != 200:
-                return None
-            
-            soup = BeautifulSoup(r_hija.text, "html.parser")
-            
-            # Filtro de vigencia: descartar alertas cuyo fin ya pasó
-            exp_tag = soup.find("expires")
-            if exp_tag and exp_tag.text:
-                try:
-                    exp_dt = datetime.fromisoformat(exp_tag.text.strip())
-                    if exp_dt < ahora:
-                        return None
-                except Exception:
-                    pass
-
-            poly_tag = soup.find("polygon")
-            if not poly_tag or not poly_tag.text:
-                return None
-
-            pares = poly_tag.text.strip().split()
-            vertices = []
-            for par in pares:
-                try:
-                    pt = par.split(",")
-                    if len(pt) == 2:
-                        vertices.append([float(pt[0]), float(pt[1])])
-                except ValueError:
-                    continue
-
-            if not vertices:
-                return None
-
-            if poligono_interseca_cuenca(vertices):
-                sev_tag = soup.find("severity")
-                event_tag = soup.find("event") or soup.find("headline")
-                desc_tag = soup.find("description")
-                onset_tag = soup.find("onset") or soup.find("effective")
-
-                evento = event_tag.text.strip() if event_tag else "Tormentas"
-                sev_str = sev_tag.text.lower() if sev_tag else "moderate"
-                desc_text = desc_tag.text.strip() if desc_tag else "Tormentas de variada intensidad con ocasional granizo y ráfagas."
-
-                if "extreme" in sev_str:
-                    nivel, color_hex = "Rojo", "#dc2626"
-                elif "severe" in sev_str:
-                    nivel, color_hex = "Naranja", "#ea580c"
-                else:
-                    nivel, color_hex = "Amarillo", "#f59e0b"
-
-                plazo = "Próximas 24 a 72 hs"
-                if onset_tag and onset_tag.text:
-                    try:
-                        dt_onset = datetime.fromisoformat(onset_tag.text.strip())
-                        plazo = f"Desde {dt_onset.strftime('%d/%m %H:%M hs')}"
-                    except Exception:
-                        plazo = onset_tag.text[:16].replace("T", " ")
-
-                return {
-                    "alerta_info": {
-                        "zona": "Cuenca Río V (Polígono oficial SMN)",
-                        "plazo": plazo,
-                        "fenomeno": evento,
-                        "nivel": nivel,
-                        "descripcion": desc_text[:240] + ("..." if len(desc_text) > 240 else "")
-                    },
-                    "poligono_geo": {
-                        "coordenadas": vertices,
-                        "color": color_hex,
-                        "nivel": nivel,
-                        "evento": evento,
-                        "plazo": plazo,
-                        "descripcion": desc_text[:180]
-                    }
-                }
+            with open(archivo_geo_cache, "r", encoding="utf-8") as f:
+                geometrias_por_area = json.load(f)
         except Exception:
-            return None
+            pass
 
-    if links_alertas:
-        with ThreadPoolExecutor(max_workers=8) as executor:
-            futuros = [executor.submit(_procesar_alerta_hija, u) for u in links_alertas]
-            for f in as_completed(futuros):
-                res = f.result()
-                if res:
-                    alertas
+    # Si no existe caché local o está vacía, intentamos descargar la capa base del SMN
+    if not geometrias_por_area:
+        url_geometrias = "https://www.smn.gob.ar/alertas/archivos/alertas_dia1.json"
+        try:
+            r_geo = session.get(url_geometrias, headers=headers, timeout=12)
+            if r_geo.status_code == 200:
+                geo_json = r_geo.json()
+                for feat in geo_json.get("features", []):
+                    gid = feat.get("properties", {}).get("gid")
+                    geom = feat.get("geometry", {})
+                    if gid and geom:
+                        geometrias_por_area[str(gid)] = geom
+        except Exception:
+            pass
+
+    # 3. Procesamos cada área y evaluamos coincidencia temporal y espacial
+    for item in datos_alertas:
+        area_id = str(item.get("area_id"))
+        warnings = item.get("warnings", [])
+
+        # Chequear si tiene alerta en las próximas 72 hs (max_level >= 2)
+        alertas_futuras = [w for w in warnings if w.get("max_level", 1) >= 2]
+        if not alertas_futuras:
+            continue
+
+        # Obtener geometría y convertir a coordenadas [lat, lon] para Leaflet
+        geom = geometrias_por_area.get(area_id)
+        vertices_lat_lon = []
+        if geom:
+            coords = geom.get("coordinates", [])
+            # Si es MultiPolygon o Polygon, aplanamos al contorno exterior
+            while len(coords) > 0 and isinstance(coords[0], list) and isinstance(coords[0][0], list):
+                coords = coords[0]
+            # Las coordenadas GeoJSON vienen [lon, lat], las invertimos a [lat, lon]
+            for pt in coords:
+                if len(pt) >= 2:
+                    vertices_lat_lon.append([float(pt[1]), float(pt[0])])
+
+        # Verificamos si toca la Cuenca del Río V (o si es una de las áreas conocidas de la cuenca)
+        AREAS_CONOCIDAS_CUENCA = ["3343", "3358", "3362", "3363", "3365", "3366", "3378", "768", "807", "808", "809", "810", "811", "821", "824"]
+        
+        toca_cuenca = (area_id in AREAS_CONOCIDAS_CUENCA) or (vertices_lat_lon and poligono_interseca_cuenca(vertices_lat_lon))
+
+        if toca_cuenca:
+            for w in alertas_futuras:
+                fecha_alerta = w.get("date")
+                nivel_num = w.get("max_level", 1)
+
+                # Definir nivel y color según la escala SMN
+                if nivel_num >= 4:
+                    nivel_str, color_hex = "Naranja / Rojo", "#dc2626"
+                elif nivel_num == 3:
+                    nivel_str, color_hex = "Naranja", "#ea580c"
+                else:
+                    nivel_str, color_hex = "Amarillo", "#f59e0b"
+
+                # Identificar fenómenos activos
+                eventos_activos = [EVENTOS_SMN_NOMBRES.get(ev.get("id"), "Tormentas") for ev in w.get("events", []) if ev.get("max_level", 1) >= 2]
+                fenomeno_str = ", ".join(set(eventos_activos)) if eventos_activos else "Alerta meteorológica preventiva"
+
+                # Info para la tabla y panel de control
+                alertas.append({
+                    "zona": f"Cuenca Río V - Área {area_id}",
+                    "plazo": f"Fecha: {fecha_alerta}",
+                    "fenomeno": fenomeno_str,
+                    "nivel": nivel_str,
+                    "descripcion": f"Alerta {nivel_str} emitida por el SMN para el día {fecha_alerta}. Fenómeno esperado: {fenomeno_str}."
+                })
+
+                # Polígono para dibujar en el mapa de Leaflet
+                if vertices_lat_lon:
+                    poligonos_cap.append({
+                        "coordenadas": vertices_lat_lon,
+                        "color": color_hex,
+                        "nivel": nivel_str,
+                        "evento": fenomeno_str,
+                        "plazo": f"Válido: {fecha_alerta}",
+                        "descripcion": f"Área {area_id}: {fenomeno_str} ({nivel_str})"
+                    })
+
+    print(f"   -> [SAT SMN]: {len(alertas)} alerta(s) y {len(poligonos_cap)} polígono(s) interceptados para la cuenca.")
+    return alertas, poligonos_cap
