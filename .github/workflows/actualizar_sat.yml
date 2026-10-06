@@ -1,23 +1,19 @@
-name: Actualizar SAT Rio V en Tiempo Real
+name: Actualizar SAT Cuenca Rio V
 
 on:
   schedule:
-    - cron: '*/10 * * * *'  # Cada 10 minutos
+    - cron: '*/10 * * * *'
   workflow_dispatch:
 
 permissions:
   contents: write
-  pages: write
-  id-token: write
 
 jobs:
-  actualizar:
+  update-sat:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout de repositorio
+      - name: Clonar repositorio
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Configurar Python
         uses: actions/setup-python@v5
@@ -25,31 +21,18 @@ jobs:
           python-version: '3.11'
           cache: 'pip'
 
-      - name: Instalar dependencias completas
+      - name: Instalar dependencias
         run: |
-          python -m pip install --upgrade pip
-          pip install pandas numpy requests beautifulsoup4 openpyxl urllib3
+          pip install requests pandas numpy folium openpyxl beautifulsoup4 urllib3
 
-      - name: Ejecutar Extractor y Generador Web
+      - name: Ejecutar Pipeline
         run: |
           python sat_unificado_hidro_meteo.py
 
-      - name: Publicar cambios en GitHub Pages
+      - name: Publicar cambios
         run: |
-          git config --global user.name 'github-actions[bot]'
-          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-          
-          # Limpieza del archivo viejo de Folium si existiera
-          git rm -f mapa_sat_rio_v_triprovincial.html 2>/dev/null || true
-          
-          # Agregar los archivos actualizados
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action Bot"
           git add index.html sat_unificado_rio_v_triprovincial.xlsx resumen_cruce_rio_v_triprovincial.csv
-          
-          # Solo hacer commit y push si efectivamente hubo cambios
-          if ! git diff --staged --quiet; then
-            git commit -m "Auto-actualizacion SAT Rio V [$(date -u '+%Y-%m-%d %H:%M UTC')]"
-            git pull --rebase origin main || true
-            git push origin main
-          else
-            echo "Sin cambios detectados en este ciclo."
-          fi
+          git commit -m "Auto-actualización SAT Río V - $(date -u +'%Y-%m-%d %H:%M UTC')" || echo "Sin cambios"
+          git push
