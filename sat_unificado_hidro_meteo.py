@@ -2,7 +2,8 @@
 """
 SISTEMA DE ALERTA TEMPRANA TRIPROVINCIAL: CUENCA RÍO V (SAN LUIS - CÓRDOBA - LA PAMPA)
 Monitoreo Hidrometeorológico, Cuerpos de Agua INA, SAT SMN / WMO CAP, Pronóstico ECMWF IFS,
-Mosaico Radar WMS SMN, Redes Meteorológicas Discriminadas y Visor Cartográfico Vial.
+Radares SMN/SINARAME (RMA04 Villa Reynolds, RMA11 Santa Isabel, RMA01 Bolívar),
+Redes Meteorológicas Discriminadas y Visor Cartográfico Vial.
 """
 import os
 import sys
@@ -50,7 +51,74 @@ session.mount("https://", HTTPAdapter(max_retries=retries))
 session.mount("http://", HTTPAdapter(max_retries=retries))
 
 # =============================================================
-# 2. MEDIAS CLIMÁTICAS Y NODOS ECMWF A 72 HORAS
+# 2. DESCARGA / SCRAPER AUTOMÁTICO DE RADARES SMN
+# =============================================================
+RADAR_IDS_SMN = {
+    "reynolds": {"code": "RMA04", "salida": "radar_reynolds.png"},
+    "santa_isabel": {"code": "RMA11", "salida": "radar_santa_isabel.png"},
+    "bolivar": {"code": "RMA01", "salida": "radar_bolivar.png"}
+}
+
+HEADERS_SMN = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Referer": "https://www.smn.gob.ar/radar"
+}
+
+def scrapear_radares_smn():
+    print("0. Scrapeando imágenes operativas de radar (SMN)...", flush=True)
+    url_catalogo = "https://ws1.smn.gob.ar/v1/radar/animation"
+    descargados = set()
+
+    try:
+        r = session.get(url_catalogo, headers=HEADERS_SMN, timeout=8)
+        if r.status_code == 200:
+            catalogo = r.json()
+            for nombre_clave, conf in RADAR_IDS_SMN.items():
+                codigo = conf["code"]
+                archivo_salida = conf["salida"]
+                frames = []
+
+                if isinstance(catalogo, dict):
+                    frames = catalogo.get(codigo, [])
+                elif isinstance(catalogo, list):
+                    frames = [item for item in catalogo if item.get("radar") == codigo or codigo in str(item.get("url", ""))]
+
+                if frames:
+                    ultimo_frame = frames[-1]
+                    url_img = ultimo_frame.get("url") if isinstance(ultimo_frame, dict) else str(ultimo_frame)
+                    if not url_img.startswith("http"):
+                        url_img = f"https://archivos.smn.gob.ar/radar/{url_img.lstrip('/')}"
+                    
+                    r_img = session.get(url_img, headers=HEADERS_SMN, timeout=10)
+                    if r_img.status_code == 200 and len(r_img.content) > 1500:
+                        with open(archivo_salida, "wb") as f:
+                            f.write(r_img.content)
+                        descargados.add(nombre_clave)
+                        print(f"   ✓ Radar {codigo} ({nombre_clave}) guardado correctamente.")
+    except Exception as e:
+        print(f"   [AVISO CATÁLOGO RADAR]: {e}")
+
+    # Fallback por scraping directo del portal si no respondió la API
+    for nombre_clave, conf in RADAR_IDS_SMN.items():
+        if nombre_clave not in descargados:
+            try:
+                codigo = conf["code"]
+                archivo_salida = conf["salida"]
+                r_web = session.get(f"https://www.smn.gob.ar/radar?radar={codigo}", headers=HEADERS_SMN, timeout=7)
+                if r_web.status_code == 200:
+                    matches = re.findall(rf'https?://[^\s"\'<>]*(?:{codigo}|{codigo.lower()})[^\s"\'<>]+\.png', r_web.text)
+                    if matches:
+                        url_img = matches[-1]
+                        r_img = session.get(url_img, headers=HEADERS_SMN, timeout=10)
+                        if r_img.status_code == 200 and len(r_img.content) > 1500:
+                            with open(archivo_salida, "wb") as f:
+                                f.write(r_img.content)
+                            print(f"   ✓ Radar {codigo} ({nombre_clave}) recuperado por fallback HTML.")
+            except Exception:
+                pass
+
+# =============================================================
+# 3. MEDIAS CLIMÁTICAS Y NODOS ECMWF A 72 HORAS
 # =============================================================
 MEDIAS_CLIMATICAS_CUENCA = {
     "Villa Mercedes": {"anual_mm": 680, "mes_esperado_mm": 55, "provincia": "San Luis", "lat": -33.67, "lon": -65.46, "region": "Cabecera / Nacientes"},
@@ -62,7 +130,7 @@ MEDIAS_CLIMATICAS_CUENCA = {
 }
 
 # =============================================================
-# 3. CATÁLOGO ESTÁTICO REDES OMIXOM (CÓRDOBA Y LA PAMPA)
+# 4. CATÁLOGO ESTÁTICO REDES OMIXOM (CÓRDOBA Y LA PAMPA)
 # =============================================================
 ESTACIONES_OMIXOM_ESTATICAS = [
     {"id": "OMX_CBA_1", "nombre": "General Levalle", "departamento": "Roque Sáenz Peña", "provincia": "Córdoba", "lat": -34.0000, "lon": -63.9163, "temp_c": np.nan, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Estática", "red": "Omixom Córdoba"},
@@ -100,7 +168,7 @@ ESTACIONES_OMIXOM_ESTATICAS = [
 ]
 
 # =============================================================
-# 4. CATÁLOGO CUERPOS DE AGUA (INA) Y COTAS FÍSICAS
+# 5. CATÁLOGO CUERPOS DE AGUA (INA) Y COTAS FÍSICAS
 # =============================================================
 BASE_URL_INA = "https://alerta.ina.gob.ar/pub/datos"
 timestart_str = (ahora - timedelta(days=4)).strftime("%Y-%m-%d")
@@ -159,7 +227,7 @@ def distancia_haversine(lat1, lon1, lat2, lon2):
     return R * c
 
 # =============================================================
-# 5. EXTRACCIÓN DE DATOS
+# 6. EXTRACCIÓN DE DATOS DE REDES
 # =============================================================
 def obtener_estaciones_omixom():
     return ESTACIONES_OMIXOM_ESTATICAS
@@ -356,11 +424,15 @@ def obtener_rayos():
             pass
     return rayos
 
+# =============================================================
+# 7. PARSEO ROBUSTO DE ALERTAS SAT SMN
+# =============================================================
 DEPARTAMENTOS_CUENCA = [
-    "GENERAL PEDERNERA", "CORONEL PRINGLES", "GOBERNADOR DUPUY",
-    "GENERAL ROCA", "PRESIDENTE ROQUE SAENZ PENA", "RIO CUARTO", "JUAREZ CELMAN",
-    "REALICO", "CHAPALEUFU", "RANCUL", "MARACO", "TRENEL", "CONHELO", "QUEMU QUEMU"
+    "PEDERNERA", "PRINGLES", "DUPUY", "CAPITAL", "CHACABUCO",
+    "ROCA", "SAENZ PENA", "SÁENZ PEÑA", "RIO CUARTO", "RÍO CUARTO", "JUAREZ CELMAN", "JUÁREZ CELMAN",
+    "REALICO", "REALICÓ", "CHAPALEUFU", "CHAPALEUFÚ", "RANCUL", "MARACO", "MARACÓ", "TRENEL", "CONHELO", "QUEMU QUEMU", "QUEMÚ QUEMÚ"
 ]
+
 EVENTOS_SMN = {
     41: "Tormentas fuertes o severas",
     42: "Vientos fuertes",
@@ -380,58 +452,63 @@ def obtener_alertas_smn():
         except Exception:
             pass
 
+    # 1. Consulta directa al API del SAT SMN
     try:
-        r = session.get("https://ws1.smn.gob.ar/v1/warning/alert/area?mode=alert&compact=true", headers={"User-Agent": "Mozilla/5.0"}, timeout=6)
+        r = session.get("https://ws1.smn.gob.ar/v1/warning/alert/area?mode=alert&compact=true", headers={"User-Agent": "Mozilla/5.0"}, timeout=7)
         if r.status_code == 200:
             for area in r.json():
-                warnings = [w for w in area.get("warnings", []) if w.get("max_level", 1) >= 2]
-                if not warnings:
-                    continue
                 nombre_area = str(area.get("name", "")).upper()
                 area_id = str(area.get("area_id", ""))
-                es_cuenca = any(d in nombre_area for d in DEPARTAMENTOS_CUENCA) or area_id in ["3343", "3358", "3362", "3363", "3365", "3366", "3378", "768", "807", "808", "809", "810", "811", "821", "824"]
-                if es_cuenca:
-                    for w in warnings:
-                        lvl = w.get("max_level", 2)
-                        col = "#ef4444" if lvl >= 4 else ("#ea580c" if lvl == 3 else "#f59e0b")
-                        str_lvl = "Rojo" if lvl >= 4 else ("Naranja" if lvl == 3 else "Amarillo")
-                        evs = [EVENTOS_SMN.get(ev.get("id"), "Tormentas") for ev in w.get("events", []) if ev.get("max_level", 1) >= 2]
-                        fenom = ", ".join(set(evs)) if evs else "Alerta Meteorológica"
-                        alertas.append({
-                            "zona": area.get("name", f"Área {area_id}"),
-                            "fecha": w.get("date", "Hoy"),
-                            "fenomeno": fenom,
-                            "nivel": str_lvl,
-                            "color": col
-                        })
+                es_cuenca = any(dep in nombre_area for dep in DEPARTAMENTOS_CUENCA) or area_id in [
+                    "3343", "3358", "3362", "3363", "3365", "3366", "3378", "768", "807", "808", "809", "810", "811", "821", "824"
+                ]
 
-                        geom = geometrias.get(area_id)
-                        if geom:
-                            coords = geom.get("coordinates", [])
-                            if geom.get("type") == "MultiPolygon":
-                                for p in coords:
-                                    if p:
-                                        poligonos.append({
-                                            "coords": [[pt[1], pt[0]] for pt in p[0] if len(pt) >= 2],
-                                            "color": col,
-                                            "nivel": str_lvl,
-                                            "zona": area.get("name"),
-                                            "evento": fenom
-                                        })
-                            elif geom.get("type") == "Polygon" and coords:
-                                poligonos.append({
-                                    "coords": [[pt[1], pt[0]] for pt in coords[0] if len(pt) >= 2],
-                                    "color": col,
-                                    "nivel": str_lvl,
-                                    "zona": area.get("name"),
-                                    "evento": fenom
-                                })
+                if es_cuenca:
+                    warnings = area.get("warnings", [])
+                    for w in warnings:
+                        lvl = w.get("max_level", 1)
+                        if lvl >= 2:
+                            col = "#ef4444" if lvl >= 4 else ("#ea580c" if lvl == 3 else "#f59e0b")
+                            str_lvl = "Rojo" if lvl >= 4 else ("Naranja" if lvl == 3 else "Amarillo")
+                            evs = [EVENTOS_SMN.get(ev.get("id"), "Tormentas") for ev in w.get("events", []) if ev.get("max_level", 1) >= 2]
+                            fenom = ", ".join(set(evs)) if evs else "Alerta Meteorológica"
+                            
+                            alertas.append({
+                                "zona": area.get("name", f"Área {area_id}"),
+                                "fecha": w.get("date", "Hoy"),
+                                "fenomeno": fenom,
+                                "nivel": str_lvl,
+                                "color": col
+                            })
+
+                            geom = geometrias.get(area_id)
+                            if geom:
+                                coords = geom.get("coordinates", [])
+                                if geom.get("type") == "MultiPolygon":
+                                    for p in coords:
+                                        if p:
+                                            poligonos.append({
+                                                "coords": [[pt[1], pt[0]] for pt in p[0] if len(pt) >= 2],
+                                                "color": col,
+                                                "nivel": str_lvl,
+                                                "zona": area.get("name"),
+                                                "evento": fenom
+                                            })
+                                elif geom.get("type") == "Polygon" and coords:
+                                    poligonos.append({
+                                        "coords": [[pt[1], pt[0]] for pt in coords[0] if len(pt) >= 2],
+                                        "color": col,
+                                        "nivel": str_lvl,
+                                        "zona": area.get("name"),
+                                        "evento": fenom
+                                    })
     except Exception as e:
         print(f"   [AVISO SAT API]: {e}")
 
+    # 2. Fallback de respaldo con feed CAP WMO / SMN
     if not alertas:
         try:
-            r_cap = session.get("https://ssl.smn.gob.ar/CAP/AR.php", headers={"User-Agent": "Mozilla/5.0"}, timeout=6)
+            r_cap = session.get("https://ssl.smn.gob.ar/CAP/AR.php", headers={"User-Agent": "Mozilla/5.0"}, timeout=7)
             if r_cap.status_code == 200 and "<rss" in r_cap.text:
                 soup = BeautifulSoup(r_cap.content, "xml")
                 for item in soup.find_all("item"):
@@ -442,14 +519,14 @@ def obtener_alertas_smn():
                         col = "#ef4444" if "ROJO" in t_upper else ("#ea580c" if "NARANJA" in t_upper else "#f59e0b")
                         str_lvl = "Rojo" if "ROJO" in t_upper else ("Naranja" if "NARANJA" in t_upper else "Amarillo")
                         alertas.append({
-                            "zona": "Cuenca Río V (CAP Oficial)",
+                            "zona": "Área Cuenca Río V (CAP Oficial)",
                             "fecha": ahora.strftime("%d/%m"),
                             "fenomeno": title,
                             "nivel": str_lvl,
                             "color": col
                         })
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"   [AVISO CAP SMN]: {e}")
 
     return alertas, poligonos
 
@@ -559,7 +636,7 @@ def calcular_tiempo_viaje_onda(lista_hidro_resumen, lista_rayos=[]):
     }
 
 # =============================================================
-# 6. GENERACIÓN DE ENTREGABLES Y VISOR CARTOGRÁFICO INTEGRADO
+# 8. GENERACIÓN DE ENTREGABLES Y VISOR CARTOGRÁFICO
 # =============================================================
 def generar_entregables(estaciones_sl, estaciones_apa, estaciones_omx, registros_hidro, lista_rayos, alertas_smn, poligonos_smn, pronostico_ecmwf):
     print("7. Generando entregables y visor cartográfico optimizado...", flush=True)
@@ -682,7 +759,7 @@ def generar_entregables(estaciones_sl, estaciones_apa, estaciones_omx, registros
         <p style='margin: 4px 0 0 0; font-size:13px; color:#475569;'><strong>Fenómeno:</strong> {a['fenomeno']} | <strong>Vigencia:</strong> {a['fecha']}</p>
     </div>""" for a in alertas_smn]) if alertas_smn else "<p style='color:#64748b; font-style:italic;'>No se registran alertas meteorológicas activas en los departamentos de la cuenca.</p>"
 
-    # 4. Portal con Leaflet y Controles de Radar WMS SMN
+    # 4. Portal HTML con Leaflet y Radares Integrados
     html_portal = f"""<!DOCTYPE html>
 <html lang="es">
 <head>
@@ -817,7 +894,7 @@ def generar_entregables(estaciones_sl, estaciones_apa, estaciones_omx, registros
         </div>
     </div>
 
-    <!-- Pestaña 2: Visor Cartográfico Nativo con Rutas y Discriminación de Redes -->
+    <!-- Pestaña 2: Visor Cartográfico Nativo con Rutas y Radares -->
     <div id="tab-mapa" class="tab-content" style="padding: 10px 20px;">
         <div id="map-container"></div>
     </div>
@@ -926,7 +1003,7 @@ def generar_entregables(estaciones_sl, estaciones_apa, estaciones_omx, registros
         </div>
     </div>
 
-    <!-- Leaflet JS y Geoservicios WMS del SMN -->
+    <!-- Leaflet JS y Renderizado Nativo -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
         var map = null;
@@ -968,27 +1045,33 @@ def generar_entregables(estaciones_sl, estaciones_apa, estaciones_omx, registros
             var fgOmxLP = L.featureGroup().addTo(map);
             var fgRayos = L.featureGroup().addTo(map);
 
-            // 3. Mosaico Nacional de Radares SMN (WMS en Tiempo Real)
-            var wmsRadarSMN = L.tileLayer.wms('https://geoservicios.smn.gob.ar/geoserver/wms', {{
-                layers: 'radar_cappi_nacional',
-                format: 'image/png',
-                transparent: true,
-                version: '1.1.1',
-                opacity: 0.70,
-                zIndex: 250,
-                attribution: 'Servicio Meteorológico Nacional (SINARAME / SMN)'
-            }}).addTo(map);
+            // 3. Capas Raster Georreferenciadas de Radares SMN / SINARAME
+            var boundsReynolds = [[-35.88, -67.97], [-31.57, -62.78]];
+            var boundsSantaIsabel = [[-38.39, -69.47], [-34.07, -64.29]];
+            var boundsBolivar = [[-38.30, -63.50], [-34.30, -58.50]];
 
-            // 4. Satélite GOES-16 SMN (WMS Topes Nubosos / Infrarrojo)
-            var wmsSatSMN = L.tileLayer.wms('https://geoservicios.smn.gob.ar/geoserver/wms', {{
-                layers: 'satelite_goes16_ch13',
-                format: 'image/png',
-                transparent: true,
-                version: '1.1.1',
-                opacity: 0.55,
-                zIndex: 220,
-                attribution: 'SMN / NOAA GOES-16'
+            var tStamp = new Date().getTime();
+
+            var radarReynolds = L.imageOverlay('radar_reynolds.png?t=' + tStamp, boundsReynolds, {{
+                opacity: 0.65,
+                zIndex: 150,
+                interactive: false
             }});
+
+            var radarSantaIsabel = L.imageOverlay('radar_santa_isabel.png?t=' + tStamp, boundsSantaIsabel, {{
+                opacity: 0.65,
+                zIndex: 150,
+                interactive: false
+            }});
+
+            var radarBolivar = L.imageOverlay('radar_bolivar.png?t=' + tStamp, boundsBolivar, {{
+                opacity: 0.65,
+                zIndex: 150,
+                interactive: false
+            }});
+
+            // Villa Reynolds activo por defecto en la cabecera
+            radarReynolds.addTo(map);
 
             // Cuerpos de Agua (INA)
             var datosHidro = {json_hidro};
@@ -1002,7 +1085,8 @@ def generar_entregables(estaciones_sl, estaciones_apa, estaciones_omx, registros
                 }}).bindPopup("<b>" + h.nombre + "</b><br>Río: " + h.rio + "<br>Nivel: <b>" + h.nivel_actual + " m</b><br>Alerta: " + h.cota_alerta + " m | Evac: " + h.cota_evac + " m<br>Estado: <b>" + h.estado + "</b><br><small>Obs: " + h.fecha + "</small>").addTo(fgHidro);
             }});
 
-            // Redes Meteorológicas
+            // Redes Meteorológicas Discriminadas
+            // REM San Luis
             var datosRem = {json_rem_sl};
             datosRem.forEach(function(m) {{
                 L.circleMarker([m.lat, m.lon], {{
@@ -1014,6 +1098,7 @@ def generar_entregables(estaciones_sl, estaciones_apa, estaciones_omx, registros
                 }}).bindPopup("<b>" + m.nombre + "</b><br>Red: <b>REM San Luis</b><br>Temp: " + m.temp_c + " °C<br>Lluvia 24h: <b>" + m.lluvia_24h_mm + " mm</b>").addTo(fgRemSL);
             }});
 
+            // APA La Pampa
             var datosApa = {json_apa_lp};
             datosApa.forEach(function(m) {{
                 L.circleMarker([m.lat, m.lon], {{
@@ -1025,6 +1110,7 @@ def generar_entregables(estaciones_sl, estaciones_apa, estaciones_omx, registros
                 }}).bindPopup("<b>" + m.nombre + "</b><br>Red: <b>APA La Pampa</b><br>Temp: " + m.temp_c + " °C<br>Lluvia 24h: <b>" + m.lluvia_24h_mm + " mm</b>").addTo(fgApaLP);
             }});
 
+            // Omixom Córdoba
             var datosOmxCba = {json_omx_cba};
             datosOmxCba.forEach(function(m) {{
                 L.circleMarker([m.lat, m.lon], {{
@@ -1036,6 +1122,7 @@ def generar_entregables(estaciones_sl, estaciones_apa, estaciones_omx, registros
                 }}).bindPopup("<b>" + m.nombre + "</b><br>Red: <b>Omixom Córdoba</b><br>Lluvia 24h: " + m.lluvia_24h_mm + " mm").addTo(fgOmxCba);
             }});
 
+            // Omixom La Pampa
             var datosOmxLP = {json_omx_lp};
             datosOmxLP.forEach(function(m) {{
                 L.circleMarker([m.lat, m.lon], {{
@@ -1047,7 +1134,7 @@ def generar_entregables(estaciones_sl, estaciones_apa, estaciones_omx, registros
                 }}).bindPopup("<b>" + m.nombre + "</b><br>Red: <b>Omixom La Pampa</b><br>Lluvia 24h: " + m.lluvia_24h_mm + " mm").addTo(fgOmxLP);
             }});
 
-            // Polígonos de Alerta SMN
+            // Polígonos SMN
             var poligonos = {json_poligonos};
             poligonos.forEach(function(p) {{
                 L.polygon(p.coords, {{
@@ -1070,7 +1157,7 @@ def generar_entregables(estaciones_sl, estaciones_apa, estaciones_omx, registros
                 }}).bindPopup("⚡ Descarga Atmosférica (" + r.hora + " hs)").addTo(fgRayos);
             }});
 
-            // Control de Capas
+            // Control de Capas y Mapas Base
             var baseMaps = {{
                 "🗺️ Rutas y Vialidad (OpenStreetMap)": osmVial,
                 "⛰️ Topográfico (Esri)": esriTopo,
@@ -1080,8 +1167,9 @@ def generar_entregables(estaciones_sl, estaciones_apa, estaciones_omx, registros
             var overlayMaps = {{
                 "💧 Cuerpos de Agua (INA)": fgHidro,
                 "⚠️ Alertas SAT SMN": fgSMN,
-                "📡 Mosaico Radar Nacional (SMN WMS)": wmsRadarSMN,
-                "🛰️ Satélite GOES-16 (SMN WMS)": wmsSatSMN,
+                "📡 Radar Villa Reynolds (SMN/SINARAME)": radarReynolds,
+                "📡 Radar Santa Isabel (SMN/SINARAME)": radarSantaIsabel,
+                "📡 Radar Bolívar (SMN/SINARAME)": radarBolivar,
                 "⚡ Rayos / Descargas en Vivo": fgRayos,
                 "⛰️ REM San Luis": fgRemSL,
                 "💧 APA La Pampa": fgApaLP,
@@ -1135,13 +1223,17 @@ def generar_entregables(estaciones_sl, estaciones_apa, estaciones_omx, registros
     print(f"   -> [PORTAL CON PESTAÑAS GENERADO]: {PORTAL_HTML_SALIDA}")
 
 # =============================================================
-# 7. EJECUCIÓN PRINCIPAL
+# 9. EJECUCIÓN PRINCIPAL
 # =============================================================
 if __name__ == "__main__":
     print("=" * 70)
     print(f"SISTEMA SAT CUENCA RÍO V — EJECUCIÓN: {FECHA_TXT}")
     print("=" * 70)
 
+    # 1. Scrapeo y actualización de imágenes de radar
+    scrapear_radares_smn()
+
+    # 2. Extracción de redes meteorológicas e hidrométricas
     estaciones_omx = obtener_estaciones_omixom()
     estaciones_sl = obtener_estaciones_san_luis()
     estaciones_apa = obtener_estaciones_apa()
@@ -1150,6 +1242,7 @@ if __name__ == "__main__":
     alertas_smn, poligonos_smn = obtener_alertas_smn()
     pronostico_ecmwf = obtener_pronostico_ecmwf()
 
+    # 3. Consolidación de datos y renderizado del portal
     generar_entregables(estaciones_sl, estaciones_apa, estaciones_omx, registros_hidro, rayos, alertas_smn, poligonos_smn, pronostico_ecmwf)
     print("=" * 70)
     print("PROCESO COMPLETADO EXITOSAMENTE.")
