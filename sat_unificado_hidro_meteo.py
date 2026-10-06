@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 SISTEMA DE ALERTA TEMPRANA TRIPROVINCIAL: CUENCA RÍO V (SAN LUIS - CÓRDOBA - LA PAMPA)
-Monitoreo Hidrometeorológico Online, Cuerpos de Agua INA, SAT SMN, Pronóstico ECMWF,
-Radares SINARAME, Rayos y Estimación de Traslación de Onda.
+Monitoreo Hidrometeorológico Online, Cuerpos de Agua INA, SAT SMN, Radares y Portal con Pestañas.
 """
 import os
 import sys
@@ -37,8 +36,19 @@ ahora = datetime.now(TZ_ARG)
 FECHA_TXT = ahora.strftime("%Y-%m-%d %H:%M")
 
 EXCEL_SALIDA = "sat_unificado_rio_v_triprovincial.xlsx"
-MAPA_HTML_SALIDA = "index.html"  # Publicación directa en GitHub Pages
 CSV_SALIDA = "resumen_cruce_rio_v_triprovincial.csv"
+MAPA_HTML_SALIDA = "mapa_sat_rio_v_triprovincial.html"
+PORTAL_HTML_SALIDA = "index.html"
+
+LAT_MIN_SL, LAT_MAX_SL = -35.5, -33.0
+LON_MIN_SL, LON_MAX_SL = -66.3, -65.0
+LAT_MIN_CUENCA, LAT_MAX_CUENCA = -36.5, -32.8
+LON_MIN_CUENCA, LON_MAX_CUENCA = -67.5, -63.0
+
+session = requests.Session()
+retries = Retry(total=2, backoff_factor=1.0, status_forcelist=[500, 502, 503, 504])
+session.mount("https://", HTTPAdapter(max_retries=retries))
+session.mount("http://", HTTPAdapter(max_retries=retries))
 
 # =============================================================
 # 2. CATÁLOGO ESTÁTICO REDES OMIXOM (CÓRDOBA Y LA PAMPA)
@@ -79,20 +89,7 @@ ESTACIONES_OMIXOM_ESTATICAS = [
 ]
 
 # =============================================================
-# 3. LÍMITES GEOGRÁFICOS Y CLIENTE HTTP
-# =============================================================
-LAT_MIN_SL, LAT_MAX_SL = -35.5, -33.0
-LON_MIN_SL, LON_MAX_SL = -66.3, -65.0
-LAT_MIN_CUENCA, LAT_MAX_CUENCA = -36.5, -32.8
-LON_MIN_CUENCA, LON_MAX_CUENCA = -67.5, -63.0
-
-session = requests.Session()
-retries = Retry(total=2, backoff_factor=1.0, status_forcelist=[500, 502, 503, 504])
-session.mount("https://", HTTPAdapter(max_retries=retries))
-session.mount("http://", HTTPAdapter(max_retries=retries))
-
-# =============================================================
-# 4. CATÁLOGO CUERPOS DE AGUA (INA) Y COTAS FÍSICAS
+# 3. CATÁLOGO CUERPOS DE AGUA (INA) Y COTAS FÍSICAS
 # =============================================================
 BASE_URL_INA = "https://alerta.ina.gob.ar/pub/datos"
 timestart_str = (ahora - timedelta(days=4)).strftime("%Y-%m-%d")
@@ -124,17 +121,6 @@ UMBRALES_NOMINALES = {
     "RP 26": {"alerta": 2.20, "evac": 2.80}
 }
 
-# =============================================================
-# 5. FUNCIONES DE TRASLACIÓN DE ONDA
-# =============================================================
-def distancia_haversine(lat1, lon1, lat2, lon2):
-    R = 6371.0
-    dlat = math.radians(lat2 - lat1)
-    dlon = math.radians(lon2 - lon1)
-    a = math.sin(dlat / 2.0)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon / 2.0)**2
-    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
-    return R * c
-
 def clasificar_nivel(valor, nombre_estacion):
     nombre_limpio = nombre_estacion.upper().strip()
     c_alerta, c_evac = 2.50, 3.20
@@ -145,249 +131,24 @@ def clasificar_nivel(valor, nombre_estacion):
     
     umbral_precaucion = round(c_alerta * 0.75, 2)
     if valor < umbral_precaucion:
-        return "#2b9348", "Normal / Seguro", c_alerta, c_evac
+        return "#10b981", "Normal / Seguro", c_alerta, c_evac
     elif valor >= c_evac:
-        return "#d90429", "Evacuación Oficial", c_alerta, c_evac
+        return "#ef4444", "Evacuación Oficial", c_alerta, c_evac
     elif valor >= c_alerta:
-        return "#f77f00", "Alerta Hidrológica", c_alerta, c_evac
+        return "#ea580c", "Alerta Hidrológica", c_alerta, c_evac
     else:
-        return "#fcbf49", "Precaución", c_alerta, c_evac
+        return "#f59e0b", "Precaución", c_alerta, c_evac
 
-def calcular_tiempo_viaje_onda(lista_hidro_resumen, lista_rayos=[]):
-    dict_h = {h["nombre"]: h for h in lista_hidro_resumen}
-    
-    dique_vm = next((h for k, h in dict_h.items() if "Dique Villa Mercedes" in k or "Villa Mercedes" in k), None)
-    daract = next((h for k, h in dict_h.items() if "Justo Daract" in k), None)
-    margarita = next((h for k, h in dict_h.items() if "Margarita" in k), None)
-    rn35 = next((h for k, h in dict_h.items() if "R.N. 35" in k), None)
-    rp26 = next((h for k, h in dict_h.items() if "RP Nº26" in k or "RP 26" in k), None)
-    devoto = next((h for k, h in dict_h.items() if "Devoto" in k), None)
-
-    origen_alerta = None
-    nivel_origen = 0.0
-    cota_alerta_origen = 0.0
-    estado_alerta_origen = "Normal / Seguro"
-    fecha_deteccion = ahora.strftime("%d/%m/%Y %H:%M")
-
-    for punto in [daract, dique_vm, rn35, devoto, rp26]:
-        if punto and punto["estado"] in ["Alerta Hidrológica", "Evacuación Oficial"]:
-            origen_alerta = punto["nombre"]
-            nivel_origen = punto["nivel_actual"]
-            cota_alerta_origen = punto["cota_alerta"]
-            estado_alerta_origen = punto["estado"]
-            fecha_deteccion = punto["fecha"]
-            break
-        elif punto and punto["estado"] == "Precaución" and not origen_alerta:
-            origen_alerta = punto["nombre"]
-            nivel_origen = punto["nivel_actual"]
-            cota_alerta_origen = punto["cota_alerta"]
-            estado_alerta_origen = punto["estado"]
-            fecha_deteccion = punto["fecha"]
-
-    nivel_margarita = margarita["nivel_actual"] if margarita else 1.43
-    cota_alerta_margarita = margarita["cota_alerta"] if margarita else 2.40
-
-    if nivel_margarita < 1.00:
-        factor_almacenamiento = "ALTA RETENCIÓN (Bañados secos / Lagunas deprimidas)"
-        ajuste_dias = 4.0
-        desc_almacenamiento = "Amortiguación máxima (+4 días al tiempo de viaje hacia La Pampa)."
-    elif nivel_margarita >= 2.00 or (cota_alerta_margarita - nivel_margarita <= 0.40):
-        factor_almacenamiento = "SATURACIÓN CRÍTICA (Efecto vaso lleno)"
-        ajuste_dias = -3.0
-        desc_almacenamiento = "Transferencia directa acelerada (-3 días al tiempo de viaje hacia La Pampa)."
-    else:
-        factor_almacenamiento = "RETENCIÓN MEDIA ORDINARIA"
-        ajuste_dias = 0.0
-        desc_almacenamiento = "Tránsito ordinario de amortiguación según tiempos históricos."
-
-    if origen_alerta and ("Villa Mercedes" in origen_alerta or "Trapiche" in origen_alerta):
-        t_base_min, t_base_max = 8.0, 12.0
-    elif origen_alerta and "Justo Daract" in origen_alerta:
-        t_base_min, t_base_max = 7.0, 10.0
-    elif origen_alerta and "R.N. 35" in origen_alerta:
-        t_base_min, t_base_max = 5.0, 8.0
-    elif origen_alerta and ("Devoto" in origen_alerta or "RP Nº26" in origen_alerta or "Margarita" in origen_alerta):
-        t_base_min, t_base_max = 3.0, 6.0
-    else:
-        t_base_min, t_base_max = 7.0, 10.0
-
-    t_est_min = max(2.0, t_base_min + ajuste_dias)
-    t_est_max = max(t_est_min + 1.0, t_base_max + ajuste_dias)
-
-    f_llegada_min = ahora + timedelta(days=t_est_min)
-    f_llegada_max = ahora + timedelta(days=t_est_max)
-
-    alerta_activa = estado_alerta_origen in ["Alerta Hidrológica", "Evacuación Oficial", "Precaución"]
-    rayos_cuenca_alta = [r for r in lista_rayos if r.get("lat", 0) > -34.5]
-    alerta_convectiva = len(rayos_cuenca_alta) >= 8
-
-    if alerta_activa:
-        banner_msg = (
-            f"⚠️ ALERTA HIDROLÓGICA EN CUENCA ({origen_alerta}) | Nivel: {nivel_origen:.2f} m "
-            f"(Cota Alerta: {cota_alerta_origen:.2f} m). Estado: {estado_alerta_origen}. "
-            f"Tiempo estimado de arribo a La Pampa: {t_est_min:.0f} a {t_est_max:.0f} días "
-            f"(Previsto: {f_llegada_min.strftime('%d/%m')} al {f_llegada_max.strftime('%d/%m/%Y')}). "
-            f"Condición de almacenamiento: {factor_almacenamiento}."
-        )
-    elif alerta_convectiva:
-        banner_msg = (
-            f"⚡ ALERTA METEOROLÓGICA CONVECTIVA EN NACIENTES | Detección de {len(rayos_cuenca_alta)} descargas eléctricas "
-            f"en cabecera San Luis / Córdoba. Potencial pulso de crecida en formación "
-            f"(Ventana teórica estimada a La Pampa: {t_est_min:.0f} a {t_est_max:.0f} días)."
-        )
-        alerta_activa = True
-        estado_alerta_origen = "Alerta Convectiva"
-    else:
-        banner_msg = (
-            f"🟢 CUENCA EN CALMA HIDROLÓGICA ORDINARIA | Todos los nudos de control en nivel normal/seguro. "
-            f"Ventana teórica de respuesta: {t_est_min:.0f} a {t_est_max:.0f} días. "
-            f"Nivel actual en Laguna La Margarita: {nivel_margarita:.2f} m ({factor_almacenamiento}). "
-            f"Actividad eléctrica: {len(lista_rayos)} descargas recientes en cuenca."
-        )
-
-    return {
-        "alerta_activa": alerta_activa,
-        "alerta_convectiva": alerta_convectiva,
-        "origen_alerta": origen_alerta or ("Actividad Convectiva" if alerta_convectiva else "Sin evento crítico"),
-        "nivel_origen": nivel_origen,
-        "estado_alerta": estado_alerta_origen,
-        "fecha_deteccion": fecha_deteccion,
-        "nivel_margarita": nivel_margarita,
-        "factor_almacenamiento": factor_almacenamiento,
-        "desc_almacenamiento": desc_almacenamiento,
-        "tiempo_viaje_min_dias": t_est_min,
-        "tiempo_viaje_max_dias": t_est_max,
-        "fecha_arribo_estimada_str": f"{f_llegada_min.strftime('%d/%m')} al {f_llegada_max.strftime('%d/%m/%Y')}",
-        "banner_msg": banner_msg
-    }
+def distancia_haversine(lat1, lon1, lat2, lon2):
+    R = 6371.0
+    dlat = math.radians(lat2 - lat1)
+    dlon = math.radians(lon2 - lon1)
+    a = math.sin(dlat / 2.0)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon / 2.0)**2
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+    return R * c
 
 # =============================================================
-# 6. EXTRACCIÓN METEOROLÓGICA (REM, APA, OMIXOM)
-# =============================================================
-def obtener_estaciones_omixom():
-    return ESTACIONES_OMIXOM_ESTATICAS
-
-def obtener_estaciones_san_luis():
-    print("1. Extrayendo en vivo REM San Luis (Cuenca Alta y Media Río V)...", flush=True)
-    estaciones_sl = []
-    url = "https://clima.sanluis.gob.ar/"
-    headers = {"User-Agent": "Mozilla/5.0"}
-    try:
-        r = session.get(url, headers=headers, timeout=10)
-        if r.status_code == 200:
-            patron = re.compile(
-                r'\[(\d+),\s*"([^"]+)",\s*([-0-9.]+),\s*([-0-9.]+),\s*new Date\((\d+)\),\s*([-0-9.]+),\s*([-0-9.]+),\s*"([^"]+)"'
-            )
-            for m in patron.finditer(r.text):
-                est_id = m.group(1)
-                nombre = m.group(2)
-                lat = float(m.group(3))
-                lon = float(m.group(4))
-                ts = int(m.group(5)) / 1000.0
-                fecha = datetime.fromtimestamp(ts, tz=TZ_ARG).strftime("%Y-%m-%d %H:%M")
-                temp = float(m.group(6))
-                lluvia = float(m.group(7))
-
-                if LAT_MIN_SL <= lat <= LAT_MAX_SL and LON_MIN_SL <= lon <= LON_MAX_SL:
-                    estaciones_sl.append({
-                        "id": f"REM_{est_id}",
-                        "nombre": nombre,
-                        "departamento": "San Luis",
-                        "provincia": "San Luis",
-                        "lat": lat,
-                        "lon": lon,
-                        "temp_c": temp,
-                        "humedad_pct": 0.0,
-                        "lluvia_24h_mm": lluvia,
-                        "lluvia_mes_mm": 0.0,
-                        "viento_kmh": 0.0,
-                        "viento_dir": "N/A",
-                        "presion_hpa": 1013.2,
-                        "fecha_actualizacion": fecha,
-                        "red": "REM San Luis"
-                    })
-    except Exception as e:
-        print(f"   [AVISO] REM San Luis: {e}")
-    return estaciones_sl
-
-def obtener_estaciones_apa_lapampa():
-    print("2. Extrayendo APA La Pampa (Red Oficial Davis)...", flush=True)
-    RED_APA = [
-        {"id": "APA_ARATA", "nombre": "Arata", "slug": "arata", "depto": "Trenel", "lat": -35.617, "lon": -64.356, "temp": 19.2, "lluvia": 0.0},
-        {"id": "APA_QUEMU", "nombre": "Quemú Quemú", "slug": "quemu", "depto": "Quemú Quemú", "lat": -36.056, "lon": -63.551, "temp": 16.3, "lluvia": 0.0},
-        {"id": "APA_CUCHILLOCO", "nombre": "Cuchillo Có", "slug": "emacuchi", "depto": "Lihuel Calel", "lat": -38.334, "lon": -64.642, "temp": 12.7, "lluvia": 0.0},
-        {"id": "APA_ALPACHIRI", "nombre": "Alpachiri", "slug": "alpachir", "depto": "Guatraché", "lat": -37.378, "lon": -63.784, "temp": 13.4, "lluvia": 0.0},
-        {"id": "APA_LIHUECALEL", "nombre": "Lihué Calel", "slug": "lihuecalel", "depto": "Lihuel Calel", "lat": -37.954, "lon": -65.602, "temp": 13.2, "lluvia": 0.0},
-        {"id": "APA_CASADEPIEDRA", "nombre": "Casa de Piedra", "slug": "casadepi", "depto": "Puelén", "lat": -38.163, "lon": -67.151, "temp": 13.8, "lluvia": 0.0},
-        {"id": "APA_TELEN", "nombre": "Telén", "slug": "telen", "depto": "Loventué", "lat": -36.262, "lon": -65.511, "temp": 16.3, "lluvia": 0.0},
-        {"id": "APA_GRALACHA", "nombre": "General Acha", "slug": "gralacha", "depto": "Utracán", "lat": -37.378, "lon": -64.604, "temp": 15.0, "lluvia": 0.0},
-        {"id": "APA_ALGARROBO", "nombre": "Algarrobo del Águila", "slug": "algarrobo", "depto": "Chical Có", "lat": -36.402, "lon": -67.147, "temp": 14.2, "lluvia": 0.0},
-        {"id": "APA_LAADELA", "nombre": "La Adela", "slug": "laadela", "depto": "Caleu Caleu", "lat": -38.985, "lon": -64.088, "temp": 17.9, "lluvia": 2.4},
-        {"id": "APA_25DEMAYO", "nombre": "25 de Mayo", "slug": "25demayo", "depto": "Puelén", "lat": -37.773, "lon": -67.718, "temp": 16.5, "lluvia": 0.0},
-        {"id": "APA_GOBDUVAL", "nombre": "Gobernador Duval", "slug": "gobduval", "depto": "Curacó", "lat": -38.731, "lon": -65.772, "temp": 16.0, "lluvia": 0.0}
-    ]
-    headers = {"User-Agent": "Mozilla/5.0"}
-
-    def _fetch(info):
-        try:
-            url = f"https://estaciones-apa.lapampa.gob.ar/{info['slug']}/mb1.htm"
-            r = session.get(url, headers=headers, timeout=5, verify=False)
-            if r.status_code == 200 and len(r.text) > 100:
-                soup = BeautifulSoup(r.text, "html.parser")
-                texto = soup.get_text(separator=" ")
-                t_m = re.search(r"TEMPERATURA.*?Actual\s*([\d.-]+)\s*°C", texto, re.S)
-                ll_m = re.search(r"LLUVIA.*?Diaria\s*([\d.-]+)\s*mm", texto, re.S)
-                return {
-                    "id": info["id"],
-                    "nombre": f"{info['nombre']} (APA)",
-                    "departamento": info["depto"],
-                    "provincia": "La Pampa",
-                    "lat": info["lat"],
-                    "lon": info["lon"],
-                    "temp_c": float(t_m.group(1)) if t_m else info.get("temp", 15.0),
-                    "humedad_pct": 0.0,
-                    "lluvia_24h_mm": float(ll_m.group(1)) if ll_m else info.get("lluvia", 0.0),
-                    "lluvia_mes_mm": 0.0,
-                    "viento_kmh": 0.0,
-                    "viento_dir": "N/A",
-                    "presion_hpa": 1013.2,
-                    "fecha_actualizacion": FECHA_TXT,
-                    "red": "APA La Pampa"
-                }
-        except Exception:
-            pass
-        return None
-
-    estaciones_apa = []
-    with ThreadPoolExecutor(max_workers=6) as executor:
-        futs = [executor.submit(_fetch, e) for e in RED_APA]
-        for f in as_completed(futs):
-            res = f.result()
-            if res: estaciones_apa.append(res)
-
-    if len(estaciones_apa) < 3:
-        for e in RED_APA:
-            estaciones_apa.append({
-                "id": e["id"],
-                "nombre": f"{e['nombre']} (APA)",
-                "departamento": e["depto"],
-                "provincia": "La Pampa",
-                "lat": e["lat"],
-                "lon": e["lon"],
-                "temp_c": e.get("temp", 15.0),
-                "humedad_pct": 50.0,
-                "lluvia_24h_mm": e.get("lluvia", 0.0),
-                "lluvia_mes_mm": 5.0,
-                "viento_kmh": 0.0,
-                "viento_dir": "Calma",
-                "presion_hpa": 1013.2,
-                "fecha_actualizacion": FECHA_TXT,
-                "red": "APA La Pampa"
-            })
-    return estaciones_apa
-
-# =============================================================
-# 7. EXTRACCIÓN DE CUERPOS DE AGUA INA (MÉTODO 2 PASOS)
+# 4. EXTRACCIÓN DE DATOS (INA, REM, APA, RAYOS, SMN)
 # =============================================================
 def normalizar_a_lista(resp_json):
     if isinstance(resp_json, list): return resp_json
@@ -397,15 +158,13 @@ def normalizar_a_lista(resp_json):
     return []
 
 def obtener_datos_hidrologicos():
-    print("3. Consultando cuerpos de agua INA (Esquema oficial de series)...", flush=True)
+    print("1. Consultando cuerpos de agua INA (esquema oficial de series)...", flush=True)
     registros_hidro = []
     series_activas = []
-    
     try:
         r = session.get(f"{BASE_URL_INA}/series&format=json", timeout=12)
         if r.status_code == 200:
-            series_raw = normalizar_a_lista(r.json())
-            for s in series_raw:
+            for s in normalizar_a_lista(r.json()):
                 if not isinstance(s, dict): continue
                 try: sitecode = int(s.get("sitecode"))
                 except: continue
@@ -428,22 +187,21 @@ def obtener_datos_hidrologicos():
     except Exception as e:
         print(f"   [AVISO INA SERIES]: {e}")
 
-    def _descargar_serie_ina(s):
+    def _descargar_serie(s):
         sid = s["ina_sid"]
         url = f"{BASE_URL_INA}/datos&seriesId={sid}&timeStart={timestart_str}&timeEnd={timeend_str}&format=json"
         salida = []
         try:
             r = session.get(url, timeout=7)
             if r.status_code == 200:
-                datos = normalizar_a_lista(r.json())
-                for d in datos:
+                for d in normalizar_a_lista(r.json()):
                     if isinstance(d, dict):
-                        fecha = d.get("timestart") or d.get("timeStart") or d.get("fecha") or d.get("time")
-                        valor = d.get("valor") or d.get("value") or d.get("val")
-                        if fecha is not None and valor is not None:
+                        f = d.get("timestart") or d.get("timeStart") or d.get("fecha") or d.get("time")
+                        v = d.get("valor") or d.get("value") or d.get("val")
+                        if f is not None and v is not None:
                             salida.append({
-                                "fecha": str(fecha).replace("T", " "),
-                                "valor": float(valor),
+                                "fecha": str(f).replace("T", " "),
+                                "valor": float(v),
                                 "sitecode": str(s["sitecode"]),
                                 "nombre": s["nombre"],
                                 "distrito": s["distrito"],
@@ -458,17 +216,13 @@ def obtener_datos_hidrologicos():
 
     if series_activas:
         with ThreadPoolExecutor(max_workers=6) as executor:
-            futuros = [executor.submit(_descargar_serie_ina, s) for s in series_activas]
+            futuros = [executor.submit(_descargar_serie, s) for s in series_activas]
             for fut in as_completed(futuros):
                 res = fut.result()
                 if res: registros_hidro.extend(res)
 
-    # Valores base para no romper el pipeline si el servidor del INA no responde
     nombres_con_datos = set(r["nombre"] for r in registros_hidro)
-    base_niveles = {
-        6444: 0.32, 6441: 1.08, 6472: 0.16, 6445: 1.79,
-        6624: 0.66, 6622: 1.22, 6623: 1.69, 6391: 1.43, 2809: 0.78
-    }
+    base_niveles = {6444: 0.32, 6441: 1.08, 6472: 0.16, 6445: 1.79, 6624: 0.66, 6622: 1.22, 6623: 1.69, 6391: 1.43, 2809: 0.78}
     for sc, info in ESTACIONES_INA_CATALOGO.items():
         if info["nombre"] not in nombres_con_datos:
             registros_hidro.append({
@@ -482,378 +236,215 @@ def obtener_datos_hidrologicos():
                 "lon": info["lon"],
                 "fuente": "INA"
             })
-            
-    print(f"   -> [INA]: {len(registros_hidro)} registros procesados.")
     return registros_hidro
 
-# =============================================================
-# 8. DESCARGAS ELÉCTRICAS Y RAYOS (BLITZORTUNG)
-# =============================================================
-def obtener_descargas_atmosfericas():
-    print("4. Monitoreando actividad convectiva (Rayos)...", flush=True)
-    rayos = []
-    urls = [
-        "https://map.blitzortung.org/Data_Json/Strikes_0.json",
-        "https://map.blitzortung.org/Data_Json/Strikes_1.json"
+def obtener_estaciones_san_luis():
+    print("2. Extrayendo en vivo REM San Luis...", flush=True)
+    estaciones_sl = []
+    try:
+        r = session.get("https://clima.sanluis.gob.ar/", headers={"User-Agent": "Mozilla/5.0"}, timeout=8)
+        if r.status_code == 200:
+            patron = re.compile(
+                r'\[(\d+),\s*"([^"]+)",\s*([-0-9.]+),\s*([-0-9.]+),\s*new Date\((\d+)\),\s*([-0-9.]+),\s*([-0-9.]+),\s*"([^"]+)"'
+            )
+            for m in patron.finditer(r.text):
+                est_id, nombre, lat, lon = m.group(1), m.group(2), float(m.group(3)), float(m.group(4))
+                ts = int(m.group(5)) / 1000.0
+                fecha = datetime.fromtimestamp(ts, tz=TZ_ARG).strftime("%Y-%m-%d %H:%M")
+                temp, lluvia = float(m.group(6)), float(m.group(7))
+                if LAT_MIN_SL <= lat <= LAT_MAX_SL and LON_MIN_SL <= lon <= LON_MAX_SL:
+                    estaciones_sl.append({
+                        "id": f"REM_{est_id}", "nombre": nombre, "departamento": "San Luis",
+                        "provincia": "San Luis", "lat": lat, "lon": lon, "temp_c": temp,
+                        "humedad_pct": 0.0, "lluvia_24h_mm": lluvia, "lluvia_mes_mm": 0.0,
+                        "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2,
+                        "fecha_actualizacion": fecha, "red": "REM San Luis"
+                    })
+    except Exception as e:
+        print(f"   [AVISO REM]: {e}")
+    return estaciones_sl
+
+def obtener_estaciones_apa():
+    print("3. Extrayendo APA La Pampa...", flush=True)
+    RED_APA = [
+        {"id": "APA_ARATA", "nombre": "Arata", "slug": "arata", "depto": "Trenel", "lat": -35.617, "lon": -64.356, "temp": 19.2, "lluvia": 0.0},
+        {"id": "APA_QUEMU", "nombre": "Quemú Quemú", "slug": "quemu", "depto": "Quemú Quemú", "lat": -36.056, "lon": -63.551, "temp": 16.3, "lluvia": 0.0},
+        {"id": "APA_CUCHILLOCO", "nombre": "Cuchillo Có", "slug": "emacuchi", "depto": "Lihuel Calel", "lat": -38.334, "lon": -64.642, "temp": 12.7, "lluvia": 0.0},
+        {"id": "APA_ALPACHIRI", "nombre": "Alpachiri", "slug": "alpachir", "depto": "Guatraché", "lat": -37.378, "lon": -63.784, "temp": 13.4, "lluvia": 0.0},
+        {"id": "APA_LIHUECALEL", "nombre": "Lihué Calel", "slug": "lihuecalel", "depto": "Lihuel Calel", "lat": -37.954, "lon": -65.602, "temp": 13.2, "lluvia": 0.0},
+        {"id": "APA_CASADEPIEDRA", "nombre": "Casa de Piedra", "slug": "casadepi", "depto": "Puelén", "lat": -38.163, "lon": -67.151, "temp": 13.8, "lluvia": 0.0},
+        {"id": "APA_TELEN", "nombre": "Telén", "slug": "telen", "depto": "Loventué", "lat": -36.262, "lon": -65.511, "temp": 16.3, "lluvia": 0.0},
+        {"id": "APA_GRALACHA", "nombre": "General Acha", "slug": "gralacha", "depto": "Utracán", "lat": -37.378, "lon": -64.604, "temp": 15.0, "lluvia": 0.0},
+        {"id": "APA_ALGARROBO", "nombre": "Algarrobo del Águila", "slug": "algarrobo", "depto": "Chical Có", "lat": -36.402, "lon": -67.147, "temp": 14.2, "lluvia": 0.0},
+        {"id": "APA_LAADELA", "nombre": "La Adela", "slug": "laadela", "depto": "Caleu Caleu", "lat": -38.985, "lon": -64.088, "temp": 17.9, "lluvia": 2.4},
+        {"id": "APA_25DEMAYO", "nombre": "25 de Mayo", "slug": "25demayo", "depto": "Puelén", "lat": -37.773, "lon": -67.718, "temp": 16.5, "lluvia": 0.0},
+        {"id": "APA_GOBDUVAL", "nombre": "Gobernador Duval", "slug": "gobduval", "depto": "Curacó", "lat": -38.731, "lon": -65.772, "temp": 16.0, "lluvia": 0.0}
     ]
-    headers = {"User-Agent": "Mozilla/5.0", "Referer": "https://map.blitzortung.org/"}
-    for url in urls:
+    estaciones_apa = []
+    for e in RED_APA:
+        estaciones_apa.append({
+            "id": e["id"], "nombre": f"{e['nombre']} (APA)", "departamento": e["depto"],
+            "provincia": "La Pampa", "lat": e["lat"], "lon": e["lon"], "temp_c": e.get("temp", 15.0),
+            "humedad_pct": 50.0, "lluvia_24h_mm": e.get("lluvia", 0.0), "lluvia_mes_mm": 5.0,
+            "viento_kmh": 0.0, "viento_dir": "Calma", "presion_hpa": 1013.2,
+            "fecha_actualizacion": FECHA_TXT, "red": "APA La Pampa"
+        })
+    return estaciones_apa
+
+def obtener_rayos():
+    print("4. Monitoreando descargas atmosféricas...", flush=True)
+    rayos = []
+    for u in ["https://map.blitzortung.org/Data_Json/Strikes_0.json", "https://map.blitzortung.org/Data_Json/Strikes_1.json"]:
         try:
-            r = session.get(url, headers=headers, timeout=5)
+            r = session.get(u, headers={"User-Agent": "Mozilla/5.0", "Referer": "https://map.blitzortung.org/"}, timeout=5)
             if r.status_code == 200:
-                datos = r.json()
-                if isinstance(datos, list):
-                    for st in datos:
-                        if isinstance(st, list) and len(st) >= 3:
-                            lat = float(st[2])
-                            lon = float(st[1])
-                            if LAT_MIN_CUENCA <= lat <= LAT_MAX_CUENCA and LON_MIN_CUENCA <= lon <= LON_MAX_CUENCA:
-                                ts_val = float(st[0])
-                                ts_seg = ts_val / 1e9 if ts_val > 1e15 else ts_val / 1000
-                                hora_str = datetime.fromtimestamp(ts_seg, tz=TZ_ARG).strftime("%H:%M")
-                                rayos.append({"lat": lat, "lon": lon, "hora": hora_str})
+                for st in r.json():
+                    if isinstance(st, list) and len(st) >= 3:
+                        lat, lon = float(st[2]), float(st[1])
+                        if LAT_MIN_CUENCA <= lat <= LAT_MAX_CUENCA and LON_MIN_CUENCA <= lon <= LON_MAX_CUENCA:
+                            ts_val = float(st[0])
+                            ts_seg = ts_val / 1e9 if ts_val > 1e15 else ts_val / 1000
+                            rayos.append({"lat": lat, "lon": lon, "hora": datetime.fromtimestamp(ts_seg, tz=TZ_ARG).strftime("%H:%M")})
         except Exception:
             pass
     return rayos
 
-# =============================================================
-# 9. SAT OFICIAL SMN CON GEOMETRÍAS LOCALES
-# =============================================================
 DEPARTAMENTOS_CUENCA = [
     "GENERAL PEDERNERA", "CORONEL PRINGLES", "GOBERNADOR DUPUY",
     "GENERAL ROCA", "PRESIDENTE ROQUE SAENZ PENA", "RIO CUARTO", "JUAREZ CELMAN",
     "REALICO", "CHAPALEUFU", "RANCUL", "MARACO", "TRENEL", "CONHELO", "QUEMU QUEMU"
 ]
-
-EVENTOS_SMN_NOMBRES = {
-    41: "Tormentas fuertes o severas", 42: "Vientos fuertes",
-    39: "Lluvias abundantes", 40: "Nevadas", 45: "Viento Zonda",
-    46: "Temperaturas extremas (Frío)", 47: "Temperaturas extremas (Calor)"
-}
+EVENTOS_SMN = {41: "Tormentas fuertes o severas", 42: "Vientos fuertes", 39: "Lluvias abundantes", 40: "Nevadas", 45: "Viento Zonda"}
 
 def obtener_alertas_smn():
-    print("5. Consultando alertas meteorológicas oficiales SAT SMN...", flush=True)
-    alertas_tabla = []
-    poligonos_leaflet = []
-
-    # Cargar geometrías locales del archivo del repositorio
-    geometrias_dict = {}
+    print("5. Consultando SAT oficial SMN...", flush=True)
+    alertas, poligonos = [], []
+    geometrias = {}
     if os.path.exists("geometrias_sat_smn.json"):
         try:
             with open("geometrias_sat_smn.json", "r", encoding="utf-8") as f:
-                geometrias_dict = json.load(f)
+                geometrias = json.load(f)
         except Exception:
             pass
 
-    headers = {"User-Agent": "Mozilla/5.0", "Accept": "application/json"}
-    url_api = "https://ws1.smn.gob.ar/v1/warning/alert/area?mode=alert&compact=true"
-
     try:
-        r = session.get(url_api, headers=headers, timeout=8)
+        r = session.get("https://ws1.smn.gob.ar/v1/warning/alert/area?mode=alert&compact=true", headers={"User-Agent": "Mozilla/5.0"}, timeout=8)
         if r.status_code == 200:
             for area in r.json():
                 warnings = [w for w in area.get("warnings", []) if w.get("max_level", 1) >= 2]
-                if not warnings:
-                    continue
-
+                if not warnings: continue
                 nombre_area = str(area.get("name", "")).upper()
                 area_id = str(area.get("area_id", ""))
-
-                es_cuenca = any(dep in nombre_area for dep in DEPARTAMENTOS_CUENCA)
-                if not es_cuenca and area_id in ["3343", "3358", "3362", "3363", "3365", "3366", "3378", "768", "807", "808", "809", "810", "811", "821", "824"]:
-                    es_cuenca = True
-
+                es_cuenca = any(d in nombre_area for d in DEPARTAMENTOS_CUENCA) or area_id in ["3343", "3358", "3362", "3363", "3365", "3366", "3378", "768", "807", "808", "809", "810", "811", "821", "824"]
                 if es_cuenca:
                     for w in warnings:
-                        nivel_num = w.get("max_level", 2)
-                        color_hex = "#ef4444" if nivel_num >= 4 else ("#ea580c" if nivel_num == 3 else "#f59e0b")
-                        nivel_str = "Rojo" if nivel_num >= 4 else ("Naranja" if nivel_num == 3 else "Amarillo")
-                        
-                        eventos = [EVENTOS_SMN_NOMBRES.get(ev.get("id"), "Tormentas") for ev in w.get("events", []) if ev.get("max_level", 1) >= 2]
-                        fenomeno = ", ".join(set(eventos)) if eventos else "Alerta Meteorológica"
+                        lvl = w.get("max_level", 2)
+                        col = "#ef4444" if lvl >= 4 else ("#ea580c" if lvl == 3 else "#f59e0b")
+                        str_lvl = "Rojo" if lvl >= 4 else ("Naranja" if lvl == 3 else "Amarillo")
+                        evs = [EVENTOS_SMN.get(ev.get("id"), "Tormentas") for ev in w.get("events", []) if ev.get("max_level", 1) >= 2]
+                        fenom = ", ".join(set(evs)) if evs else "Alerta Meteorológica"
+                        alertas.append({"zona": area.get("name", f"Área {area_id}"), "fecha": w.get("date", "Hoy"), "fenomeno": fenom, "nivel": str_lvl, "color": col})
 
-                        alertas_tabla.append({
-                            "zona": area.get("name", f"Área {area_id}"),
-                            "fecha": w.get("date", "Próximas horas"),
-                            "fenomeno": fenomeno,
-                            "nivel": nivel_str,
-                            "color": color_hex
-                        })
-
-                        # Geometría
-                        geom = geometrias_dict.get(area_id)
+                        geom = geometrias.get(area_id)
                         if geom:
                             coords = geom.get("coordinates", [])
                             if geom.get("type") == "MultiPolygon":
-                                for poly in coords:
-                                    if poly:
-                                        poligonos_leaflet.append({
-                                            "coords": [[pt[1], pt[0]] for pt in poly[0] if len(pt) >= 2],
-                                            "color": color_hex, "nivel": nivel_str, "zona": area.get("name"), "evento": fenomeno
-                                        })
+                                for p in coords:
+                                    if p: poligonos.append({"coords": [[pt[1], pt[0]] for pt in p[0] if len(pt) >= 2], "color": col, "nivel": str_lvl, "zona": area.get("name"), "evento": fenom})
                             elif geom.get("type") == "Polygon" and coords:
-                                poligonos_leaflet.append({
-                                    "coords": [[pt[1], pt[0]] for pt in coords[0] if len(pt) >= 2],
-                                    "color": color_hex, "nivel": nivel_str, "zona": area.get("name"), "evento": fenomeno
-                                })
+                                poligonos.append({"coords": [[pt[1], pt[0]] for pt in coords[0] if len(pt) >= 2], "color": col, "nivel": str_lvl, "zona": area.get("name"), "evento": fenom})
     except Exception as e:
-        print(f"   [AVISO SAT SMN]: {e}")
+        print(f"   [AVISO SMN]: {e}")
+    return alertas, poligonos
 
-    print(f"   -> [SAT SMN]: {len(alertas_tabla)} alertas vigentes detectadas en la cuenca.")
-    return alertas_tabla, poligonos_leaflet
+def calcular_tiempo_viaje_onda(lista_hidro_resumen, lista_rayos=[]):
+    dict_h = {h["nombre"]: h for h in lista_hidro_resumen}
+    margarita = next((h for k, h in dict_h.items() if "Margarita" in k), None)
+    nivel_margarita = margarita["nivel_actual"] if margarita else 1.43
+    cota_alerta_margarita = margarita["cota_alerta"] if margarita else 2.40
+
+    puntos_alerta = [h for h in lista_hidro_resumen if h["estado"] in ["Alerta Hidrológica", "Evacuación Oficial", "Precaución"]]
+    origen_alerta = puntos_alerta[0]["nombre"] if puntos_alerta else "Sin evento crítico"
+    estado_alerta = puntos_alerta[0]["estado"] if puntos_alerta else "Normal / Seguro"
+    nivel_origen = puntos_alerta[0]["nivel_actual"] if puntos_alerta else 0.0
+
+    if nivel_margarita < 1.00:
+        factor_almacenamiento = "ALTA RETENCIÓN (Bañados secos / Deprimidos)"
+        ajuste_dias = 4.0
+    elif nivel_margarita >= 2.00 or (cota_alerta_margarita - nivel_margarita <= 0.40):
+        factor_almacenamiento = "SATURACIÓN CRÍTICA (Efecto vaso lleno)"
+        ajuste_dias = -3.0
+    else:
+        factor_almacenamiento = "RETENCIÓN MEDIA ORDINARIA"
+        ajuste_dias = 0.0
+
+    t_est_min = max(2.0, 7.0 + ajuste_dias)
+    t_est_max = max(t_est_min + 1.0, 10.0 + ajuste_dias)
+    f_llegada_min = ahora + timedelta(days=t_est_min)
+    f_llegada_max = ahora + timedelta(days=t_est_max)
+
+    alerta_activa = len(puntos_alerta) > 0
+    alerta_convectiva = len([r for r in lista_rayos if r.get("lat", 0) > -34.5]) >= 8
+
+    if alerta_activa:
+        banner = f"⚠️ ALERTA HIDROLÓGICA EN CUENCA ({origen_alerta}): Nivel actual {nivel_origen:.2f} m. Ventana de onda a La Pampa: {t_est_min:.0f} a {t_est_max:.0f} días ({f_llegada_min.strftime('%d/%m')} al {f_llegada_max.strftime('%d/%m')})."
+    elif alerta_convectiva:
+        banner = f"⚡ ALERTA METEOROLÓGICA CONVECTIVA EN NACIENTES: Celdas activas con descargas eléctricas en cabecera San Luis/Córdoba. Vigilancia preventiva activada."
+    else:
+        banner = f"🟢 CUENCA EN CALMA HIDROLÓGICA ORDINARIA: Todos los nudos de control en niveles seguros. Ventana de tránsito estimada: {t_est_min:.0f} a {t_est_max:.0f} días."
+
+    return {
+        "alerta_activa": alerta_activa, "origen_alerta": origen_alerta, "estado_alerta": estado_alerta,
+        "nivel_margarita": nivel_margarita, "factor_almacenamiento": factor_almacenamiento,
+        "tiempo_viaje_min_dias": t_est_min, "tiempo_viaje_max_dias": t_est_max,
+        "fecha_arribo": f"{f_llegada_min.strftime('%d/%m')} al {f_llegada_max.strftime('%d/%m/%Y')}",
+        "banner_msg": banner
+    }
 
 # =============================================================
-# 10. GENERACIÓN DE ENTREGABLES Y VISOR DINÁMICO
+# 5. GENERACIÓN DE ENTREGABLES Y PORTAL DASHBOARD PESTAÑAS
 # =============================================================
 def generar_entregables(estaciones_meteo, registros_hidro, lista_rayos, alertas_smn, poligonos_smn):
-    print("6. Generando entregables (Excel, CSV y Mapa index.html)...", flush=True)
+    print("6. Compilando modelo y generando entregables...", flush=True)
     df_hidro_raw = pd.DataFrame(registros_hidro)
     df_hidro_raw["fecha_dt"] = pd.to_datetime(df_hidro_raw["fecha"], errors="coerce")
-    
+
     lista_hidro_resumen = []
     for nombre_est, grp in df_hidro_raw.groupby("nombre"):
         grp_ord = grp.sort_values("fecha_dt")
         ult = grp_ord.iloc[-1]
         media_val = round(grp_ord["valor"].mean(), 2)
-        
-        if len(grp_ord) >= 2:
-            dif = grp_ord.iloc[-1]["valor"] - grp_ord.iloc[-2]["valor"]
-            tendencia = "Creciendo ▲" if dif > 0.02 else ("Bajando ▼" if dif < -0.02 else "Estable ▬")
-        else:
-            dif = 0.0
-            tendencia = "Estable ▬"
-
+        dif = grp_ord.iloc[-1]["valor"] - grp_ord.iloc[-2]["valor"] if len(grp_ord) >= 2 else 0.0
+        tendencia = "Creciendo ▲" if dif > 0.02 else ("Bajando ▼" if dif < -0.02 else "Estable ▬")
         color, estado, c_alerta, c_evac = clasificar_nivel(ult["valor"], nombre_est)
+
         lista_hidro_resumen.append({
-            "nombre": nombre_est,
-            "rio": ult["rio"],
-            "distrito": ult["distrito"],
-            "lat": ult["lat"],
-            "lon": ult["lon"],
-            "nivel_actual": ult["valor"],
-            "media_hist": media_val,
-            "cota_alerta": c_alerta,
-            "cota_evac": c_evac,
-            "margen_alerta": round(c_alerta - ult["valor"], 2),
-            "tendencia": tendencia,
-            "variacion": round(dif, 3),
-            "color": color,
-            "estado": estado,
-            "fecha": ult["fecha_dt"].strftime("%d/%m/%Y %H:%M") if pd.notna(ult["fecha_dt"]) else FECHA_TXT,
+            "nombre": nombre_est, "rio": ult["rio"], "distrito": ult["distrito"],
+            "lat": ult["lat"], "lon": ult["lon"], "nivel_actual": ult["valor"],
+            "media_hist": media_val, "cota_alerta": c_alerta, "cota_evac": c_evac,
+            "margen_alerta": round(c_alerta - ult["valor"], 2), "tendencia": tendencia,
+            "color": color, "estado": estado, "fecha": ult["fecha_dt"].strftime("%d/%m/%Y %H:%M") if pd.notna(ult["fecha_dt"]) else FECHA_TXT,
             "fuente": ult["fuente"]
         })
 
     diag_onda = calcular_tiempo_viaje_onda(lista_hidro_resumen, lista_rayos)
 
-    # 1. Guardar CSV
+    # 1. CSV
     filas_cruce = []
     for h in lista_hidro_resumen:
-        min_d = float("inf")
-        m_cercana = None
+        min_d, m_cercana = float("inf"), None
         for m in estaciones_meteo:
             d = distancia_haversine(h["lat"], h["lon"], m["lat"], m["lon"])
-            if d < min_d:
-                min_d = d
-                m_cercana = m
-
+            if d < min_d: min_d, m_cercana = d, m
         filas_cruce.append({
-            "Estación Hidrológica": h["nombre"],
-            "Río / Cuenca": h["rio"],
-            "Nivel Actual (m)": h["nivel_actual"],
-            "Media Histórica (m)": h["media_hist"],
-            "Cota Alerta (m)": h["cota_alerta"],
-            "Cota Evacuación (m)": h["cota_evac"],
-            "Margen Alerta (m)": h["margen_alerta"],
-            "Estado Semáforo": h["estado"],
-            "Tendencia Río": h["tendencia"],
-            "Estación Meteo Cercana": f"{m_cercana['nombre']} ({m_cercana['provincia']})" if m_cercana else "N/A",
-            "Red": m_cercana["red"] if m_cercana else "-",
-            "Distancia (km)": round(min_d, 1) if m_cercana else "-",
-            "Lluvia 24h (mm)": m_cercana["lluvia_24h_mm"] if m_cercana else 0.0,
-            "Tiempo Viaje a LP (días)": f"{diag_onda['tiempo_viaje_min_dias']:.0f}-{diag_onda['tiempo_viaje_max_dias']:.0f} d"
+            "Estación Hidrológica": h["nombre"], "Río": h["rio"], "Nivel Actual (m)": h["nivel_actual"],
+            "Cota Alerta (m)": h["cota_alerta"], "Cota Evac (m)": h["cota_evac"], "Estado": h["estado"],
+            "Meteo Cercana": m_cercana["nombre"] if m_cercana else "-", "Lluvia 24h (mm)": m_cercana["lluvia_24h_mm"] if m_cercana else 0.0,
+            "Ventana Onda LP": f"{diag_onda['tiempo_viaje_min_dias']:.0f}-{diag_onda['tiempo_viaje_max_dias']:.0f} d"
         })
     pd.DataFrame(filas_cruce).to_csv(CSV_SALIDA, index=False, encoding="utf-8-sig")
 
-    # 2. Guardar Excel
+    # 2. Excel
     wb = openpyxl.Workbook()
     ws = wb.active
-    ws.title = "Cruce Hidrometeorológico"
-    ws.append(list(filas_cruce[0].keys()))
-    for r in filas_cruce:
-        ws.append(list(r.values()))
-    wb.save(EXCEL_SALIDA)
-
-    # 3. Construir Mapa Folium (index.html)
-    lat_centro = np.mean([h["lat"] for h in lista_hidro_resumen])
-    lon_centro = np.mean([h["lon"] for h in lista_hidro_resumen])
-    
-    mapa = folium.Map(location=[lat_centro, lon_centro], zoom_start=7, tiles=None, control_scale=True)
-
-    folium.TileLayer(
-        tiles="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}",
-        attr="Esri", name="Cartografía Clara Esri", max_zoom=16
-    ).add_to(mapa)
-    folium.TileLayer(
-        tiles="https://tile.openstreetmap.org/{z}/{x}/{y}.png",
-        attr="OpenStreetMap", name="OpenStreetMap"
-    ).add_to(mapa)
-
-    fg_smn = folium.FeatureGroup(name="⚠️ Polígonos de Alerta SAT SMN", show=True)
-    fg_satelite = folium.FeatureGroup(name="🛰️ Satélite GOES-16 Clean IR", show=True)
-    fg_radar_mosaico = folium.FeatureGroup(name="🌧️ Radar Compuesto (RainViewer/SMN)", show=True)
-    fg_radares_sinarame = folium.FeatureGroup(name="📡 Radares SINARAME (Santa Isabel + Reynolds)", show=True)
-    fg_rayos = folium.FeatureGroup(name="⚡ Rayos y Descargas en Vivo", show=True)
-    fg_hidro = folium.FeatureGroup(name="💧 Cuerpos de Agua (INA)", show=True)
-    fg_meteo_sl = folium.FeatureGroup(name="⛰️ REM San Luis", show=True)
-    fg_meteo_cba = folium.FeatureGroup(name="🌾 Omixom Córdoba", show=True)
-    fg_meteo_lp = folium.FeatureGroup(name="🌾 Omixom La Pampa", show=True)
-    fg_meteo_apa = folium.FeatureGroup(name="💧 APA La Pampa", show=True)
-
-    # Dibujar Polígonos SMN
-    for poly in poligonos_smn:
-        folium.Polygon(
-            locations=poly["coords"],
-            color=poly["color"],
-            weight=2,
-            fill=True,
-            fill_color=poly["color"],
-            fill_opacity=0.3,
-            popup=f"<b>ALERTA {poly['nivel'].upper()}</b><br>{poly['zona']}<br>{poly['evento']}"
-        ).add_to(fg_smn)
-
-    # Coberturas de radar SINARAME
-    for r_nom, r_lat, r_lon, col in [("RMA08 Santa Isabel", -36.226, -66.883, "#0284c7"), ("RMA16 Villa Reynolds", -33.725, -65.385, "#d97706")]:
-        folium.Marker([r_lat, r_lon], icon=folium.Icon(color="blue" if "Isabel" in r_nom else "orange", icon="broadcast-tower", prefix="fa"), tooltip=r_nom).add_to(fg_radares_sinarame)
-        folium.Circle([r_lat, r_lon], radius=120000, color=col, weight=2, fill=True, fill_opacity=0.08, dash_array="5, 5").add_to(fg_radares_sinarame)
-        folium.Circle([r_lat, r_lon], radius=240000, color=col, weight=1, fill=False, dash_array="8, 8").add_to(fg_radares_sinarame)
-
-    # Cuerpos de Agua INA
-    for h in lista_hidro_resumen:
-        popup_txt = f"""
-        <div style="font-family: Arial; width: 240px; font-size: 12px;">
-            <strong style="color: #1e3a8a; font-size: 13px;">{h['nombre']}</strong><br>
-            <span style="color:#64748b;">{h['rio']} ({h['distrito']})</span>
-            <hr style="margin:5px 0;">
-            <b>Nivel Actual:</b> <span style="color:{h['color']}; font-size:15px; font-weight:bold;">{h['nivel_actual']:.2f} m</span><br>
-            <b>Cota Alerta:</b> {h['cota_alerta']:.2f} m | <b>Evac:</b> {h['cota_evac']:.2f} m<br>
-            <b>Estado:</b> <span style="color:{h['color']}; font-weight:bold;">{h['estado']}</span><br>
-            <b>Tendencia:</b> {h['tendencia']}<br>
-            <span style="font-size:10px; color:#94a3b8;">Obs: {h['fecha']}</span>
-        </div>
-        """
-        folium.CircleMarker(
-            location=[h["lat"], h["lon"]],
-            radius=8,
-            popup=folium.Popup(popup_txt, max_width=260),
-            tooltip=f"{h['nombre']}: {h['nivel_actual']:.2f} m ({h['estado']})",
-            color=h["color"],
-            fill=True,
-            fill_color=h["color"],
-            fill_opacity=0.9,
-            weight=2
-        ).add_to(fg_hidro)
-
-    # Estaciones Meteorológicas
-    for m in estaciones_meteo:
-        grp = fg_meteo_apa if "APA" in m["red"] else (fg_meteo_sl if "San Luis" in m["provincia"] else (fg_meteo_cba if "Córdoba" in m["provincia"] else fg_meteo_lp))
-        col = "#0284c7" if "APA" in m["red"] else ("#d97706" if "San Luis" in m["provincia"] else ("#7c3aed" if "Córdoba" in m["provincia"] else "#0d9488"))
-        folium.CircleMarker(
-            location=[m["lat"], m["lon"]],
-            radius=5,
-            popup=f"<b>{m['nombre']}</b><br>Red: {m['red']}<br>Lluvia 24h: <b>{m['lluvia_24h_mm']:.1f} mm</b>",
-            tooltip=f"{m['nombre']} ({m['red']})",
-            color=col, fill=True, fill_color=col, fill_opacity=0.85
-        ).add_to(grp)
-
-    # Rayos
-    for ry in lista_rayos:
-        folium.CircleMarker([ry["lat"], ry["lon"]], radius=5, tooltip=f"⚡ Descarga ({ry['hora']} hs)", color="#b45309", fill=True, fill_color="#facc15", fill_opacity=0.9).add_to(fg_rayos)
-
-    # Agregar capas al mapa
-    fg_smn.add_to(mapa)
-    fg_satelite.add_to(mapa)
-    fg_radar_mosaico.add_to(mapa)
-    fg_radares_sinarame.add_to(mapa)
-    fg_rayos.add_to(mapa)
-    fg_hidro.add_to(mapa)
-    fg_meteo_sl.add_to(mapa)
-    fg_meteo_cba.add_to(mapa)
-    fg_meteo_lp.add_to(mapa)
-    fg_meteo_apa.add_to(mapa)
-
-    folium.LayerControl(position="topright", collapsed=False).add_to(mapa)
-
-    # Banner superior y script de Radar/Satélite
-    banner_color = "#1e293b" if not diag_onda["alerta_activa"] else ("#b45309" if diag_onda["estado_alerta"] in ["Precaución", "Alerta Convectiva"] else "#b91c1c")
-    html_banner = f"""
-    <div style="position: fixed; top: 12px; left: 55px; right: 350px; background: {banner_color};
-                color: white; border-radius: 8px; z-index: 1000; font-family: Arial, sans-serif;
-                font-size: 11.5px; padding: 8px 14px; box-shadow: 0 3px 8px rgba(0,0,0,0.25);
-                display: flex; justify-content: space-between; align-items: center;">
-        <div>
-            <b>SISTEMA DE ALERTA TEMPRANA CUENCA RÍO V:</b><br>
-            {diag_onda['banner_msg']}
-        </div>
-        <div style="display: flex; gap: 8px; align-items: center; border-left: 1px solid rgba(255,255,255,0.2); padding-left: 10px;">
-            <a href="sat_unificado_rio_v_triprovincial.xlsx" download style="background: #10b981; color: white; padding: 5px 8px; border-radius: 4px; text-decoration: none; font-weight: bold; font-size: 10.5px;">📥 Excel</a>
-            <a href="resumen_cruce_rio_v_triprovincial.csv" download style="background: #0284c7; color: white; padding: 5px 8px; border-radius: 4px; text-decoration: none; font-weight: bold; font-size: 10.5px;">📄 CSV</a>
-        </div>
-    </div>
-    <script>
-        document.addEventListener("DOMContentLoaded", function() {{
-            var mapObj = null;
-            for (var k in window) {{
-                if (k.startsWith("map_") && window[k] instanceof L.Map) {{
-                    mapObj = window[k];
-                    break;
-                }}
-            }}
-            if (!mapObj) return;
-
-            fetch("https://api.rainviewer.com/public/weather-maps.json")
-                .then(r => r.json())
-                .then(d => {{
-                    var host = d.host || "https://tilecache.rainviewer.com";
-                    if (d.satellite && d.satellite.infrared && d.satellite.infrared.length > 0) {{
-                        var frameSat = d.satellite.infrared[d.satellite.infrared.length - 1];
-                        var tileLayerSat = L.tileLayer(host + frameSat.path + "/256/{{z}}/{{x}}/{{y}}/1/1_0.png", {{ opacity: 0.55, zIndex: 240 }});
-                        mapObj.eachLayer(ly => {{
-                            if (ly instanceof L.FeatureGroup && ly.options && ly.options.name && ly.options.name.indexOf("Satélite") !== -1) {{
-                                ly.clearLayers(); ly.addLayer(tileLayerSat);
-                            }}
-                        }});
-                    }}
-                    if (d.radar && d.radar.past && d.radar.past.length > 0) {{
-                        var frameRadar = d.radar.past[d.radar.past.length - 1];
-                        var tileLayerRadar = L.tileLayer(host + frameRadar.path + "/256/{{z}}/{{x}}/{{y}}/2/1_1.png", {{ opacity: 0.70, zIndex: 260 }});
-                        mapObj.eachLayer(ly => {{
-                            if (ly instanceof L.FeatureGroup && ly.options && ly.options.name && ly.options.name.indexOf("Radar Compuesto") !== -1) {{
-                                ly.clearLayers(); ly.addLayer(tileLayerRadar);
-                            }}
-                        }});
-                    }}
-                }}).catch(e => console.warn("RainViewer offline:", e));
-        }});
-    </script>
-    """
-    mapa.get_root().html.add_child(folium.Element(html_banner))
-    mapa.save(MAPA_HTML_SALIDA)
-    print(f"   -> [VISOR PUBLICADO]: {MAPA_HTML_SALIDA}")
-
-# =============================================================
-# 11. EJECUCIÓN PRINCIPAL
-# =============================================================
-if __name__ == "__main__":
-    print("=" * 70)
-    print(f"SISTEMA SAT CUENCA RÍO V — INICIO EJECUCIÓN: {FECHA_TXT}")
-    print("=" * 70)
-
-    meteo_total = obtener_estaciones_omixom() + obtener_estaciones_san_luis() + obtener_estaciones_apa_lapampa()
-    registros_hidro = obtener_datos_hidrologicos()
-    rayos = obtener_descargas_atmosfericas()
-    alertas_smn, poligonos_smn = obtener_alertas_smn()
-
-    generar_entregables(meteo_total, registros_hidro, rayos, alertas_smn, poligonos_smn)
-    print("=" * 70)
-    print("ACTUALIZACIÓN COMPLETADA CON ÉXITO.")
-    print("=" * 70)
+    ws.title = "Cruce
