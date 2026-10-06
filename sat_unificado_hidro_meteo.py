@@ -148,8 +148,11 @@ def distancia_haversine(lat1, lon1, lat2, lon2):
     return R * c
 
 # =============================================================
-# 4. EXTRACCIÓN DE DATOS (INA, REM, APA, RAYOS, SMN)
+# 4. EXTRACCIÓN DE DATOS (OMIXOM, INA, REM, APA, RAYOS, SMN)
 # =============================================================
+def obtener_estaciones_omixom():
+    return ESTACIONES_OMIXOM_ESTATICAS
+
 def normalizar_a_lista(resp_json):
     if isinstance(resp_json, list):
         return resp_json
