@@ -2,7 +2,7 @@
 """
 SISTEMA DE ALERTA TEMPRANA TRIPROVINCIAL: CUENCA RÍO V (SAN LUIS - CÓRDOBA - LA PAMPA)
 Monitoreo Hidrometeorológico, Cuerpos de Agua INA, SAT SMN / WMO CAP, Pronóstico ECMWF IFS,
-Radares SINARAME (Villa Reynolds, Santa Isabel, Bolívar), Redes Meteorológicas Discriminadas y Visor Cartográfico.
+Mosaico Radar WMS SMN, Redes Meteorológicas Discriminadas y Visor Cartográfico Vial.
 """
 import os
 import sys
@@ -48,41 +48,6 @@ session = requests.Session()
 retries = Retry(total=2, backoff_factor=1.0, status_forcelist=[500, 502, 503, 504])
 session.mount("https://", HTTPAdapter(max_retries=retries))
 session.mount("http://", HTTPAdapter(max_retries=retries))
-
-# Endpoints e imágenes de Radares SINARAME
-RADARES_SINARAME_CONFIG = {
-    "reynolds": {
-        "url": "https://radares.hidricosargentina.gob.ar/images/radar_reynolds_cappi.png",
-        "archivo": "radar_reynolds.png"
-    },
-    "santa_isabel": {
-        "url": "https://radares.hidricosargentina.gob.ar/images/radar_santa_isabel_cappi.png",
-        "archivo": "radar_santa_isabel.png"
-    },
-    "bolivar": {
-        "url": "https://radares.hidricosargentina.gob.ar/images/radar_bolivar_cappi.png",
-        "archivo": "radar_bolivar.png"
-    }
-}
-
-HEADERS_SINARAME = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    "Referer": "https://radares.hidricosargentina.gob.ar/"
-}
-
-def descargar_imagenes_sinarame():
-    print("0. Descargando productos de radar SINARAME...", flush=True)
-    for clave, conf in RADARES_SINARAME_CONFIG.items():
-        try:
-            r = session.get(conf["url"], headers=HEADERS_SINARAME, timeout=12)
-            if r.status_code == 200 and len(r.content) > 1000:
-                with open(conf["archivo"], "wb") as f:
-                    f.write(r.content)
-                print(f"   ✓ Radar {clave.capitalize()} descargado correctamente.")
-            else:
-                print(f"   [AVISO SINARAME {clave.capitalize()}]: Respuesta {r.status_code} (se mantiene archivo previo si existe).")
-        except Exception as e:
-            print(f"   [AVISO CONEXIÓN RADAR {clave.capitalize()}]: {e}")
 
 # =============================================================
 # 2. MEDIAS CLIMÁTICAS Y NODOS ECMWF A 72 HORAS
@@ -717,7 +682,7 @@ def generar_entregables(estaciones_sl, estaciones_apa, estaciones_omx, registros
         <p style='margin: 4px 0 0 0; font-size:13px; color:#475569;'><strong>Fenómeno:</strong> {a['fenomeno']} | <strong>Vigencia:</strong> {a['fecha']}</p>
     </div>""" for a in alertas_smn]) if alertas_smn else "<p style='color:#64748b; font-style:italic;'>No se registran alertas meteorológicas activas en los departamentos de la cuenca.</p>"
 
-    # 4. Portal con Leaflet y Controles de Radar SINARAME
+    # 4. Portal con Leaflet y Controles de Radar WMS SMN
     html_portal = f"""<!DOCTYPE html>
 <html lang="es">
 <head>
@@ -961,7 +926,7 @@ def generar_entregables(estaciones_sl, estaciones_apa, estaciones_omx, registros
         </div>
     </div>
 
-    <!-- Leaflet JS y Renderizado Nativo -->
+    <!-- Leaflet JS y Geoservicios WMS del SMN -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
         var map = null;
@@ -1003,32 +968,27 @@ def generar_entregables(estaciones_sl, estaciones_apa, estaciones_omx, registros
             var fgOmxLP = L.featureGroup().addTo(map);
             var fgRayos = L.featureGroup().addTo(map);
 
-            // 3. Capas Raster de Radares SINARAME
-            var boundsReynolds = [[-35.88, -67.97], [-31.57, -62.78]];
-            var boundsSantaIsabel = [[-38.39, -69.47], [-34.07, -64.29]];
-            var boundsBolivar = [[-38.30, -63.50], [-34.30, -58.50]];
+            // 3. Mosaico Nacional de Radares SMN (WMS en Tiempo Real)
+            var wmsRadarSMN = L.tileLayer.wms('https://geoservicios.smn.gob.ar/geoserver/wms', {{
+                layers: 'radar_cappi_nacional',
+                format: 'image/png',
+                transparent: true,
+                version: '1.1.1',
+                opacity: 0.70,
+                zIndex: 250,
+                attribution: 'Servicio Meteorológico Nacional (SINARAME / SMN)'
+            }}).addTo(map);
 
-            var tStamp = new Date().getTime();
-
-            var radarReynolds = L.imageOverlay('radar_reynolds.png?t=' + tStamp, boundsReynolds, {{
-                opacity: 0.65,
-                zIndex: 150,
-                interactive: false
+            // 4. Satélite GOES-16 SMN (WMS Topes Nubosos / Infrarrojo)
+            var wmsSatSMN = L.tileLayer.wms('https://geoservicios.smn.gob.ar/geoserver/wms', {{
+                layers: 'satelite_goes16_ch13',
+                format: 'image/png',
+                transparent: true,
+                version: '1.1.1',
+                opacity: 0.55,
+                zIndex: 220,
+                attribution: 'SMN / NOAA GOES-16'
             }});
-
-            var radarSantaIsabel = L.imageOverlay('radar_santa_isabel.png?t=' + tStamp, boundsSantaIsabel, {{
-                opacity: 0.65,
-                zIndex: 150,
-                interactive: false
-            }});
-
-            var radarBolivar = L.imageOverlay('radar_bolivar.png?t=' + tStamp, boundsBolivar, {{
-                opacity: 0.65,
-                zIndex: 150,
-                interactive: false
-            }});
-
-            radarReynolds.addTo(map);
 
             // Cuerpos de Agua (INA)
             var datosHidro = {json_hidro};
@@ -1087,7 +1047,7 @@ def generar_entregables(estaciones_sl, estaciones_apa, estaciones_omx, registros
                 }}).bindPopup("<b>" + m.nombre + "</b><br>Red: <b>Omixom La Pampa</b><br>Lluvia 24h: " + m.lluvia_24h_mm + " mm").addTo(fgOmxLP);
             }});
 
-            // Polígonos SMN
+            // Polígonos de Alerta SMN
             var poligonos = {json_poligonos};
             poligonos.forEach(function(p) {{
                 L.polygon(p.coords, {{
@@ -1098,7 +1058,7 @@ def generar_entregables(estaciones_sl, estaciones_apa, estaciones_omx, registros
                 }}).bindPopup("<b>ALERTA " + p.nivel + "</b><br>" + p.zona + "<br>" + p.evento).addTo(fgSMN);
             }});
 
-            // Rayos
+            // Rayos en vivo
             var rayos = {json_rayos};
             rayos.forEach(function(r) {{
                 L.circleMarker([r.lat, r.lon], {{
@@ -1113,16 +1073,15 @@ def generar_entregables(estaciones_sl, estaciones_apa, estaciones_omx, registros
             // Control de Capas
             var baseMaps = {{
                 "🗺️ Rutas y Vialidad (OpenStreetMap)": osmVial,
-                "⛰️️ Topográfico (Esri)": esriTopo,
+                "⛰️ Topográfico (Esri)": esriTopo,
                 "🏙️ Mapa Claro (CartoDB)": cartoPositron
             }};
 
             var overlayMaps = {{
                 "💧 Cuerpos de Agua (INA)": fgHidro,
                 "⚠️ Alertas SAT SMN": fgSMN,
-                "📡 Radar Villa Reynolds (SINARAME)": radarReynolds,
-                "📡 Radar Santa Isabel (SINARAME)": radarSantaIsabel,
-                "📡 Radar Bolívar (SINARAME)": radarBolivar,
+                "📡 Mosaico Radar Nacional (SMN WMS)": wmsRadarSMN,
+                "🛰️ Satélite GOES-16 (SMN WMS)": wmsSatSMN,
                 "⚡ Rayos / Descargas en Vivo": fgRayos,
                 "⛰️ REM San Luis": fgRemSL,
                 "💧 APA La Pampa": fgApaLP,
@@ -1183,10 +1142,6 @@ if __name__ == "__main__":
     print(f"SISTEMA SAT CUENCA RÍO V — EJECUCIÓN: {FECHA_TXT}")
     print("=" * 70)
 
-    # 1. Descarga de radares SINARAME
-    descargar_imagenes_sinarame()
-
-    # 2. Extracción de redes meteorológicas e hidrométricas
     estaciones_omx = obtener_estaciones_omixom()
     estaciones_sl = obtener_estaciones_san_luis()
     estaciones_apa = obtener_estaciones_apa()
@@ -1195,7 +1150,6 @@ if __name__ == "__main__":
     alertas_smn, poligonos_smn = obtener_alertas_smn()
     pronostico_ecmwf = obtener_pronostico_ecmwf()
 
-    # 3. Consolidación y publicación
     generar_entregables(estaciones_sl, estaciones_apa, estaciones_omx, registros_hidro, rayos, alertas_smn, poligonos_smn, pronostico_ecmwf)
     print("=" * 70)
     print("PROCESO COMPLETADO EXITOSAMENTE.")
