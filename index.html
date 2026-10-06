@@ -4,34 +4,40 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SAT Triprovincial - Cuenca del Río V</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         body { background: #f1f5f9; color: #1e293b; display: flex; flex-direction: column; min-height: 100vh; }
-        header { background: #1e3a8a; color: white; padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; }
+        header { background: #1e3a8a; color: white; padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
         .header-title h1 { font-size: 20px; font-weight: 700; }
         .header-title p { font-size: 12px; opacity: 0.85; }
         .banner { background: #1e293b; color: white; padding: 10px 24px; font-size: 13px; font-weight: 600; }
         
         .tabs { background: #0f172a; display: flex; overflow-x: auto; padding: 0 20px; }
-        .tab-btn { background: none; border: none; color: #94a3b8; padding: 14px 20px; font-size: 13.5px; font-weight: 600; cursor: pointer; border-bottom: 3px solid transparent; transition: all 0.2s; white-space: nowrap; }
+        .tab-btn { background: none; border: none; color: #94a3b8; padding: 14px 18px; font-size: 13px; font-weight: 600; cursor: pointer; border-bottom: 3px solid transparent; transition: all 0.2s; white-space: nowrap; }
         .tab-btn:hover { color: #ffffff; }
         .tab-btn.active { color: #38bdf8; border-bottom-color: #38bdf8; background: rgba(255,255,255,0.05); }
         
         .tab-content { display: none; padding: 20px; flex: 1; }
         .tab-content.active { display: block; }
         
-        iframe.map-frame { width: 100%; height: calc(100vh - 180px); min-height: 600px; border: none; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+        #map-container { width: 100%; height: calc(100vh - 200px); min-height: 580px; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); border: 1px solid #cbd5e1; }
         
         .card { background: white; border-radius: 8px; padding: 20px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
         .card h2 { font-size: 16px; color: #1e3a8a; margin-bottom: 14px; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px; }
+        
+        .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 16px; margin-bottom: 20px; }
+        .kpi-card { background: #f8fafc; padding: 16px; border-radius: 8px; border-left: 4px solid #0284c7; }
+        .kpi-title { font-size: 11.5px; color: #64748b; font-weight: 600; text-transform: uppercase; }
+        .kpi-val { font-size: 22px; font-weight: 700; color: #0f172a; margin-top: 4px; }
         
         table { width: 100%; border-collapse: collapse; font-size: 13px; }
         th { background: #f8fafc; color: #475569; font-weight: 600; padding: 10px; text-align: left; border-bottom: 2px solid #cbd5e1; }
         td { padding: 10px; border-bottom: 1px solid #e2e8f0; }
         tr:hover { background: #f8fafc; }
         
-        .btn { display: inline-block; background: #0284c7; color: white; padding: 8px 14px; border-radius: 6px; text-decoration: none; font-size: 12px; font-weight: 600; margin-right: 8px; }
+        .btn { display: inline-block; background: #0284c7; color: white; padding: 7px 12px; border-radius: 6px; text-decoration: none; font-size: 12px; font-weight: 600; margin-left: 8px; }
         .btn-green { background: #10b981; }
     </style>
 </head>
@@ -52,18 +58,241 @@
         🟢 CUENCA EN CALMA HIDROLÓGICA ORDINARIA: Todos los nudos de control en niveles seguros. Ventana de tránsito estimada: 7 a 10 días.
     </div>
 
+    <!-- Barra de Pestañas -->
     <div class="tabs">
-        <button class="tab-btn active" onclick="openTab(event, 'tab-mapa')">🗺️ Visor Cartográfico</button>
+        <button class="tab-btn active" onclick="openTab(event, 'tab-dashboard')">📊 Panel de Control General</button>
+        <button class="tab-btn" onclick="openTab(event, 'tab-mapa')">🗺️ Visor Cartográfico</button>
+        <button class="tab-btn" onclick="openTab(event, 'tab-ecmwf')">🌧️ Pronóstico ECMWF 72h y Medias</button>
         <button class="tab-btn" onclick="openTab(event, 'tab-alertas')">⚠️ Panel de Alertas SMN (0)</button>
         <button class="tab-btn" onclick="openTab(event, 'tab-hidro')">💧 Cuerpos de Agua y Cotas (INA)</button>
         <button class="tab-btn" onclick="openTab(event, 'tab-onda')">🌊 Traslación de Onda a La Pampa</button>
         <button class="tab-btn" onclick="openTab(event, 'tab-meteo')">🌦️ Redes Meteorológicas</button>
     </div>
 
-    <div id="tab-mapa" class="tab-content active" style="padding: 10px 20px;">
-        <iframe class="map-frame" src="mapa_sat_rio_v_triprovincial.html"></iframe>
+    <!-- Pestaña 1: Panel de Control Ejecutivo Resumido -->
+    <div id="tab-dashboard" class="tab-content active">
+        <div class="kpi-grid">
+            <div class="kpi-card" style="border-left-color: #10b981;">
+                <div class="kpi-title">ESTADO HIDROLÓGICO GENERAL</div>
+                <div class="kpi-val" style="font-size: 16px; color: #10b981;">NORMAL / SEGURO</div>
+                <small style="color:#64748b;">Nacientes y Cuenca Media</small>
+            </div>
+            <div class="kpi-card" style="border-left-color: #0284c7;">
+                <div class="kpi-title">NIVEL LAGUNA LA MARGARITA</div>
+                <div class="kpi-val">1.37 m</div>
+                <small style="color:#64748b;">RETENCIÓN MEDIA ORDINARIA</small>
+            </div>
+            <div class="kpi-card" style="border-left-color: #f59e0b;">
+                <div class="kpi-title">TIEMPO TRÁNSITO A LA PAMPA</div>
+                <div class="kpi-val">7 a 10 días</div>
+                <small style="color:#64748b;">Ventana prevista: 13/10 al 16/10/2026</small>
+            </div>
+            <div class="kpi-card" style="border-left-color: #10b981;">
+                <div class="kpi-title">ALERTAS METEOROLÓGICAS (SMN)</div>
+                <div class="kpi-val">0 activas</div>
+                <small style="color:#64748b;">En departamentos de la cuenca</small>
+            </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+            <div class="card">
+                <h2>Cuerpos de Agua Críticos / Alturas Actuales</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Estación</th>
+                            <th style="text-align:center;">Nivel</th>
+                            <th style="text-align:center;">Alerta/Evac</th>
+                            <th style="text-align:center;">Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        
+    <tr>
+        <td><strong>Aº El Aji - RN Nº35 y RN Nº7</strong><br><small style='color:#64748b;'>Afluente Río Quinto</small></td>
+        <td style='text-align:center; font-weight:bold; color:#10b981;'>0.65 m</td>
+        <td style='text-align:center;'>1.90 m</td>
+        <td style='text-align:center;'>2.40 m</td>
+        <td style='text-align:center;'><span style='background:#10b981; color:white; padding:3px 8px; border-radius:12px; font-size:11px; font-weight:bold;'>Normal / Seguro</span></td>
+        <td style='text-align:center;'>Estable ▬</td>
+        <td style='text-align:right; font-size:11px; color:#64748b;'>06/10/2026 09:00</td>
+    </tr>
+    <tr>
+        <td><strong>Laguna La Margarita</strong><br><small style='color:#64748b;'>Cuenca Río Quinto</small></td>
+        <td style='text-align:center; font-weight:bold; color:#10b981;'>1.37 m</td>
+        <td style='text-align:center;'>2.40 m</td>
+        <td style='text-align:center;'>3.00 m</td>
+        <td style='text-align:center;'><span style='background:#10b981; color:white; padding:3px 8px; border-radius:12px; font-size:11px; font-weight:bold;'>Normal / Seguro</span></td>
+        <td style='text-align:center;'>Estable ▬</td>
+        <td style='text-align:right; font-size:11px; color:#64748b;'>06/10/2026 08:00</td>
+    </tr>
+    <tr>
+        <td><strong>Quinto - Av Circunvalación</strong><br><small style='color:#64748b;'>Río Quinto</small></td>
+        <td style='text-align:center; font-weight:bold; color:#10b981;'>0.13 m</td>
+        <td style='text-align:center;'>2.50 m</td>
+        <td style='text-align:center;'>3.20 m</td>
+        <td style='text-align:center;'><span style='background:#10b981; color:white; padding:3px 8px; border-radius:12px; font-size:11px; font-weight:bold;'>Normal / Seguro</span></td>
+        <td style='text-align:center;'>Estable ▬</td>
+        <td style='text-align:right; font-size:11px; color:#64748b;'>06/10/2026 09:00</td>
+    </tr>
+    <tr>
+        <td><strong>Quinto - Canal Devoto RP 4</strong><br><small style='color:#64748b;'>Río Quinto / Canal Devoto</small></td>
+        <td style='text-align:center; font-weight:bold; color:#10b981;'>0.99 m</td>
+        <td style='text-align:center;'>2.80 m</td>
+        <td style='text-align:center;'>3.40 m</td>
+        <td style='text-align:center;'><span style='background:#10b981; color:white; padding:3px 8px; border-radius:12px; font-size:11px; font-weight:bold;'>Normal / Seguro</span></td>
+        <td style='text-align:center;'>Estable ▬</td>
+        <td style='text-align:right; font-size:11px; color:#64748b;'>06/10/2026 08:00</td>
+    </tr>
+    <tr>
+        <td><strong>Quinto - Dique Villa Mercedes</strong><br><small style='color:#64748b;'>Río Quinto</small></td>
+        <td style='text-align:center; font-weight:bold; color:#10b981;'>1.10 m</td>
+        <td style='text-align:center;'>2.80 m</td>
+        <td style='text-align:center;'>3.50 m</td>
+        <td style='text-align:center;'><span style='background:#10b981; color:white; padding:3px 8px; border-radius:12px; font-size:11px; font-weight:bold;'>Normal / Seguro</span></td>
+        <td style='text-align:center;'>Estable ▬</td>
+        <td style='text-align:right; font-size:11px; color:#64748b;'>06/10/2026 09:00</td>
+    </tr>
+    <tr>
+        <td><strong>Quinto - Justo Daract</strong><br><small style='color:#64748b;'>Río Quinto</small></td>
+        <td style='text-align:center; font-weight:bold; color:#10b981;'>1.78 m</td>
+        <td style='text-align:center;'>2.90 m</td>
+        <td style='text-align:center;'>3.60 m</td>
+        <td style='text-align:center;'><span style='background:#10b981; color:white; padding:3px 8px; border-radius:12px; font-size:11px; font-weight:bold;'>Normal / Seguro</span></td>
+        <td style='text-align:center;'>Estable ▬</td>
+        <td style='text-align:right; font-size:11px; color:#64748b;'>06/10/2026 09:00</td>
+    </tr>
+    <tr>
+        <td><strong>Quinto - R.N. 35</strong><br><small style='color:#64748b;'>Río Quinto</small></td>
+        <td style='text-align:center; font-weight:bold; color:#10b981;'>1.16 m</td>
+        <td style='text-align:center;'>2.60 m</td>
+        <td style='text-align:center;'>3.20 m</td>
+        <td style='text-align:center;'><span style='background:#10b981; color:white; padding:3px 8px; border-radius:12px; font-size:11px; font-weight:bold;'>Normal / Seguro</span></td>
+        <td style='text-align:center;'>Estable ▬</td>
+        <td style='text-align:right; font-size:11px; color:#64748b;'>06/10/2026 08:00</td>
+    </tr>
+    <tr>
+        <td><strong>Quinto - RP Nº26</strong><br><small style='color:#64748b;'>Río Quinto</small></td>
+        <td style='text-align:center; font-weight:bold; color:#10b981;'>0.67 m</td>
+        <td style='text-align:center;'>2.20 m</td>
+        <td style='text-align:center;'>2.80 m</td>
+        <td style='text-align:center;'><span style='background:#10b981; color:white; padding:3px 8px; border-radius:12px; font-size:11px; font-weight:bold;'>Normal / Seguro</span></td>
+        <td style='text-align:center;'>Estable ▬</td>
+        <td style='text-align:right; font-size:11px; color:#64748b;'>06/10/2026 08:00</td>
+    </tr>
+    <tr>
+        <td><strong>Trapiche - Hosteria El Trapiche</strong><br><small style='color:#64748b;'>Río Trapiche (Afluente)</small></td>
+        <td style='text-align:center; font-weight:bold; color:#10b981;'>0.29 m</td>
+        <td style='text-align:center;'>1.80 m</td>
+        <td style='text-align:center;'>2.30 m</td>
+        <td style='text-align:center;'><span style='background:#10b981; color:white; padding:3px 8px; border-radius:12px; font-size:11px; font-weight:bold;'>Normal / Seguro</span></td>
+        <td style='text-align:center;'>Estable ▬</td>
+        <td style='text-align:right; font-size:11px; color:#64748b;'>06/10/2026 09:00</td>
+    </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="card">
+                <h2>Alertas Meteorológicas Vigentes (SMN)</h2>
+                <p style='color:#64748b; font-style:italic;'>No se registran alertas meteorológicas activas en los departamentos de la cuenca.</p>
+            </div>
+        </div>
     </div>
 
+    <!-- Pestaña 2: Visor Cartográfico Nativo (Sin iframe) -->
+    <div id="tab-mapa" class="tab-content">
+        <div id="map-container"></div>
+    </div>
+
+    <!-- Pestaña 3: Pronóstico ECMWF 72h y Comparativa Climática -->
+    <div id="tab-ecmwf" class="tab-content">
+        <div class="card">
+            <h2>Modelo Numérico ECMWF IFS 0.25° — Pronóstico 72h vs Medias Climáticas Históricas</h2>
+            <p style="font-size: 13px; color: #475569; margin-bottom: 14px;">
+                Precipitación acumulada diaria simulada por el modelo europeo y ponderación de impacto frente a la media mensual esperada de cada distrito de la cuenca.
+            </p>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Localidad / Nodo</th>
+                        <th>Provincia</th>
+                        <th style="text-align:center;">Hoy</th>
+                        <th style="text-align:center;">+24h</th>
+                        <th style="text-align:center;">+48h</th>
+                        <th style="text-align:center;">Acum. 72h</th>
+                        <th style="text-align:center;">Media Mensual</th>
+                        <th style="text-align:center;">% del Mes</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    
+    <tr>
+        <td><strong>Villa Mercedes</strong><br><small style='color:#64748b;'>Cabecera / Nacientes</small></td>
+        <td>San Luis</td>
+        <td style='text-align:center; font-weight:bold; color:#0284c7;'>5.1 mm</td>
+        <td style='text-align:center; font-weight:bold; color:#0284c7;'>8.9 mm</td>
+        <td style='text-align:center; font-weight:bold; color:#0284c7;'>3.6 mm</td>
+        <td style='text-align:center; font-weight:bold; color:#0f172a;'>17.6 mm</td>
+        <td style='text-align:center;'>55 mm</td>
+        <td style='text-align:center; font-weight:bold; color:#10b981;'>32.0%</td>
+    </tr>
+    <tr>
+        <td><strong>General Levalle</strong><br><small style='color:#64748b;'>Cuenca Media (Aporte)</small></td>
+        <td>Córdoba</td>
+        <td style='text-align:center; font-weight:bold; color:#0284c7;'>0.6 mm</td>
+        <td style='text-align:center; font-weight:bold; color:#0284c7;'>10.0 mm</td>
+        <td style='text-align:center; font-weight:bold; color:#0284c7;'>2.0 mm</td>
+        <td style='text-align:center; font-weight:bold; color:#0f172a;'>12.6 mm</td>
+        <td style='text-align:center;'>68 mm</td>
+        <td style='text-align:center; font-weight:bold; color:#10b981;'>18.5%</td>
+    </tr>
+    <tr>
+        <td><strong>Jovita</strong><br><small style='color:#64748b;'>Cuenca Media-Baja</small></td>
+        <td>Córdoba</td>
+        <td style='text-align:center; font-weight:bold; color:#0284c7;'>0.5 mm</td>
+        <td style='text-align:center; font-weight:bold; color:#0284c7;'>14.7 mm</td>
+        <td style='text-align:center; font-weight:bold; color:#0284c7;'>1.5 mm</td>
+        <td style='text-align:center; font-weight:bold; color:#0f172a;'>16.7 mm</td>
+        <td style='text-align:center;'>70 mm</td>
+        <td style='text-align:center; font-weight:bold; color:#10b981;'>23.9%</td>
+    </tr>
+    <tr>
+        <td><strong>Realicó</strong><br><small style='color:#64748b;'>Norte Pampeano (RN 35)</small></td>
+        <td>La Pampa</td>
+        <td style='text-align:center; font-weight:bold; color:#0284c7;'>0.9 mm</td>
+        <td style='text-align:center; font-weight:bold; color:#0284c7;'>14.8 mm</td>
+        <td style='text-align:center; font-weight:bold; color:#0284c7;'>1.0 mm</td>
+        <td style='text-align:center; font-weight:bold; color:#0f172a;'>16.7 mm</td>
+        <td style='text-align:center;'>75 mm</td>
+        <td style='text-align:center; font-weight:bold; color:#10b981;'>22.3%</td>
+    </tr>
+    <tr>
+        <td><strong>Intendente Alvear</strong><br><small style='color:#64748b;'>Norte Pampeano (Meridiano V)</small></td>
+        <td>La Pampa</td>
+        <td style='text-align:center; font-weight:bold; color:#0284c7;'>0.2 mm</td>
+        <td style='text-align:center; font-weight:bold; color:#0284c7;'>13.4 mm</td>
+        <td style='text-align:center; font-weight:bold; color:#0284c7;'>1.9 mm</td>
+        <td style='text-align:center; font-weight:bold; color:#0f172a;'>15.5 mm</td>
+        <td style='text-align:center;'>78 mm</td>
+        <td style='text-align:center; font-weight:bold; color:#10b981;'>19.9%</td>
+    </tr>
+    <tr>
+        <td><strong>Punta Alta (Rancul)</strong><br><small style='color:#64748b;'>Norte Pampeano (RP 9)</small></td>
+        <td>La Pampa</td>
+        <td style='text-align:center; font-weight:bold; color:#0284c7;'>0.6 mm</td>
+        <td style='text-align:center; font-weight:bold; color:#0284c7;'>7.1 mm</td>
+        <td style='text-align:center; font-weight:bold; color:#0284c7;'>1.9 mm</td>
+        <td style='text-align:center; font-weight:bold; color:#0f172a;'>9.6 mm</td>
+        <td style='text-align:center;'>72 mm</td>
+        <td style='text-align:center; font-weight:bold; color:#10b981;'>13.3%</td>
+    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Pestaña 4: Panel Alertas SMN -->
     <div id="tab-alertas" class="tab-content">
         <div class="card">
             <h2>Alertas Meteorológicas Oficiales del SMN</h2>
@@ -71,6 +300,7 @@
         </div>
     </div>
 
+    <!-- Pestaña 5: Cuerpos de Agua INA -->
     <div id="tab-hidro" class="tab-content">
         <div class="card">
             <h2>Niveles Hidrométricos en Nacientes y Cuenca Media (INA)</h2>
@@ -90,21 +320,21 @@
                     
     <tr>
         <td><strong>Aº El Aji - RN Nº35 y RN Nº7</strong><br><small style='color:#64748b;'>Afluente Río Quinto</small></td>
-        <td style='text-align:center; font-weight:bold; color:#10b981;'>0.64 m</td>
+        <td style='text-align:center; font-weight:bold; color:#10b981;'>0.65 m</td>
         <td style='text-align:center;'>1.90 m</td>
         <td style='text-align:center;'>2.40 m</td>
         <td style='text-align:center;'><span style='background:#10b981; color:white; padding:3px 8px; border-radius:12px; font-size:11px; font-weight:bold;'>Normal / Seguro</span></td>
         <td style='text-align:center;'>Estable ▬</td>
-        <td style='text-align:right; font-size:11px; color:#64748b;'>06/10/2026 08:00</td>
+        <td style='text-align:right; font-size:11px; color:#64748b;'>06/10/2026 09:00</td>
     </tr>
     <tr>
         <td><strong>Laguna La Margarita</strong><br><small style='color:#64748b;'>Cuenca Río Quinto</small></td>
-        <td style='text-align:center; font-weight:bold; color:#10b981;'>1.36 m</td>
+        <td style='text-align:center; font-weight:bold; color:#10b981;'>1.37 m</td>
         <td style='text-align:center;'>2.40 m</td>
         <td style='text-align:center;'>3.00 m</td>
         <td style='text-align:center;'><span style='background:#10b981; color:white; padding:3px 8px; border-radius:12px; font-size:11px; font-weight:bold;'>Normal / Seguro</span></td>
         <td style='text-align:center;'>Estable ▬</td>
-        <td style='text-align:right; font-size:11px; color:#64748b;'>06/10/2026 04:00</td>
+        <td style='text-align:right; font-size:11px; color:#64748b;'>06/10/2026 08:00</td>
     </tr>
     <tr>
         <td><strong>Quinto - Av Circunvalación</strong><br><small style='color:#64748b;'>Río Quinto</small></td>
@@ -113,7 +343,7 @@
         <td style='text-align:center;'>3.20 m</td>
         <td style='text-align:center;'><span style='background:#10b981; color:white; padding:3px 8px; border-radius:12px; font-size:11px; font-weight:bold;'>Normal / Seguro</span></td>
         <td style='text-align:center;'>Estable ▬</td>
-        <td style='text-align:right; font-size:11px; color:#64748b;'>06/10/2026 08:00</td>
+        <td style='text-align:right; font-size:11px; color:#64748b;'>06/10/2026 09:00</td>
     </tr>
     <tr>
         <td><strong>Quinto - Canal Devoto RP 4</strong><br><small style='color:#64748b;'>Río Quinto / Canal Devoto</small></td>
@@ -122,7 +352,7 @@
         <td style='text-align:center;'>3.40 m</td>
         <td style='text-align:center;'><span style='background:#10b981; color:white; padding:3px 8px; border-radius:12px; font-size:11px; font-weight:bold;'>Normal / Seguro</span></td>
         <td style='text-align:center;'>Estable ▬</td>
-        <td style='text-align:right; font-size:11px; color:#64748b;'>06/10/2026 04:00</td>
+        <td style='text-align:right; font-size:11px; color:#64748b;'>06/10/2026 08:00</td>
     </tr>
     <tr>
         <td><strong>Quinto - Dique Villa Mercedes</strong><br><small style='color:#64748b;'>Río Quinto</small></td>
@@ -131,7 +361,7 @@
         <td style='text-align:center;'>3.50 m</td>
         <td style='text-align:center;'><span style='background:#10b981; color:white; padding:3px 8px; border-radius:12px; font-size:11px; font-weight:bold;'>Normal / Seguro</span></td>
         <td style='text-align:center;'>Estable ▬</td>
-        <td style='text-align:right; font-size:11px; color:#64748b;'>06/10/2026 08:00</td>
+        <td style='text-align:right; font-size:11px; color:#64748b;'>06/10/2026 09:00</td>
     </tr>
     <tr>
         <td><strong>Quinto - Justo Daract</strong><br><small style='color:#64748b;'>Río Quinto</small></td>
@@ -140,7 +370,7 @@
         <td style='text-align:center;'>3.60 m</td>
         <td style='text-align:center;'><span style='background:#10b981; color:white; padding:3px 8px; border-radius:12px; font-size:11px; font-weight:bold;'>Normal / Seguro</span></td>
         <td style='text-align:center;'>Estable ▬</td>
-        <td style='text-align:right; font-size:11px; color:#64748b;'>06/10/2026 08:00</td>
+        <td style='text-align:right; font-size:11px; color:#64748b;'>06/10/2026 09:00</td>
     </tr>
     <tr>
         <td><strong>Quinto - R.N. 35</strong><br><small style='color:#64748b;'>Río Quinto</small></td>
@@ -149,7 +379,7 @@
         <td style='text-align:center;'>3.20 m</td>
         <td style='text-align:center;'><span style='background:#10b981; color:white; padding:3px 8px; border-radius:12px; font-size:11px; font-weight:bold;'>Normal / Seguro</span></td>
         <td style='text-align:center;'>Estable ▬</td>
-        <td style='text-align:right; font-size:11px; color:#64748b;'>06/10/2026 07:00</td>
+        <td style='text-align:right; font-size:11px; color:#64748b;'>06/10/2026 08:00</td>
     </tr>
     <tr>
         <td><strong>Quinto - RP Nº26</strong><br><small style='color:#64748b;'>Río Quinto</small></td>
@@ -158,37 +388,38 @@
         <td style='text-align:center;'>2.80 m</td>
         <td style='text-align:center;'><span style='background:#10b981; color:white; padding:3px 8px; border-radius:12px; font-size:11px; font-weight:bold;'>Normal / Seguro</span></td>
         <td style='text-align:center;'>Estable ▬</td>
-        <td style='text-align:right; font-size:11px; color:#64748b;'>06/10/2026 04:00</td>
+        <td style='text-align:right; font-size:11px; color:#64748b;'>06/10/2026 08:00</td>
     </tr>
     <tr>
         <td><strong>Trapiche - Hosteria El Trapiche</strong><br><small style='color:#64748b;'>Río Trapiche (Afluente)</small></td>
-        <td style='text-align:center; font-weight:bold; color:#10b981;'>0.30 m</td>
+        <td style='text-align:center; font-weight:bold; color:#10b981;'>0.29 m</td>
         <td style='text-align:center;'>1.80 m</td>
         <td style='text-align:center;'>2.30 m</td>
         <td style='text-align:center;'><span style='background:#10b981; color:white; padding:3px 8px; border-radius:12px; font-size:11px; font-weight:bold;'>Normal / Seguro</span></td>
         <td style='text-align:center;'>Estable ▬</td>
-        <td style='text-align:right; font-size:11px; color:#64748b;'>06/10/2026 08:00</td>
+        <td style='text-align:right; font-size:11px; color:#64748b;'>06/10/2026 09:00</td>
     </tr>
                 </tbody>
             </table>
         </div>
     </div>
 
+    <!-- Pestaña 6: Traslación de Onda -->
     <div id="tab-onda" class="tab-content">
         <div class="card">
             <h2>Modelo de Amortiguación y Tránsito de Crecida</h2>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 20px;">
-                <div style="background:#f8fafc; padding:16px; border-radius:8px; border-left:4px solid #0284c7;">
-                    <div style="font-size:12px; color:#64748b;">NIVEL LAGUNA LA MARGARITA</div>
-                    <div style="font-size:24px; font-weight:bold; color:#0f172a; margin-top:4px;">1.36 m</div>
+            <div class="kpi-grid">
+                <div class="kpi-card">
+                    <div class="kpi-title">NIVEL LAGUNA LA MARGARITA</div>
+                    <div class="kpi-val">1.37 m</div>
                 </div>
-                <div style="background:#f8fafc; padding:16px; border-radius:8px; border-left:4px solid #10b981;">
-                    <div style="font-size:12px; color:#64748b;">ESTADO DE RETENCIÓN</div>
-                    <div style="font-size:15px; font-weight:bold; color:#0f172a; margin-top:4px;">RETENCIÓN MEDIA ORDINARIA</div>
+                <div class="kpi-card" style="border-left-color: #10b981;">
+                    <div class="kpi-title">ESTADO DE RETENCIÓN</div>
+                    <div class="kpi-val" style="font-size: 15px;">RETENCIÓN MEDIA ORDINARIA</div>
                 </div>
-                <div style="background:#f8fafc; padding:16px; border-radius:8px; border-left:4px solid #f59e0b;">
-                    <div style="font-size:12px; color:#64748b;">TIEMPO DE VIAJE A LA PAMPA</div>
-                    <div style="font-size:24px; font-weight:bold; color:#0f172a; margin-top:4px;">7 - 10 días</div>
+                <div class="kpi-card" style="border-left-color: #f59e0b;">
+                    <div class="kpi-title">TIEMPO ESTIMADO A LA PAMPA</div>
+                    <div class="kpi-val">7 - 10 días</div>
                 </div>
             </div>
             <p style="font-size: 13.5px; color: #334155; line-height: 1.6;">
@@ -197,6 +428,7 @@
         </div>
     </div>
 
+    <!-- Pestaña 7: Redes Meteorológicas -->
     <div id="tab-meteo" class="tab-content">
         <div class="card">
             <h2>Redes Meteorológicas Integradas (San Luis, Córdoba, La Pampa)</h2>
@@ -473,121 +705,121 @@
         <td><strong>AgroZAL</strong></td>
         <td>San Luis</td>
         <td><span style='background:#e2e8f0; padding:2px 6px; border-radius:4px; font-size:11px;'>REM San Luis</span></td>
-        <td style='text-align:center;'>22.0 °C</td>
+        <td style='text-align:center;'>22.2 °C</td>
         <td style='text-align:center; font-weight:bold; color:#0284c7;'>0.0 mm</td>
-        <td style='text-align:right; font-size:11px; color:#64748b;'>2026-10-06 09:59</td>
+        <td style='text-align:right; font-size:11px; color:#64748b;'>2026-10-06 10:04</td>
     </tr>
     <tr>
         <td><strong>Alto Pelado</strong></td>
         <td>San Luis</td>
         <td><span style='background:#e2e8f0; padding:2px 6px; border-radius:4px; font-size:11px;'>REM San Luis</span></td>
-        <td style='text-align:center;'>18.4 °C</td>
+        <td style='text-align:center;'>19.3 °C</td>
         <td style='text-align:center; font-weight:bold; color:#0284c7;'>0.0 mm</td>
-        <td style='text-align:right; font-size:11px; color:#64748b;'>2026-10-06 09:59</td>
+        <td style='text-align:right; font-size:11px; color:#64748b;'>2026-10-06 10:05</td>
     </tr>
     <tr>
         <td><strong>Batavia</strong></td>
         <td>San Luis</td>
         <td><span style='background:#e2e8f0; padding:2px 6px; border-radius:4px; font-size:11px;'>REM San Luis</span></td>
-        <td style='text-align:center;'>17.5 °C</td>
+        <td style='text-align:center;'>17.9 °C</td>
         <td style='text-align:center; font-weight:bold; color:#0284c7;'>0.0 mm</td>
-        <td style='text-align:right; font-size:11px; color:#64748b;'>2026-10-06 09:59</td>
+        <td style='text-align:right; font-size:11px; color:#64748b;'>2026-10-06 10:05</td>
     </tr>
     <tr>
         <td><strong>Buena Esperanza</strong></td>
         <td>San Luis</td>
         <td><span style='background:#e2e8f0; padding:2px 6px; border-radius:4px; font-size:11px;'>REM San Luis</span></td>
-        <td style='text-align:center;'>18.1 °C</td>
+        <td style='text-align:center;'>18.5 °C</td>
         <td style='text-align:center; font-weight:bold; color:#0284c7;'>0.0 mm</td>
-        <td style='text-align:right; font-size:11px; color:#64748b;'>2026-10-06 09:59</td>
+        <td style='text-align:right; font-size:11px; color:#64748b;'>2026-10-06 10:05</td>
     </tr>
     <tr>
         <td><strong>Coronel Alzogaray</strong></td>
         <td>San Luis</td>
         <td><span style='background:#e2e8f0; padding:2px 6px; border-radius:4px; font-size:11px;'>REM San Luis</span></td>
-        <td style='text-align:center;'>21.1 °C</td>
+        <td style='text-align:center;'>20.7 °C</td>
         <td style='text-align:center; font-weight:bold; color:#0284c7;'>0.0 mm</td>
-        <td style='text-align:right; font-size:11px; color:#64748b;'>2026-10-06 09:59</td>
+        <td style='text-align:right; font-size:11px; color:#64748b;'>2026-10-06 10:04</td>
     </tr>
     <tr>
         <td><strong>Donovan</strong></td>
         <td>San Luis</td>
         <td><span style='background:#e2e8f0; padding:2px 6px; border-radius:4px; font-size:11px;'>REM San Luis</span></td>
-        <td style='text-align:center;'>20.6 °C</td>
+        <td style='text-align:center;'>21.5 °C</td>
         <td style='text-align:center; font-weight:bold; color:#0284c7;'>0.0 mm</td>
-        <td style='text-align:right; font-size:11px; color:#64748b;'>2026-10-06 09:58</td>
+        <td style='text-align:right; font-size:11px; color:#64748b;'>2026-10-06 10:04</td>
     </tr>
     <tr>
         <td><strong>El Trapiche</strong></td>
         <td>San Luis</td>
         <td><span style='background:#e2e8f0; padding:2px 6px; border-radius:4px; font-size:11px;'>REM San Luis</span></td>
-        <td style='text-align:center;'>17.0 °C</td>
+        <td style='text-align:center;'>17.8 °C</td>
         <td style='text-align:center; font-weight:bold; color:#0284c7;'>0.0 mm</td>
-        <td style='text-align:right; font-size:11px; color:#64748b;'>2026-10-06 09:59</td>
+        <td style='text-align:right; font-size:11px; color:#64748b;'>2026-10-06 10:05</td>
     </tr>
     <tr>
         <td><strong>Estancia Grande</strong></td>
         <td>San Luis</td>
         <td><span style='background:#e2e8f0; padding:2px 6px; border-radius:4px; font-size:11px;'>REM San Luis</span></td>
-        <td style='text-align:center;'>18.0 °C</td>
+        <td style='text-align:center;'>18.1 °C</td>
         <td style='text-align:center; font-weight:bold; color:#0284c7;'>0.0 mm</td>
-        <td style='text-align:right; font-size:11px; color:#64748b;'>2026-10-06 09:59</td>
+        <td style='text-align:right; font-size:11px; color:#64748b;'>2026-10-06 10:04</td>
     </tr>
     <tr>
         <td><strong>Fraga</strong></td>
         <td>San Luis</td>
         <td><span style='background:#e2e8f0; padding:2px 6px; border-radius:4px; font-size:11px;'>REM San Luis</span></td>
-        <td style='text-align:center;'>21.1 °C</td>
+        <td style='text-align:center;'>21.7 °C</td>
         <td style='text-align:center; font-weight:bold; color:#0284c7;'>0.0 mm</td>
-        <td style='text-align:right; font-size:11px; color:#64748b;'>2026-10-06 09:59</td>
+        <td style='text-align:right; font-size:11px; color:#64748b;'>2026-10-06 10:04</td>
     </tr>
     <tr>
         <td><strong>Justo Daract</strong></td>
         <td>San Luis</td>
         <td><span style='background:#e2e8f0; padding:2px 6px; border-radius:4px; font-size:11px;'>REM San Luis</span></td>
-        <td style='text-align:center;'>22.2 °C</td>
+        <td style='text-align:center;'>22.3 °C</td>
         <td style='text-align:center; font-weight:bold; color:#0284c7;'>0.0 mm</td>
-        <td style='text-align:right; font-size:11px; color:#64748b;'>2026-10-06 09:59</td>
+        <td style='text-align:right; font-size:11px; color:#64748b;'>2026-10-06 10:04</td>
     </tr>
     <tr>
         <td><strong>La Angelina</strong></td>
         <td>San Luis</td>
         <td><span style='background:#e2e8f0; padding:2px 6px; border-radius:4px; font-size:11px;'>REM San Luis</span></td>
-        <td style='text-align:center;'>20.7 °C</td>
+        <td style='text-align:center;'>20.8 °C</td>
         <td style='text-align:center; font-weight:bold; color:#0284c7;'>0.0 mm</td>
-        <td style='text-align:right; font-size:11px; color:#64748b;'>2026-10-06 09:59</td>
+        <td style='text-align:right; font-size:11px; color:#64748b;'>2026-10-06 10:04</td>
     </tr>
     <tr>
         <td><strong>La Cumbre</strong></td>
         <td>San Luis</td>
         <td><span style='background:#e2e8f0; padding:2px 6px; border-radius:4px; font-size:11px;'>REM San Luis</span></td>
-        <td style='text-align:center;'>20.0 °C</td>
+        <td style='text-align:center;'>20.5 °C</td>
         <td style='text-align:center; font-weight:bold; color:#0284c7;'>0.0 mm</td>
-        <td style='text-align:right; font-size:11px; color:#64748b;'>2026-10-06 09:59</td>
+        <td style='text-align:right; font-size:11px; color:#64748b;'>2026-10-06 10:04</td>
     </tr>
     <tr>
         <td><strong>La Esquina</strong></td>
         <td>San Luis</td>
         <td><span style='background:#e2e8f0; padding:2px 6px; border-radius:4px; font-size:11px;'>REM San Luis</span></td>
-        <td style='text-align:center;'>17.7 °C</td>
+        <td style='text-align:center;'>18.0 °C</td>
         <td style='text-align:center; font-weight:bold; color:#0284c7;'>0.0 mm</td>
-        <td style='text-align:right; font-size:11px; color:#64748b;'>2026-10-06 09:59</td>
+        <td style='text-align:right; font-size:11px; color:#64748b;'>2026-10-06 10:04</td>
     </tr>
     <tr>
         <td><strong>La Florida - Dique</strong></td>
         <td>San Luis</td>
         <td><span style='background:#e2e8f0; padding:2px 6px; border-radius:4px; font-size:11px;'>REM San Luis</span></td>
-        <td style='text-align:center;'>18.0 °C</td>
+        <td style='text-align:center;'>18.2 °C</td>
         <td style='text-align:center; font-weight:bold; color:#0284c7;'>0.0 mm</td>
-        <td style='text-align:right; font-size:11px; color:#64748b;'>2026-10-06 09:59</td>
+        <td style='text-align:right; font-size:11px; color:#64748b;'>2026-10-06 10:05</td>
     </tr>
     <tr>
         <td><strong>La Punilla</strong></td>
         <td>San Luis</td>
         <td><span style='background:#e2e8f0; padding:2px 6px; border-radius:4px; font-size:11px;'>REM San Luis</span></td>
-        <td style='text-align:center;'>19.8 °C</td>
+        <td style='text-align:center;'>19.4 °C</td>
         <td style='text-align:center; font-weight:bold; color:#0284c7;'>0.0 mm</td>
-        <td style='text-align:right; font-size:11px; color:#64748b;'>2026-10-06 09:59</td>
+        <td style='text-align:right; font-size:11px; color:#64748b;'>2026-10-06 10:05</td>
     </tr>
     <tr>
         <td><strong>La Toma</strong></td>
@@ -595,63 +827,63 @@
         <td><span style='background:#e2e8f0; padding:2px 6px; border-radius:4px; font-size:11px;'>REM San Luis</span></td>
         <td style='text-align:center;'>19.1 °C</td>
         <td style='text-align:center; font-weight:bold; color:#0284c7;'>0.0 mm</td>
-        <td style='text-align:right; font-size:11px; color:#64748b;'>2026-10-06 09:59</td>
+        <td style='text-align:right; font-size:11px; color:#64748b;'>2026-10-06 10:04</td>
     </tr>
     <tr>
         <td><strong>Las Chacras</strong></td>
         <td>San Luis</td>
         <td><span style='background:#e2e8f0; padding:2px 6px; border-radius:4px; font-size:11px;'>REM San Luis</span></td>
-        <td style='text-align:center;'>20.3 °C</td>
+        <td style='text-align:center;'>20.9 °C</td>
         <td style='text-align:center; font-weight:bold; color:#0284c7;'>0.0 mm</td>
-        <td style='text-align:right; font-size:11px; color:#64748b;'>2026-10-06 09:59</td>
+        <td style='text-align:right; font-size:11px; color:#64748b;'>2026-10-06 10:05</td>
     </tr>
     <tr>
         <td><strong>Nueva Galia</strong></td>
         <td>San Luis</td>
         <td><span style='background:#e2e8f0; padding:2px 6px; border-radius:4px; font-size:11px;'>REM San Luis</span></td>
-        <td style='text-align:center;'>17.8 °C</td>
+        <td style='text-align:center;'>17.9 °C</td>
         <td style='text-align:center; font-weight:bold; color:#0284c7;'>0.0 mm</td>
-        <td style='text-align:right; font-size:11px; color:#64748b;'>2026-10-06 09:59</td>
+        <td style='text-align:right; font-size:11px; color:#64748b;'>2026-10-06 10:04</td>
     </tr>
     <tr>
         <td><strong>Potrero de los Funes</strong></td>
         <td>San Luis</td>
         <td><span style='background:#e2e8f0; padding:2px 6px; border-radius:4px; font-size:11px;'>REM San Luis</span></td>
-        <td style='text-align:center;'>19.2 °C</td>
+        <td style='text-align:center;'>19.6 °C</td>
         <td style='text-align:center; font-weight:bold; color:#0284c7;'>0.0 mm</td>
-        <td style='text-align:right; font-size:11px; color:#64748b;'>2026-10-06 09:59</td>
+        <td style='text-align:right; font-size:11px; color:#64748b;'>2026-10-06 10:04</td>
     </tr>
     <tr>
         <td><strong>Soven</strong></td>
         <td>San Luis</td>
         <td><span style='background:#e2e8f0; padding:2px 6px; border-radius:4px; font-size:11px;'>REM San Luis</span></td>
-        <td style='text-align:center;'>20.9 °C</td>
+        <td style='text-align:center;'>21.0 °C</td>
         <td style='text-align:center; font-weight:bold; color:#0284c7;'>0.0 mm</td>
-        <td style='text-align:right; font-size:11px; color:#64748b;'>2026-10-06 09:59</td>
+        <td style='text-align:right; font-size:11px; color:#64748b;'>2026-10-06 10:04</td>
     </tr>
     <tr>
         <td><strong>Unión</strong></td>
         <td>San Luis</td>
         <td><span style='background:#e2e8f0; padding:2px 6px; border-radius:4px; font-size:11px;'>REM San Luis</span></td>
-        <td style='text-align:center;'>18.3 °C</td>
+        <td style='text-align:center;'>18.5 °C</td>
         <td style='text-align:center; font-weight:bold; color:#0284c7;'>0.0 mm</td>
-        <td style='text-align:right; font-size:11px; color:#64748b;'>2026-10-06 09:59</td>
+        <td style='text-align:right; font-size:11px; color:#64748b;'>2026-10-06 10:04</td>
     </tr>
     <tr>
         <td><strong>Villa Mercedes</strong></td>
         <td>San Luis</td>
         <td><span style='background:#e2e8f0; padding:2px 6px; border-radius:4px; font-size:11px;'>REM San Luis</span></td>
-        <td style='text-align:center;'>21.1 °C</td>
+        <td style='text-align:center;'>21.5 °C</td>
         <td style='text-align:center; font-weight:bold; color:#0284c7;'>0.0 mm</td>
-        <td style='text-align:right; font-size:11px; color:#64748b;'>2026-10-06 09:59</td>
+        <td style='text-align:right; font-size:11px; color:#64748b;'>2026-10-06 10:04</td>
     </tr>
     <tr>
         <td><strong>Villa Reynolds</strong></td>
         <td>San Luis</td>
         <td><span style='background:#e2e8f0; padding:2px 6px; border-radius:4px; font-size:11px;'>REM San Luis</span></td>
-        <td style='text-align:center;'>22.1 °C</td>
+        <td style='text-align:center;'>22.2 °C</td>
         <td style='text-align:center; font-weight:bold; color:#0284c7;'>0.0 mm</td>
-        <td style='text-align:right; font-size:11px; color:#64748b;'>2026-10-06 09:59</td>
+        <td style='text-align:right; font-size:11px; color:#64748b;'>2026-10-06 10:05</td>
     </tr>
     <tr>
         <td><strong>Virorco</strong></td>
@@ -667,7 +899,7 @@
         <td><span style='background:#e2e8f0; padding:2px 6px; border-radius:4px; font-size:11px;'>APA La Pampa</span></td>
         <td style='text-align:center;'>19.2 °C</td>
         <td style='text-align:center; font-weight:bold; color:#0284c7;'>0.0 mm</td>
-        <td style='text-align:right; font-size:11px; color:#64748b;'>2026-10-06 10:00</td>
+        <td style='text-align:right; font-size:11px; color:#64748b;'>2026-10-06 10:05</td>
     </tr>
     <tr>
         <td><strong>Quemú Quemú (APA)</strong></td>
@@ -675,7 +907,7 @@
         <td><span style='background:#e2e8f0; padding:2px 6px; border-radius:4px; font-size:11px;'>APA La Pampa</span></td>
         <td style='text-align:center;'>16.3 °C</td>
         <td style='text-align:center; font-weight:bold; color:#0284c7;'>0.0 mm</td>
-        <td style='text-align:right; font-size:11px; color:#64748b;'>2026-10-06 10:00</td>
+        <td style='text-align:right; font-size:11px; color:#64748b;'>2026-10-06 10:05</td>
     </tr>
     <tr>
         <td><strong>Cuchillo Có (APA)</strong></td>
@@ -683,7 +915,7 @@
         <td><span style='background:#e2e8f0; padding:2px 6px; border-radius:4px; font-size:11px;'>APA La Pampa</span></td>
         <td style='text-align:center;'>12.7 °C</td>
         <td style='text-align:center; font-weight:bold; color:#0284c7;'>0.0 mm</td>
-        <td style='text-align:right; font-size:11px; color:#64748b;'>2026-10-06 10:00</td>
+        <td style='text-align:right; font-size:11px; color:#64748b;'>2026-10-06 10:05</td>
     </tr>
     <tr>
         <td><strong>Alpachiri (APA)</strong></td>
@@ -691,7 +923,7 @@
         <td><span style='background:#e2e8f0; padding:2px 6px; border-radius:4px; font-size:11px;'>APA La Pampa</span></td>
         <td style='text-align:center;'>13.4 °C</td>
         <td style='text-align:center; font-weight:bold; color:#0284c7;'>0.0 mm</td>
-        <td style='text-align:right; font-size:11px; color:#64748b;'>2026-10-06 10:00</td>
+        <td style='text-align:right; font-size:11px; color:#64748b;'>2026-10-06 10:05</td>
     </tr>
     <tr>
         <td><strong>Lihué Calel (APA)</strong></td>
@@ -699,7 +931,7 @@
         <td><span style='background:#e2e8f0; padding:2px 6px; border-radius:4px; font-size:11px;'>APA La Pampa</span></td>
         <td style='text-align:center;'>13.2 °C</td>
         <td style='text-align:center; font-weight:bold; color:#0284c7;'>0.0 mm</td>
-        <td style='text-align:right; font-size:11px; color:#64748b;'>2026-10-06 10:00</td>
+        <td style='text-align:right; font-size:11px; color:#64748b;'>2026-10-06 10:05</td>
     </tr>
     <tr>
         <td><strong>Casa de Piedra (APA)</strong></td>
@@ -707,7 +939,7 @@
         <td><span style='background:#e2e8f0; padding:2px 6px; border-radius:4px; font-size:11px;'>APA La Pampa</span></td>
         <td style='text-align:center;'>13.8 °C</td>
         <td style='text-align:center; font-weight:bold; color:#0284c7;'>0.0 mm</td>
-        <td style='text-align:right; font-size:11px; color:#64748b;'>2026-10-06 10:00</td>
+        <td style='text-align:right; font-size:11px; color:#64748b;'>2026-10-06 10:05</td>
     </tr>
     <tr>
         <td><strong>Telén (APA)</strong></td>
@@ -715,7 +947,7 @@
         <td><span style='background:#e2e8f0; padding:2px 6px; border-radius:4px; font-size:11px;'>APA La Pampa</span></td>
         <td style='text-align:center;'>16.3 °C</td>
         <td style='text-align:center; font-weight:bold; color:#0284c7;'>0.0 mm</td>
-        <td style='text-align:right; font-size:11px; color:#64748b;'>2026-10-06 10:00</td>
+        <td style='text-align:right; font-size:11px; color:#64748b;'>2026-10-06 10:05</td>
     </tr>
     <tr>
         <td><strong>General Acha (APA)</strong></td>
@@ -723,7 +955,7 @@
         <td><span style='background:#e2e8f0; padding:2px 6px; border-radius:4px; font-size:11px;'>APA La Pampa</span></td>
         <td style='text-align:center;'>15.0 °C</td>
         <td style='text-align:center; font-weight:bold; color:#0284c7;'>0.0 mm</td>
-        <td style='text-align:right; font-size:11px; color:#64748b;'>2026-10-06 10:00</td>
+        <td style='text-align:right; font-size:11px; color:#64748b;'>2026-10-06 10:05</td>
     </tr>
     <tr>
         <td><strong>Algarrobo del Águila (APA)</strong></td>
@@ -731,7 +963,7 @@
         <td><span style='background:#e2e8f0; padding:2px 6px; border-radius:4px; font-size:11px;'>APA La Pampa</span></td>
         <td style='text-align:center;'>14.2 °C</td>
         <td style='text-align:center; font-weight:bold; color:#0284c7;'>0.0 mm</td>
-        <td style='text-align:right; font-size:11px; color:#64748b;'>2026-10-06 10:00</td>
+        <td style='text-align:right; font-size:11px; color:#64748b;'>2026-10-06 10:05</td>
     </tr>
     <tr>
         <td><strong>La Adela (APA)</strong></td>
@@ -739,7 +971,7 @@
         <td><span style='background:#e2e8f0; padding:2px 6px; border-radius:4px; font-size:11px;'>APA La Pampa</span></td>
         <td style='text-align:center;'>17.9 °C</td>
         <td style='text-align:center; font-weight:bold; color:#0284c7;'>2.4 mm</td>
-        <td style='text-align:right; font-size:11px; color:#64748b;'>2026-10-06 10:00</td>
+        <td style='text-align:right; font-size:11px; color:#64748b;'>2026-10-06 10:05</td>
     </tr>
     <tr>
         <td><strong>25 de Mayo (APA)</strong></td>
@@ -747,7 +979,7 @@
         <td><span style='background:#e2e8f0; padding:2px 6px; border-radius:4px; font-size:11px;'>APA La Pampa</span></td>
         <td style='text-align:center;'>16.5 °C</td>
         <td style='text-align:center; font-weight:bold; color:#0284c7;'>0.0 mm</td>
-        <td style='text-align:right; font-size:11px; color:#64748b;'>2026-10-06 10:00</td>
+        <td style='text-align:right; font-size:11px; color:#64748b;'>2026-10-06 10:05</td>
     </tr>
     <tr>
         <td><strong>Gobernador Duval (APA)</strong></td>
@@ -755,14 +987,112 @@
         <td><span style='background:#e2e8f0; padding:2px 6px; border-radius:4px; font-size:11px;'>APA La Pampa</span></td>
         <td style='text-align:center;'>16.0 °C</td>
         <td style='text-align:center; font-weight:bold; color:#0284c7;'>0.0 mm</td>
-        <td style='text-align:right; font-size:11px; color:#64748b;'>2026-10-06 10:00</td>
+        <td style='text-align:right; font-size:11px; color:#64748b;'>2026-10-06 10:05</td>
     </tr>
                 </tbody>
             </table>
         </div>
     </div>
 
+    <!-- Leaflet JS y Renderizado Nativo -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
+        var map = null;
+
+        function initMap() {
+            if (map !== null) {
+                map.invalidateSize();
+                return;
+            }
+
+            map = L.map('map-container').setView([-34.50, -64.50], 7);
+
+            L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
+                maxZoom: 16,
+                attribution: 'Esri, OSM'
+            }).addTo(map);
+
+            var fgSMN = L.featureGroup().addTo(map);
+            var fgHidro = L.featureGroup().addTo(map);
+            var fgMeteo = L.featureGroup().addTo(map);
+            var fgRayos = L.featureGroup().addTo(map);
+            var fgRadares = L.featureGroup().addTo(map);
+
+            // Inyección de Cuerpos de Agua INA
+            var datosHidro = [{"nombre": "A\u00ba El Aji - RN N\u00ba35 y RN N\u00ba7", "rio": "Afluente R\u00edo Quinto", "distrito": "C\u00f3rdoba / LP", "lat": -33.931111, "lon": -64.396389, "nivel_actual": 0.65, "media_hist": 0.66, "cota_alerta": 1.9, "cota_evac": 2.4, "margen_alerta": 1.25, "tendencia": "Estable \u25ac", "color": "#10b981", "estado": "Normal / Seguro", "fecha": "06/10/2026 09:00", "fuente": "INA"}, {"nombre": "Laguna La Margarita", "rio": "Cuenca R\u00edo Quinto", "distrito": "C\u00f3rdoba / LP", "lat": -34.653333, "lon": -63.723056, "nivel_actual": 1.37, "media_hist": 1.38, "cota_alerta": 2.4, "cota_evac": 3.0, "margen_alerta": 1.03, "tendencia": "Estable \u25ac", "color": "#10b981", "estado": "Normal / Seguro", "fecha": "06/10/2026 08:00", "fuente": "INA"}, {"nombre": "Quinto - Av Circunvalaci\u00f3n", "rio": "R\u00edo Quinto", "distrito": "San Luis", "lat": -33.739167, "lon": -65.376944, "nivel_actual": 0.13, "media_hist": 0.13, "cota_alerta": 2.5, "cota_evac": 3.2, "margen_alerta": 2.37, "tendencia": "Estable \u25ac", "color": "#10b981", "estado": "Normal / Seguro", "fecha": "06/10/2026 09:00", "fuente": "INA"}, {"nombre": "Quinto - Canal Devoto RP 4", "rio": "R\u00edo Quinto / Canal Devoto", "distrito": "C\u00f3rdoba / LP", "lat": -33.933056, "lon": -63.449167, "nivel_actual": 0.99, "media_hist": 1.01, "cota_alerta": 2.8, "cota_evac": 3.4, "margen_alerta": 1.81, "tendencia": "Estable \u25ac", "color": "#10b981", "estado": "Normal / Seguro", "fecha": "06/10/2026 08:00", "fuente": "INA"}, {"nombre": "Quinto - Dique Villa Mercedes", "rio": "R\u00edo Quinto", "distrito": "San Luis", "lat": -33.653889, "lon": -65.533611, "nivel_actual": 1.1, "media_hist": 1.07, "cota_alerta": 2.8, "cota_evac": 3.5, "margen_alerta": 1.7, "tendencia": "Estable \u25ac", "color": "#10b981", "estado": "Normal / Seguro", "fecha": "06/10/2026 09:00", "fuente": "INA"}, {"nombre": "Quinto - Justo Daract", "rio": "R\u00edo Quinto", "distrito": "San Luis", "lat": -33.918611, "lon": -65.151667, "nivel_actual": 1.78, "media_hist": 1.79, "cota_alerta": 2.9, "cota_evac": 3.6, "margen_alerta": 1.12, "tendencia": "Estable \u25ac", "color": "#10b981", "estado": "Normal / Seguro", "fecha": "06/10/2026 09:00", "fuente": "INA"}, {"nombre": "Quinto - R.N. 35", "rio": "R\u00edo Quinto", "distrito": "C\u00f3rdoba / LP", "lat": -34.216389, "lon": -64.386111, "nivel_actual": 1.16, "media_hist": 1.17, "cota_alerta": 2.6, "cota_evac": 3.2, "margen_alerta": 1.44, "tendencia": "Estable \u25ac", "color": "#10b981", "estado": "Normal / Seguro", "fecha": "06/10/2026 08:00", "fuente": "INA"}, {"nombre": "Quinto - RP N\u00ba26", "rio": "R\u00edo Quinto", "distrito": "C\u00f3rdoba / LP", "lat": -34.762778, "lon": -63.645, "nivel_actual": 0.67, "media_hist": 0.69, "cota_alerta": 2.2, "cota_evac": 2.8, "margen_alerta": 1.53, "tendencia": "Estable \u25ac", "color": "#10b981", "estado": "Normal / Seguro", "fecha": "06/10/2026 08:00", "fuente": "INA"}, {"nombre": "Trapiche - Hosteria El Trapiche", "rio": "R\u00edo Trapiche (Afluente)", "distrito": "San Luis", "lat": -33.105833, "lon": -66.063333, "nivel_actual": 0.29, "media_hist": 0.3, "cota_alerta": 1.8, "cota_evac": 2.3, "margen_alerta": 1.51, "tendencia": "Estable \u25ac", "color": "#10b981", "estado": "Normal / Seguro", "fecha": "06/10/2026 09:00", "fuente": "INA"}];
+            datosHidro.forEach(function(h) {
+                L.circleMarker([h.lat, h.lon], {
+                    radius: 8,
+                    color: h.color,
+                    fillColor: h.color,
+                    fillOpacity: 0.9,
+                    weight: 2
+                }).bindPopup("<b>" + h.nombre + "</b><br>Río: " + h.rio + "<br>Nivel: <b>" + h.nivel_actual + " m</b><br>Estado: " + h.estado).addTo(fgHidro);
+            });
+
+            // Inyección de Estaciones Meteorológicas
+            var datosMeteo = [{"id": "OMX_CBA_1", "nombre": "General Levalle", "departamento": "Roque S\u00e1enz Pe\u00f1a", "provincia": "C\u00f3rdoba", "lat": -34.0, "lon": -63.9163, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Est\u00e1tica", "red": "Omixom C\u00f3rdoba"}, {"id": "OMX_CBA_2", "nombre": "R\u00edo Bamba", "departamento": "Roque S\u00e1enz Pe\u00f1a", "provincia": "C\u00f3rdoba", "lat": -34.0537, "lon": -63.7332, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Est\u00e1tica", "red": "Omixom C\u00f3rdoba"}, {"id": "OMX_CBA_3", "nombre": "Jovita", "departamento": "General Roca", "provincia": "C\u00f3rdoba", "lat": -34.5194, "lon": -63.9683, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Est\u00e1tica", "red": "Omixom C\u00f3rdoba"}, {"id": "OMX_CBA_4", "nombre": "Villa Valeria", "departamento": "General Roca", "provincia": "C\u00f3rdoba", "lat": -34.3427, "lon": -64.929, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Est\u00e1tica", "red": "Omixom C\u00f3rdoba"}, {"id": "OMX_CBA_5", "nombre": "Nicol\u00e1s Bruzzone", "departamento": "General Roca", "provincia": "C\u00f3rdoba", "lat": -34.4391, "lon": -64.3424, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Est\u00e1tica", "red": "Omixom C\u00f3rdoba"}, {"id": "OMX_CBA_6", "nombre": "Melo", "departamento": "Roque S\u00e1enz Pe\u00f1a", "provincia": "C\u00f3rdoba", "lat": -34.3452, "lon": -63.4377, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Est\u00e1tica", "red": "Omixom C\u00f3rdoba"}, {"id": "OMX_CBA_7", "nombre": "Huanchillas", "departamento": "Ju\u00e1rez Celman", "provincia": "C\u00f3rdoba", "lat": -33.6665, "lon": -63.6395, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Est\u00e1tica", "red": "Omixom C\u00f3rdoba"}, {"id": "OMX_CBA_8", "nombre": "Hip\u00f3lito Bouchard", "departamento": "General Roca", "provincia": "C\u00f3rdoba", "lat": -34.706, "lon": -63.503, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Est\u00e1tica", "red": "Omixom C\u00f3rdoba"}, {"id": "OMX_CBA_9", "nombre": "General Roca", "departamento": "General Roca", "provincia": "C\u00f3rdoba", "lat": -33.9948, "lon": -65.0754, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Est\u00e1tica", "red": "Omixom C\u00f3rdoba"}, {"id": "OMX_CBA_10", "nombre": "Serrano", "departamento": "Roque S\u00e1enz Pe\u00f1a", "provincia": "C\u00f3rdoba", "lat": -34.4629, "lon": -63.5309, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Est\u00e1tica", "red": "Omixom C\u00f3rdoba"}, {"id": "OMX_CBA_11", "nombre": "Coronel Moldes", "departamento": "R\u00edo Cuarto", "provincia": "C\u00f3rdoba", "lat": -33.6481, "lon": -64.595, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Est\u00e1tica", "red": "Omixom C\u00f3rdoba"}, {"id": "OMX_CBA_12", "nombre": "Viamonte", "departamento": "Uni\u00f3n", "provincia": "C\u00f3rdoba", "lat": -33.7429, "lon": -63.0996, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Est\u00e1tica", "red": "Omixom C\u00f3rdoba"}, {"id": "OMX_CBA_13", "nombre": "Chaj\u00e1n", "departamento": "R\u00edo Cuarto", "provincia": "C\u00f3rdoba", "lat": -33.5508, "lon": -65.0059, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Est\u00e1tica", "red": "Omixom C\u00f3rdoba"}, {"id": "OMX_CBA_14", "nombre": "Villa Rossi", "departamento": "General Roca", "provincia": "C\u00f3rdoba", "lat": -34.2949, "lon": -63.2654, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Est\u00e1tica", "red": "Omixom C\u00f3rdoba"}, {"id": "OMX_CBA_15", "nombre": "Presa El Cha\u00f1ar", "departamento": "R\u00edo Cuarto", "provincia": "C\u00f3rdoba", "lat": -33.9608, "lon": -65.0551, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Est\u00e1tica", "red": "Omixom C\u00f3rdoba"}, {"id": "OMX_CBA_16", "nombre": "Huinca Renanc\u00f3", "departamento": "General Roca", "provincia": "C\u00f3rdoba", "lat": -34.8208, "lon": -64.3738, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Est\u00e1tica", "red": "Omixom C\u00f3rdoba"}, {"id": "OMX_CBA_17", "nombre": "Vicu\u00f1a Mackenna", "departamento": "R\u00edo Cuarto", "provincia": "C\u00f3rdoba", "lat": -33.9754, "lon": -64.3642, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Est\u00e1tica", "red": "Omixom C\u00f3rdoba"}, {"id": "OMX_LP_1", "nombre": "El Tala - La Veneta", "departamento": "Realic\u00f3", "provincia": "La Pampa", "lat": -35.3119, "lon": -64.7144, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Est\u00e1tica", "red": "Omixom La Pampa"}, {"id": "OMX_LP_2", "nombre": "Realic\u00f3", "departamento": "Realic\u00f3", "provincia": "La Pampa", "lat": -35.0576, "lon": -64.2129, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Est\u00e1tica", "red": "Omixom La Pampa"}, {"id": "OMX_LP_3", "nombre": "Tril\u00ed", "departamento": "Quem\u00fa Quem\u00fa", "provincia": "La Pampa", "lat": -35.9036, "lon": -63.6429, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Est\u00e1tica", "red": "Omixom La Pampa"}, {"id": "OMX_LP_4", "nombre": "Ingeniero Luiggi", "departamento": "Realic\u00f3", "provincia": "La Pampa", "lat": -35.4714, "lon": -64.6024, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Est\u00e1tica", "red": "Omixom La Pampa"}, {"id": "OMX_LP_5", "nombre": "Conhelo", "departamento": "Conhelo", "provincia": "La Pampa", "lat": -35.9895, "lon": -64.5954, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Est\u00e1tica", "red": "Omixom La Pampa"}, {"id": "OMX_LP_6", "nombre": "Arata", "departamento": "Trenel", "provincia": "La Pampa", "lat": -35.6391, "lon": -64.3564, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Est\u00e1tica", "red": "Omixom La Pampa"}, {"id": "OMX_LP_7", "nombre": "Pichi Huinca", "departamento": "Rancul", "provincia": "La Pampa", "lat": -35.6482, "lon": -64.7699, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Est\u00e1tica", "red": "Omixom La Pampa"}, {"id": "OMX_LP_8", "nombre": "Rancul", "departamento": "Rancul", "provincia": "La Pampa", "lat": -35.0883, "lon": -64.5082, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Est\u00e1tica", "red": "Omixom La Pampa"}, {"id": "OMX_LP_9", "nombre": "Coronel Hilario Lagos", "departamento": "Chapaleuf\u00fa", "provincia": "La Pampa", "lat": -35.0344, "lon": -63.9111, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Est\u00e1tica", "red": "Omixom La Pampa"}, {"id": "OMX_LP_10", "nombre": "Colonia Bar\u00f3n", "departamento": "Quem\u00fa Quem\u00fa", "provincia": "La Pampa", "lat": -36.1508, "lon": -63.855, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Est\u00e1tica", "red": "Omixom La Pampa"}, {"id": "OMX_LP_11", "nombre": "Intendente Alvear", "departamento": "Chapaleuf\u00fa", "provincia": "La Pampa", "lat": -35.3182, "lon": -63.6054, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Est\u00e1tica", "red": "Omixom La Pampa"}, {"id": "OMX_LP_12", "nombre": "Alta Italia", "departamento": "Realic\u00f3", "provincia": "La Pampa", "lat": -35.3317, "lon": -64.1191, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Est\u00e1tica", "red": "Omixom La Pampa"}, {"id": "OMX_LP_13", "nombre": "Winifreda", "departamento": "Conhelo", "provincia": "La Pampa", "lat": -36.2229, "lon": -64.2487, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Est\u00e1tica", "red": "Omixom La Pampa"}, {"id": "OMX_LP_14", "nombre": "General Pico", "departamento": "Marac\u00f3", "provincia": "La Pampa", "lat": -35.6969, "lon": -63.6207, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Est\u00e1tica", "red": "Omixom La Pampa"}, {"id": "OMX_LP_15", "nombre": "Eduardo Castex", "departamento": "Conhelo", "provincia": "La Pampa", "lat": -35.916, "lon": -64.2956, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Est\u00e1tica", "red": "Omixom La Pampa"}, {"id": "REM_88", "nombre": "AgroZAL", "departamento": "San Luis", "provincia": "San Luis", "lat": -33.6450639, "lon": -65.3794056, "temp_c": 22.2, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "2026-10-06 10:04", "red": "REM San Luis"}, {"id": "REM_1", "nombre": "Alto Pelado", "departamento": "San Luis", "provincia": "San Luis", "lat": -33.83756, "lon": -66.13864, "temp_c": 19.3, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "2026-10-06 10:05", "red": "REM San Luis"}, {"id": "REM_5", "nombre": "Batavia", "departamento": "San Luis", "provincia": "San Luis", "lat": -34.77845, "lon": -65.68851, "temp_c": 17.9, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "2026-10-06 10:05", "red": "REM San Luis"}, {"id": "REM_7", "nombre": "Buena Esperanza", "departamento": "San Luis", "provincia": "San Luis", "lat": -34.75682, "lon": -65.25261, "temp_c": 18.5, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "2026-10-06 10:05", "red": "REM San Luis"}, {"id": "REM_49", "nombre": "Coronel Alzogaray", "departamento": "San Luis", "provincia": "San Luis", "lat": -33.46051, "lon": -65.42903, "temp_c": 20.7, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "2026-10-06 10:04", "red": "REM San Luis"}, {"id": "REM_85", "nombre": "Donovan", "departamento": "San Luis", "provincia": "San Luis", "lat": -33.337614, "lon": -66.232069, "temp_c": 21.5, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "2026-10-06 10:04", "red": "REM San Luis"}, {"id": "REM_47", "nombre": "El Trapiche", "departamento": "San Luis", "provincia": "San Luis", "lat": -33.102925, "lon": -66.05738056, "temp_c": 17.8, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "2026-10-06 10:05", "red": "REM San Luis"}, {"id": "REM_55", "nombre": "Estancia Grande", "departamento": "San Luis", "provincia": "San Luis", "lat": -33.19227, "lon": -66.13736, "temp_c": 18.1, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "2026-10-06 10:04", "red": "REM San Luis"}, {"id": "REM_12", "nombre": "Fraga", "departamento": "San Luis", "provincia": "San Luis", "lat": -33.50133, "lon": -65.79225, "temp_c": 21.7, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "2026-10-06 10:04", "red": "REM San Luis"}, {"id": "REM_13", "nombre": "Justo Daract", "departamento": "San Luis", "provincia": "San Luis", "lat": -33.85085, "lon": -65.17382, "temp_c": 22.3, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "2026-10-06 10:04", "red": "REM San Luis"}, {"id": "REM_14", "nombre": "La Angelina", "departamento": "San Luis", "provincia": "San Luis", "lat": -34.36133, "lon": -65.32747, "temp_c": 20.8, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "2026-10-06 10:04", "red": "REM San Luis"}, {"id": "REM_16", "nombre": "La Cumbre", "departamento": "San Luis", "provincia": "San Luis", "lat": -33.34238, "lon": -66.12125, "temp_c": 20.5, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "2026-10-06 10:04", "red": "REM San Luis"}, {"id": "REM_17", "nombre": "La Esquina", "departamento": "San Luis", "provincia": "San Luis", "lat": -33.14587, "lon": -65.37258, "temp_c": 18.0, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "2026-10-06 10:04", "red": "REM San Luis"}, {"id": "REM_87", "nombre": "La Florida - Dique", "departamento": "San Luis", "provincia": "San Luis", "lat": -33.1142, "lon": -66.0041, "temp_c": 18.2, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "2026-10-06 10:05", "red": "REM San Luis"}, {"id": "REM_19", "nombre": "La Punilla", "departamento": "San Luis", "provincia": "San Luis", "lat": -33.14373, "lon": -65.0837, "temp_c": 19.4, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "2026-10-06 10:05", "red": "REM San Luis"}, {"id": "REM_21", "nombre": "La Toma", "departamento": "San Luis", "provincia": "San Luis", "lat": -33.05243, "lon": -65.61933, "temp_c": 19.1, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "2026-10-06 10:04", "red": "REM San Luis"}, {"id": "REM_56", "nombre": "Las Chacras", "departamento": "San Luis", "provincia": "San Luis", "lat": -33.26172, "lon": -66.24302, "temp_c": 20.9, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "2026-10-06 10:05", "red": "REM San Luis"}, {"id": "REM_30", "nombre": "Nueva Galia", "departamento": "San Luis", "provincia": "San Luis", "lat": -35.11305, "lon": -65.25683, "temp_c": 17.9, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "2026-10-06 10:04", "red": "REM San Luis"}, {"id": "REM_51", "nombre": "Potrero de los Funes", "departamento": "San Luis", "provincia": "San Luis", "lat": -33.23122, "lon": -66.22822, "temp_c": 19.6, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "2026-10-06 10:04", "red": "REM San Luis"}, {"id": "REM_52", "nombre": "Soven", "departamento": "San Luis", "provincia": "San Luis", "lat": -34.17522, "lon": -65.33552, "temp_c": 21.0, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "2026-10-06 10:04", "red": "REM San Luis"}, {"id": "REM_38", "nombre": "Uni\u00f3n", "departamento": "San Luis", "provincia": "San Luis", "lat": -35.1546, "lon": -65.94489, "temp_c": 18.5, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "2026-10-06 10:04", "red": "REM San Luis"}, {"id": "REM_42", "nombre": "Villa Mercedes", "departamento": "San Luis", "provincia": "San Luis", "lat": -33.678586, "lon": -65.504645, "temp_c": 21.5, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "2026-10-06 10:04", "red": "REM San Luis"}, {"id": "REM_60", "nombre": "Villa Reynolds", "departamento": "San Luis", "provincia": "San Luis", "lat": -33.725452, "lon": -65.385817, "temp_c": 22.2, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "2026-10-06 10:05", "red": "REM San Luis"}, {"id": "REM_1755", "nombre": "Virorco", "departamento": "San Luis", "provincia": "San Luis", "lat": -33.1094444444444, "lon": -66.1091666666667, "temp_c": 14.7, "humedad_pct": 0.0, "lluvia_24h_mm": 2.3, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "2025-10-24 05:00", "red": "REM San Luis"}, {"id": "APA_ARATA", "nombre": "Arata (APA)", "departamento": "Trenel", "provincia": "La Pampa", "lat": -35.617, "lon": -64.356, "temp_c": 19.2, "humedad_pct": 50.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 5.0, "viento_kmh": 0.0, "viento_dir": "Calma", "presion_hpa": 1013.2, "fecha_actualizacion": "2026-10-06 10:05", "red": "APA La Pampa"}, {"id": "APA_QUEMU", "nombre": "Quem\u00fa Quem\u00fa (APA)", "departamento": "Quem\u00fa Quem\u00fa", "provincia": "La Pampa", "lat": -36.056, "lon": -63.551, "temp_c": 16.3, "humedad_pct": 50.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 5.0, "viento_kmh": 0.0, "viento_dir": "Calma", "presion_hpa": 1013.2, "fecha_actualizacion": "2026-10-06 10:05", "red": "APA La Pampa"}, {"id": "APA_CUCHILLOCO", "nombre": "Cuchillo C\u00f3 (APA)", "departamento": "Lihuel Calel", "provincia": "La Pampa", "lat": -38.334, "lon": -64.642, "temp_c": 12.7, "humedad_pct": 50.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 5.0, "viento_kmh": 0.0, "viento_dir": "Calma", "presion_hpa": 1013.2, "fecha_actualizacion": "2026-10-06 10:05", "red": "APA La Pampa"}, {"id": "APA_ALPACHIRI", "nombre": "Alpachiri (APA)", "departamento": "Guatrach\u00e9", "provincia": "La Pampa", "lat": -37.378, "lon": -63.784, "temp_c": 13.4, "humedad_pct": 50.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 5.0, "viento_kmh": 0.0, "viento_dir": "Calma", "presion_hpa": 1013.2, "fecha_actualizacion": "2026-10-06 10:05", "red": "APA La Pampa"}, {"id": "APA_LIHUECALEL", "nombre": "Lihu\u00e9 Calel (APA)", "departamento": "Lihuel Calel", "provincia": "La Pampa", "lat": -37.954, "lon": -65.602, "temp_c": 13.2, "humedad_pct": 50.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 5.0, "viento_kmh": 0.0, "viento_dir": "Calma", "presion_hpa": 1013.2, "fecha_actualizacion": "2026-10-06 10:05", "red": "APA La Pampa"}, {"id": "APA_CASADEPIEDRA", "nombre": "Casa de Piedra (APA)", "departamento": "Puel\u00e9n", "provincia": "La Pampa", "lat": -38.163, "lon": -67.151, "temp_c": 13.8, "humedad_pct": 50.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 5.0, "viento_kmh": 0.0, "viento_dir": "Calma", "presion_hpa": 1013.2, "fecha_actualizacion": "2026-10-06 10:05", "red": "APA La Pampa"}, {"id": "APA_TELEN", "nombre": "Tel\u00e9n (APA)", "departamento": "Loventu\u00e9", "provincia": "La Pampa", "lat": -36.262, "lon": -65.511, "temp_c": 16.3, "humedad_pct": 50.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 5.0, "viento_kmh": 0.0, "viento_dir": "Calma", "presion_hpa": 1013.2, "fecha_actualizacion": "2026-10-06 10:05", "red": "APA La Pampa"}, {"id": "APA_GRALACHA", "nombre": "General Acha (APA)", "departamento": "Utrac\u00e1n", "provincia": "La Pampa", "lat": -37.378, "lon": -64.604, "temp_c": 15.0, "humedad_pct": 50.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 5.0, "viento_kmh": 0.0, "viento_dir": "Calma", "presion_hpa": 1013.2, "fecha_actualizacion": "2026-10-06 10:05", "red": "APA La Pampa"}, {"id": "APA_ALGARROBO", "nombre": "Algarrobo del \u00c1guila (APA)", "departamento": "Chical C\u00f3", "provincia": "La Pampa", "lat": -36.402, "lon": -67.147, "temp_c": 14.2, "humedad_pct": 50.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 5.0, "viento_kmh": 0.0, "viento_dir": "Calma", "presion_hpa": 1013.2, "fecha_actualizacion": "2026-10-06 10:05", "red": "APA La Pampa"}, {"id": "APA_LAADELA", "nombre": "La Adela (APA)", "departamento": "Caleu Caleu", "provincia": "La Pampa", "lat": -38.985, "lon": -64.088, "temp_c": 17.9, "humedad_pct": 50.0, "lluvia_24h_mm": 2.4, "lluvia_mes_mm": 5.0, "viento_kmh": 0.0, "viento_dir": "Calma", "presion_hpa": 1013.2, "fecha_actualizacion": "2026-10-06 10:05", "red": "APA La Pampa"}, {"id": "APA_25DEMAYO", "nombre": "25 de Mayo (APA)", "departamento": "Puel\u00e9n", "provincia": "La Pampa", "lat": -37.773, "lon": -67.718, "temp_c": 16.5, "humedad_pct": 50.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 5.0, "viento_kmh": 0.0, "viento_dir": "Calma", "presion_hpa": 1013.2, "fecha_actualizacion": "2026-10-06 10:05", "red": "APA La Pampa"}, {"id": "APA_GOBDUVAL", "nombre": "Gobernador Duval (APA)", "departamento": "Curac\u00f3", "provincia": "La Pampa", "lat": -38.731, "lon": -65.772, "temp_c": 16.0, "humedad_pct": 50.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 5.0, "viento_kmh": 0.0, "viento_dir": "Calma", "presion_hpa": 1013.2, "fecha_actualizacion": "2026-10-06 10:05", "red": "APA La Pampa"}];
+            datosMeteo.forEach(function(m) {
+                L.circleMarker([m.lat, m.lon], {
+                    radius: 5,
+                    color: '#0284c7',
+                    fillColor: '#38bdf8',
+                    fillOpacity: 0.85,
+                    weight: 1
+                }).bindPopup("<b>" + m.nombre + "</b><br>Red: " + m.red + "<br>Lluvia 24h: <b>" + m.lluvia_24h_mm + " mm</b>").addTo(fgMeteo);
+            });
+
+            // Inyección de Polígonos de Alerta SMN
+            var poligonos = [];
+            poligonos.forEach(function(p) {
+                L.polygon(p.coords, {
+                    color: p.color,
+                    fillColor: p.color,
+                    fillOpacity: 0.25,
+                    weight: 2
+                }).bindPopup("<b>ALERTA " + p.nivel + "</b><br>" + p.zona + "<br>" + p.evento).addTo(fgSMN);
+            });
+
+            // Inyección de Rayos
+            var rayos = [];
+            rayos.forEach(function(r) {
+                L.circleMarker([r.lat, r.lon], {
+                    radius: 5,
+                    color: '#b45309',
+                    fillColor: '#facc15',
+                    fillOpacity: 0.95,
+                    weight: 1.5
+                }).bindPopup("⚡ Descarga Atmosférica (" + r.hora + " hs)").addTo(fgRayos);
+            });
+
+            // Radares SINARAME
+            var rSantaIsabel = [-36.226, -66.883];
+            var rReynolds = [-33.725, -65.385];
+            L.circle(rSantaIsabel, { radius: 120000, color: '#0284c7', fill: true, fillOpacity: 0.05 }).addTo(fgRadares);
+            L.circle(rReynolds, { radius: 120000, color: '#d97706', fill: true, fillOpacity: 0.05 }).addTo(fgRadares);
+
+            // Control de Capas
+            var overlays = {
+                "⚠️️ Alertas SAT SMN": fgSMN,
+                "💧 Cuerpos de Agua (INA)": fgHidro,
+                "🌦️ Estaciones Meteorológicas": fgMeteo,
+                "⚡ Descargas (Rayos)": fgRayos,
+                "📡 Radares SINARAME": fgRadares
+            };
+            L.control.layers(null, overlays, { collapsed: false, position: 'topright' }).addTo(map);
+
+            // Satélite y Radar en Vivo (RainViewer)
+            fetch("https://api.rainviewer.com/public/weather-maps.json")
+                .then(r => r.json())
+                .then(d => {
+                    var host = d.host || "https://tilecache.rainviewer.com";
+                    if (d.radar && d.radar.past && d.radar.past.length > 0) {
+                        var frame = d.radar.past[d.radar.past.length - 1];
+                        L.tileLayer(host + frame.path + "/256/{z}/{x}/{y}/2/1_1.png", { opacity: 0.70, zIndex: 260 }).addTo(map);
+                    }
+                }).catch(e => console.warn("RainViewer:", e));
+        }
+
         function openTab(evt, tabName) {
             var tabContents = document.getElementsByClassName("tab-content");
             for (var i = 0; i < tabContents.length; i++) {
@@ -774,6 +1104,10 @@
             }
             document.getElementById(tabName).classList.add("active");
             evt.currentTarget.classList.add("active");
+
+            if (tabName === 'tab-mapa') {
+                setTimeout(initMap, 150);
+            }
         }
     </script>
 </body>
