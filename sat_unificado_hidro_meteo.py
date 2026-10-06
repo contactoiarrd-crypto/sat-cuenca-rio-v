@@ -9,7 +9,6 @@ import sys
 import math
 import json
 import re
-import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta, timezone
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -64,4 +63,5 @@ MEDIAS_CLIMATICAS_CUENCA = {
 
 # =============================================================
 # 3. CATÁLOGO ESTÁTICO REDES OMIXOM (CÓRDOBA Y LA PAMPA)
-#
+# =============================================================
+ESTACIONES_OMIXOM_ESTATIC
