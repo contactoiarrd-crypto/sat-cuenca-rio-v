@@ -35,6 +35,29 @@
         .map-legend { background: rgba(255, 255, 255, 0.95); padding: 10px 14px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 11.5px; line-height: 1.5; box-shadow: 0 2px 6px rgba(0,0,0,0.25); max-width: 250px; }
         .legend-item { display: flex; align-items: center; margin-bottom: 3px; }
         .legend-color { width: 12px; height: 12px; border-radius: 50%; margin-right: 8px; flex-shrink: 0; }
+
+        /* Estilos del widget de monitoreo en tiempo real */
+        .widget-tiempo-vivo {
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            border-left: 5px solid #16a34a;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 16px;
+            font-size: 12.5px;
+            transition: all 0.3s ease;
+        }
+        .widget-severo {
+            background: #fef2f2 !important;
+            border-color: #fca5a5 !important;
+            border-left: 5px solid #dc2626 !important;
+            animation: pulse-severo 2s infinite;
+        }
+        @keyframes pulse-severo {
+            0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.4); }
+            70% { box-shadow: 0 0 0 8px rgba(220, 38, 38, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
+        }
     </style>
 </head>
 <body>
@@ -43,14 +66,6 @@
             <h1>SISTEMA DE ALERTA TEMPRANA TRIPROVINCIAL — CUENCA DEL RÍO V</h1>
             <p>San Luis &bull; Córdoba &bull; La Pampa | Plataforma de Monitoreo Hidrometeorológico Operativo</p>
         </div>
-        <!-- BANNER TIEMPO SEVERO EN VIVO (OPEN-METEO) -->
-<div id="alertaSeveraEnVivo" style="display: none; background: #dc2626; color: white; padding: 12px 24px; font-size: 13.5px; font-weight: bold; border-left: 8px solid #7f1d1d; animation: pulse 2s infinite;">
-    ⚠️ <span id="txtAlertaSevera">TIEMPO SEVERO DETECTADO EN LA CUENCA</span>
-</div>
-
-<style>
-@keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.82; } 100% { opacity: 1; } }
-</style>
         <div>
             <a href="sat_unificado_rio_v_triprovincial.xlsx" download class="btn btn-green">📥 Descargar Excel</a>
             <a href="resumen_cruce_rio_v_triprovincial.csv" download class="btn">📄 CSV</a>
@@ -113,8 +128,21 @@
                 </table>
             </div>
 
+            <!-- PANEL DERECHO DE ALERTAS -->
             <div class="card">
                 <h2>Alertas Meteorológicas Vigentes (SMN)</h2>
+                
+                <!-- MONITOR EN VIVO DE TIEMPO SEVERO -->
+                <div id="cajaTiempoVivo" class="widget-tiempo-vivo">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 6px;">
+                        <strong id="tituloTiempoVivo" style="color: #166534; font-size: 13px;">📡 Monitoreo en Vivo (Open-Meteo)</strong>
+                        <span id="badgeEstadoVivo" style="background:#16a34a; color:white; padding:2px 7px; border-radius:10px; font-size:11px; font-weight:bold;">SIN ALERTA</span>
+                    </div>
+                    <div id="detalleTiempoVivo" style="color:#334155; line-height: 1.4;">
+                        Consultando condiciones atmosféricas en la cuenca...
+                    </div>
+                </div>
+
                 __ALERTAS_SMN__
             </div>
         </div>
@@ -150,6 +178,17 @@
     <div id="tab-alertas" class="tab-content">
         <div class="card">
             <h2>Alertas Meteorológicas Oficiales del SMN</h2>
+            
+            <div id="cajaTiempoVivoTab" class="widget-tiempo-vivo">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 6px;">
+                    <strong id="tituloTiempoVivoTab" style="color: #166534; font-size: 13px;">📡 Monitoreo en Vivo (Open-Meteo)</strong>
+                    <span id="badgeEstadoVivoTab" style="background:#16a34a; color:white; padding:2px 7px; border-radius:10px; font-size:11px; font-weight:bold;">SIN ALERTA</span>
+                </div>
+                <div id="detalleTiempoVivoTab" style="color:#334155; line-height: 1.4;">
+                    Consultando condiciones atmosféricas en la cuenca...
+                </div>
+            </div>
+
             __ALERTAS_SMN__
         </div>
     </div>
@@ -393,59 +432,85 @@
                 setTimeout(initMap, 150);
             }
         }
+
         // Monitoreo en vivo de tiempo severo en nodos clave de la cuenca
-async function verificarTiempoSeveroCuenca() {
-    // Nodos representativos: Villa Mercedes (SL), Jovita (CBA), Realicó (LP)
-    const puntos = [
-        { nombre: "Nacientes (Villa Mercedes)", lat: -33.67, lon: -65.46 },
-        { nombre: "Cuenca Media (Jovita/Levalle)", lat: -34.52, lon: -63.97 },
-        { nombre: "Cuenca Baja (Norte Pampeano)", lat: -35.04, lon: -64.24 }
-    ];
+        async function verificarTiempoSeveroCuenca() {
+            const puntos = [
+                { nombre: "Villa Mercedes (SL)", lat: -33.67, lon: -65.46 },
+                { nombre: "Jovita (CBA)", lat: -34.52, lon: -63.97 },
+                { nombre: "Realicó (LP)", lat: -35.04, lon: -64.24 }
+            ];
 
-    const lats = puntos.map(p => p.lat).join(',');
-    const lons = puntos.map(p => p.lon).join(',');
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lons}&current=temperature_2m,wind_speed_10m,weather_code&timezone=America%2FArgentina%2FBuenos_Aires`;
+            const lats = puntos.map(p => p.lat).join(',');
+            const lons = puntos.map(p => p.lon).join(',');
+            const url = `https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lons}&current=temperature_2m,wind_speed_10m,weather_code&timezone=America%2FArgentina%2FBuenos_Aires`;
 
-    try {
-        const res = await fetch(url);
-        const data = await res.json();
-        const lista = Array.isArray(data) ? data : [data];
+            try {
+                const res = await fetch(url);
+                const data = await res.json();
+                const lista = Array.isArray(data) ? data : [data];
 
-        let avisos = [];
+                let hayAlerta = false;
+                let avisos = [];
+                let resumenNodos = [];
 
-        lista.forEach((d, idx) => {
-            const cur = d.current;
-            if (!cur) return;
+                lista.forEach((d, idx) => {
+                    const cur = d.current;
+                    if (!cur) return;
 
-            const t = Math.round(cur.temperature_2m);
-            const v = Math.round(cur.wind_speed_10m);
-            const code = cur.weather_code;
-            const nodo = puntos[idx].nombre;
+                    const t = Math.round(cur.temperature_2m);
+                    const v = Math.round(cur.wind_speed_10m);
+                    const code = cur.weather_code;
+                    const nodo = puntos[idx].nombre;
 
-            // Condición severa: WMO >= 65 (lluvia copiosa/tormenta) o ráfagas sostenidas > 50 km/h
-            if (code >= 65 || v >= 50) {
-                let motivo = [];
-                if (code >= 95) motivo.push("Tormenta eléctrica severa");
-                else if (code >= 65) motivo.push("Lluvias intensas");
-                if (v >= 50) motivo.push(`Vientos de ${v} km/h`);
-                
-                avisos.push(`${nodo}: ${motivo.join(' y ')}`);
+                    resumenNodos.push(`<b>${nodo}:</b> ${t}°C | Viento ${v} km/h`);
+
+                    if (code >= 65 || v >= 50) {
+                        hayAlerta = true;
+                        let motivo = [];
+                        if (code >= 95) motivo.push("Tormenta eléctrica");
+                        else if (code >= 65) motivo.push("Lluvia copiosa");
+                        if (v >= 50) motivo.push(`Viento fuerte (${v} km/h)`);
+                        
+                        avisos.push(`${nodo}: ${motivo.join(' y ')}`);
+                    }
+                });
+
+                // Función auxiliar para actualizar elementos en ambos paneles (dashboard y pestaña alertas)
+                const actualizarCajas = (idCaja, idTitulo, idBadge, idDetalle) => {
+                    const caja = document.getElementById(idCaja);
+                    const titulo = document.getElementById(idTitulo);
+                    const badge = document.getElementById(idBadge);
+                    const detalle = document.getElementById(idDetalle);
+
+                    if (!caja) return;
+
+                    if (hayAlerta) {
+                        caja.classList.add('widget-severo');
+                        titulo.style.color = '#991b1b';
+                        titulo.innerText = '⚠️ ALERTA: Tiempo Severo en Cuenca';
+                        badge.style.background = '#dc2626';
+                        badge.innerText = 'ALERTA ACTIVA';
+                        detalle.innerHTML = `<span style="color:#b91c1c; font-weight:bold;">${avisos.join(' | ')}</span><br><small style="color:#64748b; margin-top:4px; display:inline-block;">Precaución por transitabilidad y saturación rápida de cauces.</small>`;
+                    } else {
+                        caja.classList.remove('widget-severo');
+                        titulo.style.color = '#166534';
+                        titulo.innerText = '🟢 Monitoreo en Vivo: Parámetros Normales';
+                        badge.style.background = '#16a34a';
+                        badge.innerText = 'ESTABLE';
+                        detalle.innerHTML = resumenNodos.join('<br>') + '<br><small style="color:#64748b; margin-top:4px; display:inline-block;">Sin eventos meteorológicos severos detectados en tiempo real.</small>';
+                    }
+                };
+
+                actualizarCajas('cajaTiempoVivo', 'tituloTiempoVivo', 'badgeEstadoVivo', 'detalleTiempoVivo');
+                actualizarCajas('cajaTiempoVivoTab', 'tituloTiempoVivoTab', 'badgeEstadoVivoTab', 'detalleTiempoVivoTab');
+
+            } catch (e) {
+                console.warn("No se pudo verificar el tiempo severo en tiempo real:", e);
             }
-        });
-
-        if (avisos.length > 0) {
-            const banner = document.getElementById('alertaSeveraEnVivo');
-            const texto = document.getElementById('txtAlertaSevera');
-            texto.innerHTML = `ALERTA TIEMPO SEVERO EN CURSO: ${avisos.join(' | ')}. Se recomienda extremar recaudos en el tránsito de rutas (RN 7, RN 35, RP 26) y desagües pluviales.`;
-            banner.style.display = 'block';
         }
-    } catch (e) {
-        console.warn("No se pudo verificar el tiempo severo en tiempo real:", e);
-    }
-}
 
-// Se ejecuta automáticamente al cargar el documento
-window.addEventListener('DOMContentLoaded', verificarTiempoSeveroCuenca);
+        window.addEventListener('DOMContentLoaded', verificarTiempoSeveroCuenca);
     </script>
 </body>
 </html>
