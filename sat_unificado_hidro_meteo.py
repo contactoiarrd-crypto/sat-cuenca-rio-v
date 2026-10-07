@@ -38,6 +38,7 @@ FECHA_TXT = ahora.strftime("%Y-%m-%d %H:%M")
 EXCEL_SALIDA = "sat_unificado_rio_v_triprovincial.xlsx"
 CSV_SALIDA = "resumen_cruce_rio_v_triprovincial.csv"
 PORTAL_HTML_SALIDA = "index.html"
+TEMPLATE_HTML_ENTRADA = "template.html"
 
 LAT_MIN_SL, LAT_MAX_SL = -35.5, -33.0
 LON_MIN_SL, LON_MAX_SL = -66.3, -65.0
@@ -709,23 +710,62 @@ def generar_entregables(estaciones_sl, estaciones_apa, estaciones_omx, registros
         <p style='margin: 4px 0 0 0; font-size:13px; color:#475569;'><strong>Fenómeno:</strong> {a['fenomeno']} | <strong>Vigencia:</strong> {a['fecha']}</p>
     </div>""" for a in alertas_smn]) if alertas_smn else "<p style='color:#64748b; font-style:italic;'>No se registran alertas meteorológicas activas en los departamentos de la cuenca.</p>"
 
-    # 4. Plantilla base HTML (cadena pura, libre de errores de interpolación f-string)
-    plantilla_html = """<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SAT Triprovincial - Cuenca del Río V</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;600;700&display=swap" rel="stylesheet">
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        body { background: #f1f5f9; color: #1e293b; display: flex; flex-direction: column; min-height: 100vh; }
-        header { background: #1e3a8a; color: white; padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
-        .header-title h1 { font-size: 20px; font-weight: 700; }
-        .header-title p { font-size: 12px; opacity: 0.85; }
-        .banner { color: white; padding: 10px 24px; font-size: 13px; font-weight: 600; }
-        .tabs { background: #0f172a; display: flex; overflow-x: auto; padding: 0 20px; }
-        .tab-btn { background: none; border: none; color: #94a3b8; padding: 14px 18px; font-size: 13px; font-weight: 600; cursor: pointer; border-bottom: 3px solid transparent; transition: all 0.2s; white-space: nowrap; }
-        .tab-btn:hover { color: #ffffff; }
-        .tab-btn.active { color: #38
+    # 4. Cargar plantilla desacoplada libre de conflictos con Python
+    if os.path.exists(TEMPLATE_HTML_ENTRADA):
+        with open(TEMPLATE_HTML_ENTRADA, "r", encoding="utf-8") as f_tpl:
+            plantilla_html = f_tpl.read()
+    else:
+        print(f"   [ERROR CRÍTICO]: No se encontró {TEMPLATE_HTML_ENTRADA}. Asegúrate de haberlo subido al repositorio.")
+        return
+
+    # 5. Inyección de variables dinámicas
+    banner_bg = '#1e293b' if not diag_onda['alerta_activa'] else '#b91c1c'
+    kpi_estado_color = '#10b981' if not diag_onda['alerta_activa'] else '#ef4444'
+    kpi_alertas_color = '#ef4444' if len(alertas_smn) > 0 else '#10b981'
+    tiempo_viaje_str = f"{diag_onda['tiempo_viaje_min_dias']:.0f} a {diag_onda['tiempo_viaje_max_dias']:.0f}"
+
+    html_final = plantilla_html.replace("__BANNER_BG__", banner_bg)
+    html_final = html_final.replace("__BANNER_MSG__", str(diag_onda['banner_msg']))
+    html_final = html_final.replace("__TOTAL_ALERTAS__", str(len(alertas_smn)))
+    html_final = html_final.replace("__KPI_ESTADO_COLOR__", kpi_estado_color)
+    html_final = html_final.replace("__ESTADO_ALERTA__", str(diag_onda['estado_alerta']).upper())
+    html_final = html_final.replace("__NIVEL_MARGARITA__", f"{diag_onda['nivel_margarita']:.2f}")
+    html_final = html_final.replace("__FACTOR_ALMACENAMIENTO__", str(diag_onda['factor_almacenamiento']))
+    html_final = html_final.replace("__TIEMPO_VIAJE__", tiempo_viaje_str)
+    html_final = html_final.replace("__FECHA_ARRIBO__", str(diag_onda['fecha_arribo']))
+    html_final = html_final.replace("__KPI_ALERTAS_COLOR__", kpi_alertas_color)
+    html_final = html_final.replace("__FILAS_HIDRO__", filas_hidro_html)
+    html_final = html_final.replace("__FILAS_ECMWF__", filas_ecmwf_html)
+    html_final = html_final.replace("__FILAS_METEO__", filas_meteo_html)
+    html_final = html_final.replace("__ALERTAS_SMN__", alertas_html)
+    html_final = html_final.replace("__JSON_HIDRO__", json_hidro)
+    html_final = html_final.replace("__JSON_REM_SL__", json_rem_sl)
+    html_final = html_final.replace("__JSON_APA_LP__", json_apa_lp)
+    html_final = html_final.replace("__JSON_OMX_CBA__", json_omx_cba)
+    html_final = html_final.replace("__JSON_OMX_LP__", json_omx_lp)
+    html_final = html_final.replace("__JSON_POLIGONOS__", json_poligonos)
+    html_final = html_final.replace("__JSON_RAYOS__", json_rayos)
+
+    with open(PORTAL_HTML_SALIDA, "w", encoding="utf-8") as f:
+        f.write(html_final)
+    print(f"   -> [PORTAL CON PESTAÑAS GENERADO]: {PORTAL_HTML_SALIDA}")
+
+# =============================================================
+# 10. EJECUCIÓN PRINCIPAL
+# =============================================================
+if __name__ == "__main__":
+    print("=" * 70)
+    print(f"SISTEMA SAT CUENCA RÍO V — EJECUCIÓN: {FECHA_TXT}")
+    print("=" * 70)
+
+    estaciones_omx = obtener_estaciones_omixom()
+    estaciones_sl = obtener_estaciones_san_luis()
+    estaciones_apa = obtener_estaciones_apa()
+    registros_hidro = obtener_datos_hidrologicos()
+    rayos = obtener_rayos()
+    alertas_smn, poligonos_smn = obtener_alertas_smn()
+    pronostico_ecmwf = obtener_pronostico_ecmwf()
+
+    generar_entregables(estaciones_sl, estaciones_apa, estaciones_omx, registros_hidro, rayos, alertas_smn, poligonos_smn, pronostico_ecmwf)
+    print("=" * 70)
+    print("PROCESO COMPLETADO EXITOSAMENTE.")
