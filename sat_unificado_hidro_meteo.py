@@ -309,7 +309,7 @@ def obtener_estaciones_apa():
         {"id": "APA_TELEN", "nombre": "Telén", "slug": "telen", "depto": "Loventué", "lat": -36.262, "lon": -65.511, "temp": 16.3, "lluvia": 0.0},
         {"id": "APA_GRALACHA", "nombre": "General Acha", "slug": "gralacha", "depto": "Utracán", "lat": -37.378, "lon": -64.604, "temp": 15.0, "lluvia": 0.0},
         {"id": "APA_ALGARROBO", "nombre": "Algarrobo del Águila", "slug": "algarrobo", "depto": "Chical Có", "lat": -36.402, "lon": -67.147, "temp": 14.2, "lluvia": 0.0},
-        {"id": "APA_LAADELA", "nombre": "La Adela", "slug": "laadela", "depto": "Caleu Caleu", "lat": -38.985, "lon": -64.088, "temp": 17.9, "lluvia": 2.4},
+        {"id": "APA_LAADELA", "nombre": "La Adela", "slug": "laadela", "depto": "Caleu Caleu", "lat": -38.985, "lon": -64.088, "temp": 17.9, "lluvia: 2.4"},
         {"id": "APA_25DEMAYO", "nombre": "25 de Mayo", "slug": "25demayo", "depto": "Puelén", "lat": -37.773, "lon": -67.718, "temp": 16.5, "lluvia": 0.0},
         {"id": "APA_GOBDUVAL", "nombre": "Gobernador Duval", "slug": "gobduval", "depto": "Curacó", "lat": -38.731, "lon": -65.772, "temp": 16.0, "lluvia": 0.0}
     ]
@@ -445,59 +445,4 @@ def obtener_alertas_smn():
                 soup = BeautifulSoup(r_cap.content, "xml")
                 for item in soup.find_all("item"):
                     title = item.find("title").text if item.find("title") else ""
-                    desc = item.find("description").text if item.find("description") else ""
-                    txt_cap = normalizar_txt(title + " " + desc)
-                    if any(t in txt_cap for t in TERMINOS_CUENCA):
-                        col = "#ef4444" if "ROJO" in txt_cap else ("#ea580c" if "NARANJA" in txt_cap else "#f59e0b")
-                        str_lvl = "Rojo" if "ROJO" in txt_cap else ("Naranja" if "NARANJA" in txt_cap else "Amarillo")
-                        alertas.append({
-                            "zona": "Cuenca del Río V (SAT SMN)",
-                            "fecha": ahora.strftime("%d/%m"),
-                            "fenomeno": title,
-                            "nivel": str_lvl,
-                            "color": col
-                        })
-        except Exception as e:
-            print(f"   [AVISO CAP SMN]: {e}")
-
-    return alertas, poligonos
-
-def obtener_pronostico_ecmwf():
-    print("6. Consultando modelo ECMWF IFS 0.25° a 72 horas y medias climáticas...", flush=True)
-    nodos = list(MEDIAS_CLIMATICAS_CUENCA.keys())
-    lats = ",".join(str(MEDIAS_CLIMATICAS_CUENCA[n]["lat"]) for n in nodos)
-    lons = ",".join(str(MEDIAS_CLIMATICAS_CUENCA[n]["lon"]) for n in nodos)
-    url = (
-        f"https://api.open-meteo.com/v1/forecast?"
-        f"latitude={lats}&longitude={lons}&daily=precipitation_sum,precipitation_probability_max,"
-        f"temperature_2m_max,temperature_2m_min&timezone=America%2FArgentina%2FBuenos_Aires"
-        f"&models=ecmwf_ifs025"
-    )
-    salida_ecmwf = []
-    try:
-        r = session.get(url, timeout=10)
-        if r.status_code == 200:
-            datos = r.json()
-            if not isinstance(datos, list):
-                datos = [datos]
-            for idx, nodo_nom in enumerate(nodos):
-                clima_ref = MEDIAS_CLIMATICAS_CUENCA[nodo_nom]
-                daily = datos[idx].get("daily", {})
-                lluvias = daily.get("precipitation_sum", [])
-                tmax = daily.get("temperature_2m_max", [])
-
-                ll_hoy = round(lluvias[0] if len(lluvias) > 0 and lluvias[0] is not None else 0.0, 1)
-                ll_24 = round(lluvias[1] if len(lluvias) > 1 and lluvias[1] is not None else 0.0, 1)
-                ll_48 = round(lluvias[2] if len(lluvias) > 2 and lluvias[2] is not None else 0.0, 1)
-                acum_72h = round(ll_hoy + ll_24 + ll_48, 1)
-
-                pct_mes = round((acum_72h / clima_ref["mes_esperado_mm"]) * 100, 1) if clima_ref["mes_esperado_mm"] > 0 else 0.0
-
-                salida_ecmwf.append({
-                    "nodo": nodo_nom,
-                    "provincia": clima_ref["provincia"],
-                    "region": clima_ref["region"],
-                    "lat": clima_ref["lat"],
-                    "lon": clima_ref["lon"],
-                    "lluvia_hoy": ll_hoy,
-                    "lluvia_24h":
+                    desc = item.find("description").text if item.find("description")
