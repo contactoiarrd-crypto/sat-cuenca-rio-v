@@ -110,14 +110,16 @@
             </div>
         </div>
 
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+        <div style="display: grid; grid-template-columns: 1.15fr 0.85fr; gap: 20px;">
             <div class="card">
-                <h2>Cuerpos de Agua Críticos / Alturas Actuales</h2>
+                <h2>Cuerpos de Agua Críticos / Alturas y Tendencia</h2>
                 <table>
                     <thead>
                         <tr>
                             <th>Estación</th>
-                            <th style="text-align:center;">Nivel</th>
+                            <th style="text-align:center;">Actual</th>
+                            <th style="text-align:center;">Anterior</th>
+                            <th style="text-align:center;">Var. (Δh)</th>
                             <th style="text-align:center;">Alerta/Evac</th>
                             <th style="text-align:center;">Estado</th>
                         </tr>
@@ -201,10 +203,11 @@
                     <tr>
                         <th>Estación / Cuerpo de Agua</th>
                         <th style="text-align:center;">Nivel Actual</th>
+                        <th style="text-align:center;">Nivel Anterior</th>
+                        <th style="text-align:center;">Variación (Δh)</th>
                         <th style="text-align:center;">Cota Alerta</th>
                         <th style="text-align:center;">Cota Evac.</th>
                         <th style="text-align:center;">Estado Semáforo</th>
-                        <th style="text-align:center;">Tendencia</th>
                         <th style="text-align:right;">Última Obs.</th>
                     </tr>
                 </thead>
@@ -262,7 +265,7 @@
         var fgRayos = L.featureGroup();
         var sateliteGOES = L.layerGroup();
 
-        // 1. Carga dinámica de Satélite Infrarrojo en Vivo (RainViewer / GOES)
+        // 1. Carga Satélite Infrarrojo Dinámico con Paleta Convectiva (RainViewer)
         function cargarSateliteEnVivo() {
             fetch('https://api.rainviewer.com/public/weather-maps.json')
                 .then(res => res.json())
@@ -270,57 +273,37 @@
                     if (data && data.satellite && data.satellite.infrared && data.satellite.infrared.length > 0) {
                         sateliteGOES.clearLayers();
                         var ultimoSat = data.satellite.infrared[data.satellite.infrared.length - 1];
-                        var satTile = L.tileLayer(data.host + ultimoSat.path + '/256/{z}/{x}/{y}/0/0_0.png', {
+                        var satTile = L.tileLayer(data.host + ultimoSat.path + '/256/{z}/{x}/{y}/4/1_1.png', {
                             opacity: 0.65,
                             zIndex: 110,
                             maxZoom: 10,
-                            attribution: 'Satélite GOES-16 Infrarrojo (RainViewer)'
+                            attribution: 'Satélite Infrarrojo (RainViewer)'
                         });
                         sateliteGOES.addLayer(satTile);
                     }
                 })
-                .catch(err => console.warn("No se pudo cargar la capa satelital:", err));
+                .catch(err => console.warn("Error cargando satélite:", err));
         }
 
-        // 2. Carga en tiempo real de Descargas Atmosféricas (Rayos Blitzortung)
-        function actualizarRayosEnVivo() {
+        // 2. Dibuja los rayos procesados por Python
+        function dibujarRayos() {
             fgRayos.clearLayers();
-            
-            const latMin = -36.5, latMax = -32.8;
-            const lonMin = -67.5, lonMax = -63.0;
-
-            const urls = [
-                "https://map.blitzortung.org/Data_Json/Strikes_0.json",
-                "https://map.blitzortung.org/Data_Json/Strikes_1.json"
-            ];
-
-            urls.forEach(url => {
-                fetch(url)
-                    .then(res => res.json())
-                    .then(strikes => {
-                        strikes.forEach(st => {
-                            if (Array.isArray(st) && st.length >= 3) {
-                                const lat = parseFloat(st[2]);
-                                const lon = parseFloat(st[1]);
-
-                                if (lat >= latMin && lat <= latMax && lon >= lonMin && lon <= lonMax) {
-                                    const ts = parseFloat(st[0]);
-                                    const date = new Date(ts > 1e15 ? ts / 1e6 : ts);
-                                    const hora = date.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
-
-                                    L.circleMarker([lat, lon], {
-                                        radius: 5,
-                                        color: '#b45309',
-                                        fillColor: '#facc15',
-                                        fillOpacity: 0.95,
-                                        weight: 1.5
-                                    }).bindPopup("⚡ Descarga Atmosférica (" + hora + " hs)").addTo(fgRayos);
-                                }
-                            }
-                        });
-                    })
-                    .catch(err => console.warn("No se pudieron cargar descargas atmosféricas en vivo:", err));
-            });
+            try {
+                var rayos = __JSON_RAYOS__;
+                if (Array.isArray(rayos)) {
+                    rayos.forEach(function(r) {
+                        L.circleMarker([r.lat, r.lon], {
+                            radius: 5,
+                            color: '#b45309',
+                            fillColor: '#facc15',
+                            fillOpacity: 0.95,
+                            weight: 1.5
+                        }).bindPopup("⚡ Descarga Atmosférica (" + r.hora + " hs)").addTo(fgRayos);
+                    });
+                }
+            } catch (e) {
+                console.warn("Sin datos de rayos:", e);
+            }
         }
 
         function initMap() {
@@ -331,7 +314,7 @@
 
             var osmVial = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 maxZoom: 19,
-                attribution: 'OpenStreetMap (Rutas RN 7, RN 35, RP 26)'
+                attribution: 'OpenStreetMap'
             });
 
             var esriTopo = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', {
@@ -362,13 +345,14 @@
 
             var datosHidro = __JSON_HIDRO__;
             datosHidro.forEach(function(h) {
+                var difTxt = h.variacion ? ("<br>Variación: <b>" + h.variacion + "</b>") : "";
                 L.circleMarker([h.lat, h.lon], {
                     radius: 8,
                     color: '#ffffff',
                     fillColor: h.color,
                     fillOpacity: 0.95,
                     weight: 2
-                }).bindPopup("<b>" + h.nombre + "</b><br>Río: " + h.rio + "<br>Nivel: <b>" + h.nivel_actual + " m</b><br>Alerta: " + h.cota_alerta + " m | Evac: " + h.cota_evac + " m<br>Estado: <b>" + h.estado + "</b><br><small>Obs: " + h.fecha + "</small>").addTo(fgHidro);
+                }).bindPopup("<b>" + h.nombre + "</b><br>Río: " + h.rio + "<br>Nivel: <b>" + h.nivel_actual + " m</b>" + difTxt + "<br>Alerta: " + h.cota_alerta + " m | Evac: " + h.cota_evac + " m<br>Estado: <b>" + h.estado + "</b><br><small>Obs: " + h.fecha + "</small>").addTo(fgHidro);
             });
 
             var datosRem = __JSON_REM_SL__;
@@ -434,7 +418,7 @@
             var overlayMaps = {
                 "💧 Cuerpos de Agua (INA)": fgHidro,
                 "⚠️ Alertas SAT SMN": fgSMN,
-                "🛰️ Satélite GOES-16 (Infrarrojo en Vivo)": sateliteGOES,
+                "🛰️ Satélite Infrarrojo": sateliteGOES,
                 "⚡ Rayos / Descargas en Vivo": fgRayos,
                 "⛰️ REM San Luis": fgRemSL,
                 "💧 APA La Pampa": fgApaLP,
@@ -448,10 +432,10 @@
             legend.onAdd = function (map) {
                 var div = L.DomUtil.create('div', 'map-legend');
                 div.innerHTML = '<strong>Cuerpos de Agua (INA)</strong><hr style="margin:4px 0;">' +
-                    '<div class="legend-item"><div class="legend-color" style="background:#10b981;"></div> 🟢 Normal / Seguro (< 75% Alerta)</div>' +
-                    '<div class="legend-item"><div class="legend-color" style="background:#f59e0b;"></div> 🟡 Precaución (≥ 75% Alerta)</div>' +
+                    '<div class="legend-item"><div class="legend-color" style="background:#10b981;"></div> 🟢 Normal (< 75% Alerta)</div>' +
+                    '<div class="legend-item"><div class="legend-color" style="background:#f59e0b;"></div> 🟡 Precaución (≥ 75%)</div>' +
                     '<div class="legend-item"><div class="legend-color" style="background:#ea580c;"></div> 🟠 Alerta Hidrológica</div>' +
-                    '<div class="legend-item"><div class="legend-color" style="background:#ef4444;"></div> 🔴 Evacuación Oficial</div><hr style="margin:4px 0;">' +
+                    '<div class="legend-item"><div class="legend-color" style="background:#ef4444;"></div> 🔴 Evacuación</div><hr style="margin:4px 0;">' +
                     '<strong>Redes Meteorológicas</strong><br>' +
                     '<div class="legend-item"><div class="legend-color" style="background:#fb923c;"></div> REM San Luis</div>' +
                     '<div class="legend-item"><div class="legend-color" style="background:#38bdf8;"></div> APA La Pampa</div>' +
@@ -461,21 +445,16 @@
             };
             legend.addTo(map);
 
+            dibujarRayos();
             cargarSateliteEnVivo();
-            actualizarRayosEnVivo();
-            setInterval(actualizarRayosEnVivo, 120000);
             setInterval(cargarSateliteEnVivo, 600000);
         }
 
         function openTab(evt, tabName) {
             var tabContents = document.getElementsByClassName("tab-content");
-            for (var i = 0; i < tabContents.length; i++) {
-                tabContents[i].classList.remove("active");
-            }
+            for (var i = 0; i < tabContents.length; i++) tabContents[i].classList.remove("active");
             var tabBtns = document.getElementsByClassName("tab-btn");
-            for (var i = 0; i < tabBtns.length; i++) {
-                tabBtns[i].classList.remove("active");
-            }
+            for (var i = 0; i < tabBtns.length; i++) tabBtns[i].classList.remove("active");
             document.getElementById(tabName).classList.add("active");
             evt.currentTarget.classList.add("active");
 
@@ -484,17 +463,17 @@
             }
         }
 
-        // 3. Monitoreo calibrado de tiempo severo en nodos clave de la cuenca
+        // 3. Monitoreo sensible en vivo de tiempo severo en nodos clave
         async function verificarTiempoSeveroCuenca() {
             const puntos = [
-                { nombre: "Villa Mercedes (SL)", lat: -33.67, lon: -65.46 },
-                { nombre: "Jovita (CBA)", lat: -34.52, lon: -63.97 },
-                { nombre: "Realicó (LP)", lat: -35.04, lon: -64.24 }
+                { nombre: "Villa Mercedes", lat: -33.67, lon: -65.46 },
+                { nombre: "Jovita / Levalle", lat: -34.52, lon: -63.97 },
+                { nombre: "Realicó", lat: -35.04, lon: -64.24 }
             ];
 
             const lats = puntos.map(p => p.lat).join(',');
             const lons = puntos.map(p => p.lon).join(',');
-            const url = `https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lons}&current=temperature_2m,relative_humidity_2m,wind_speed_10m,wind_gusts_10m,precipitation,weather_code&timezone=America%2FArgentina%2FBuenos_Aires`;
+            const url = `https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lons}&current=temperature_2m,wind_speed_10m,wind_gusts_10m,precipitation,showers,weather_code&timezone=America%2FArgentina%2FBuenos_Aires`;
 
             try {
                 const res = await fetch(url);
@@ -512,24 +491,19 @@
                     const t = Math.round(cur.temperature_2m);
                     const v = Math.round(cur.wind_speed_10m);
                     const gust = Math.round(cur.wind_gusts_10m || v);
-                    const prec = cur.precipitation || 0;
+                    const prec = (cur.precipitation || 0) + (cur.showers || 0);
                     const code = cur.weather_code;
                     const nodo = puntos[idx].nombre;
 
-                    resumenNodos.push(`<b>${nodo}:</b> ${t}°C | Viento ${v} km/h (Ráfagas ${gust} km/h) | Lluvia: ${prec} mm`);
+                    resumenNodos.push(`<b>${nodo}:</b> ${t}°C | Viento ${v} km/h (Ráfagas ${gust}) | Lluvia: ${prec.toFixed(1)} mm`);
 
                     let motivo = [];
-                    if (code >= 95) {
-                        motivo.push("Tormenta eléctrica");
-                    } else if (code >= 80 || code >= 63) {
-                        motivo.push("Chaparrones / Lluvias fuertes");
-                    }
-                    if (gust >= 45 || v >= 35) {
-                        motivo.push(`Ráfagas de ${gust} km/h`);
-                    }
-                    if (prec >= 5.0) {
-                        motivo.push(`Precipitación intensa (${prec} mm/h)`);
-                    }
+                    if (code >= 95) motivo.push("Tormenta eléctrica");
+                    else if (code >= 80) motivo.push("Chaparrones convectivos");
+                    else if (code >= 51) motivo.push("Precipitaciones activas");
+
+                    if (gust >= 40 || v >= 30) motivo.push(`Ráfagas de ${gust} km/h`);
+                    if (prec >= 1.5) motivo.push(`Lluvia en curso (${prec.toFixed(1)} mm)`);
 
                     if (motivo.length > 0) {
                         hayAlerta = true;
@@ -537,9 +511,11 @@
                     }
                 });
 
-                if (typeof fgRayos !== 'undefined' && fgRayos.getLayers().length > 0) {
+                var totalRayos = 0;
+                try { totalRayos = (__JSON_RAYOS__).length; } catch(e){}
+                if (totalRayos > 0) {
                     hayAlerta = true;
-                    avisos.push(`Actividad eléctrica detectada en la cuenca (${fgRayos.getLayers().length} descargas recientes)`);
+                    avisos.push(`Actividad de descargas eléctricas (${totalRayos} rayos recientes)`);
                 }
 
                 const actualizarCajas = (idCaja, idTitulo, idBadge, idDetalle) => {
@@ -563,7 +539,7 @@
                         titulo.innerText = '🟢 Monitoreo en Vivo: Parámetros Normales';
                         badge.style.background = '#16a34a';
                         badge.innerText = 'ESTABLE';
-                        detalle.innerHTML = resumenNodos.join('<br>') + '<br><small style="color:#64748b; margin-top:4px; display:inline-block;">Sin celdas de tormenta ni ráfagas severas registradas.</small>';
+                        detalle.innerHTML = resumenNodos.join('<br>') + '<br><small style="color:#64748b; margin-top:4px; display:inline-block;">Sin celdas severas detectadas en este momento.</small>';
                     }
                 };
 
@@ -571,13 +547,13 @@
                 actualizarCajas('cajaTiempoVivoTab', 'tituloTiempoVivoTab', 'badgeEstadoVivoTab', 'detalleTiempoVivoTab');
 
             } catch (e) {
-                console.warn("No se pudo verificar el tiempo severo en tiempo real:", e);
+                console.warn("Error en monitoreo de tiempo severo:", e);
             }
         }
 
         window.addEventListener('DOMContentLoaded', function() {
             verificarTiempoSeveroCuenca();
-            setInterval(verificarTiempoSeveroCuenca, 180000); // Chequea cada 3 minutos
+            setInterval(verificarTiempoSeveroCuenca, 180000);
         });
     </script>
 </body>
