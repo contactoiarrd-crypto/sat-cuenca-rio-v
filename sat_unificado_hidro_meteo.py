@@ -2,8 +2,7 @@
 """
 SISTEMA DE ALERTA TEMPRANA TRIPROVINCIAL: CUENCA RÍO V (SAN LUIS - CÓRDOBA - LA PAMPA)
 Monitoreo Hidrometeorológico, Cuerpos de Agua INA, SAT SMN / WMO CAP, Pronóstico ECMWF IFS,
-Radares SMN/SINARAME (RMA04 Villa Reynolds, RMA11 Santa Isabel, RMA01 Bolívar),
-Redes Meteorológicas Discriminadas y Visor Cartográfico Vial.
+Mosaico de Radares Argentinos en Tiempo Real (SMN / Rain Alarm), Redes Meteorológicas Discriminadas y Visor Vial.
 """
 import os
 import sys
@@ -51,74 +50,7 @@ session.mount("https://", HTTPAdapter(max_retries=retries))
 session.mount("http://", HTTPAdapter(max_retries=retries))
 
 # =============================================================
-# 2. DESCARGA / SCRAPER AUTOMÁTICO DE RADARES SMN
-# =============================================================
-RADAR_IDS_SMN = {
-    "reynolds": {"code": "RMA04", "salida": "radar_reynolds.png"},
-    "santa_isabel": {"code": "RMA11", "salida": "radar_santa_isabel.png"},
-    "bolivar": {"code": "RMA01", "salida": "radar_bolivar.png"}
-}
-
-HEADERS_SMN = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    "Referer": "https://www.smn.gob.ar/radar"
-}
-
-def scrapear_radares_smn():
-    print("0. Scrapeando imágenes operativas de radar (SMN)...", flush=True)
-    url_catalogo = "https://ws1.smn.gob.ar/v1/radar/animation"
-    descargados = set()
-
-    try:
-        r = session.get(url_catalogo, headers=HEADERS_SMN, timeout=8)
-        if r.status_code == 200:
-            catalogo = r.json()
-            for nombre_clave, conf in RADAR_IDS_SMN.items():
-                codigo = conf["code"]
-                archivo_salida = conf["salida"]
-                frames = []
-
-                if isinstance(catalogo, dict):
-                    frames = catalogo.get(codigo, [])
-                elif isinstance(catalogo, list):
-                    frames = [item for item in catalogo if item.get("radar") == codigo or codigo in str(item.get("url", ""))]
-
-                if frames:
-                    ultimo_frame = frames[-1]
-                    url_img = ultimo_frame.get("url") if isinstance(ultimo_frame, dict) else str(ultimo_frame)
-                    if not url_img.startswith("http"):
-                        url_img = f"https://archivos.smn.gob.ar/radar/{url_img.lstrip('/')}"
-                    
-                    r_img = session.get(url_img, headers=HEADERS_SMN, timeout=10)
-                    if r_img.status_code == 200 and len(r_img.content) > 1500:
-                        with open(archivo_salida, "wb") as f:
-                            f.write(r_img.content)
-                        descargados.add(nombre_clave)
-                        print(f"   ✓ Radar {codigo} ({nombre_clave}) guardado correctamente.")
-    except Exception as e:
-        print(f"   [AVISO CATÁLOGO RADAR]: {e}")
-
-    # Fallback por scraping directo del portal si no respondió la API
-    for nombre_clave, conf in RADAR_IDS_SMN.items():
-        if nombre_clave not in descargados:
-            try:
-                codigo = conf["code"]
-                archivo_salida = conf["salida"]
-                r_web = session.get(f"https://www.smn.gob.ar/radar?radar={codigo}", headers=HEADERS_SMN, timeout=7)
-                if r_web.status_code == 200:
-                    matches = re.findall(rf'https?://[^\s"\'<>]*(?:{codigo}|{codigo.lower()})[^\s"\'<>]+\.png', r_web.text)
-                    if matches:
-                        url_img = matches[-1]
-                        r_img = session.get(url_img, headers=HEADERS_SMN, timeout=10)
-                        if r_img.status_code == 200 and len(r_img.content) > 1500:
-                            with open(archivo_salida, "wb") as f:
-                                f.write(r_img.content)
-                            print(f"   ✓ Radar {codigo} ({nombre_clave}) recuperado por fallback HTML.")
-            except Exception:
-                pass
-
-# =============================================================
-# 3. MEDIAS CLIMÁTICAS Y NODOS ECMWF A 72 HORAS
+# 2. MEDIAS CLIMÁTICAS Y NODOS ECMWF A 72 HORAS
 # =============================================================
 MEDIAS_CLIMATICAS_CUENCA = {
     "Villa Mercedes": {"anual_mm": 680, "mes_esperado_mm": 55, "provincia": "San Luis", "lat": -33.67, "lon": -65.46, "region": "Cabecera / Nacientes"},
@@ -130,7 +62,7 @@ MEDIAS_CLIMATICAS_CUENCA = {
 }
 
 # =============================================================
-# 4. CATÁLOGO ESTÁTICO REDES OMIXOM (CÓRDOBA Y LA PAMPA)
+# 3. CATÁLOGO ESTÁTICO REDES OMIXOM (CÓRDOBA Y LA PAMPA)
 # =============================================================
 ESTACIONES_OMIXOM_ESTATICAS = [
     {"id": "OMX_CBA_1", "nombre": "General Levalle", "departamento": "Roque Sáenz Peña", "provincia": "Córdoba", "lat": -34.0000, "lon": -63.9163, "temp_c": np.nan, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Estática", "red": "Omixom Córdoba"},
@@ -168,7 +100,7 @@ ESTACIONES_OMIXOM_ESTATICAS = [
 ]
 
 # =============================================================
-# 5. CATÁLOGO CUERPOS DE AGUA (INA) Y COTAS FÍSICAS
+# 4. CATÁLOGO CUERPOS DE AGUA (INA) Y COTAS FÍSICAS
 # =============================================================
 BASE_URL_INA = "https://alerta.ina.gob.ar/pub/datos"
 timestart_str = (ahora - timedelta(days=4)).strftime("%Y-%m-%d")
@@ -227,7 +159,7 @@ def distancia_haversine(lat1, lon1, lat2, lon2):
     return R * c
 
 # =============================================================
-# 6. EXTRACCIÓN DE DATOS DE REDES
+# 5. EXTRACCIÓN DE DATOS
 # =============================================================
 def obtener_estaciones_omixom():
     return ESTACIONES_OMIXOM_ESTATICAS
@@ -425,12 +357,12 @@ def obtener_rayos():
     return rayos
 
 # =============================================================
-# 7. PARSEO ROBUSTO DE ALERTAS SAT SMN
+# 6. ALERTAS SAT SMN CON BÚSQUEDA GENERAL
 # =============================================================
-DEPARTAMENTOS_CUENCA = [
-    "PEDERNERA", "PRINGLES", "DUPUY", "CAPITAL", "CHACABUCO",
-    "ROCA", "SAENZ PENA", "SÁENZ PEÑA", "RIO CUARTO", "RÍO CUARTO", "JUAREZ CELMAN", "JUÁREZ CELMAN",
-    "REALICO", "REALICÓ", "CHAPALEUFU", "CHAPALEUFÚ", "RANCUL", "MARACO", "MARACÓ", "TRENEL", "CONHELO", "QUEMU QUEMU", "QUEMÚ QUEMÚ"
+TERMINOS_CUENCA = [
+    "PEDERNERA", "PRINGLES", "DUPUY", "CAPITAL", "CHACABUCO", "SAN LUIS",
+    "ROCA", "SAENZ PENA", "RIO CUARTO", "JUAREZ CELMAN", "CORDOBA",
+    "REALICO", "CHAPALEUFU", "RANCUL", "MARACO", "TRENEL", "CONHELO", "QUEMU QUEMU", "LA PAMPA"
 ]
 
 EVENTOS_SMN = {
@@ -440,6 +372,12 @@ EVENTOS_SMN = {
     40: "Nevadas",
     45: "Viento Zonda"
 }
+
+def normalizar_txt(s):
+    if not s:
+        return ""
+    import unicodedata
+    return ''.join(c for c in unicodedata.normalize('NFD', str(s)) if unicodedata.category(c) != 'Mn').upper()
 
 def obtener_alertas_smn():
     print("5. Consultando feed oficial SAT SMN y CAP WMO...", flush=True)
@@ -452,74 +390,70 @@ def obtener_alertas_smn():
         except Exception:
             pass
 
-    # 1. Consulta directa al API del SAT SMN
+    # 1. API SAT SMN
     try:
-        r = session.get("https://ws1.smn.gob.ar/v1/warning/alert/area?mode=alert&compact=true", headers={"User-Agent": "Mozilla/5.0"}, timeout=7)
+        r = session.get("https://ws1.smn.gob.ar/v1/warning/alert/area?mode=alert", headers={"User-Agent": "Mozilla/5.0"}, timeout=8)
         if r.status_code == 200:
             for area in r.json():
-                nombre_area = str(area.get("name", "")).upper()
+                nom = normalizar_txt(area.get("name", ""))
                 area_id = str(area.get("area_id", ""))
-                es_cuenca = any(dep in nombre_area for dep in DEPARTAMENTOS_CUENCA) or area_id in [
-                    "3343", "3358", "3362", "3363", "3365", "3366", "3378", "768", "807", "808", "809", "810", "811", "821", "824"
-                ]
+                es_cuenca = any(t in nom for t in TERMINOS_CUENCA)
 
-                if es_cuenca:
-                    warnings = area.get("warnings", [])
-                    for w in warnings:
-                        lvl = w.get("max_level", 1)
-                        if lvl >= 2:
-                            col = "#ef4444" if lvl >= 4 else ("#ea580c" if lvl == 3 else "#f59e0b")
-                            str_lvl = "Rojo" if lvl >= 4 else ("Naranja" if lvl == 3 else "Amarillo")
-                            evs = [EVENTOS_SMN.get(ev.get("id"), "Tormentas") for ev in w.get("events", []) if ev.get("max_level", 1) >= 2]
-                            fenom = ", ".join(set(evs)) if evs else "Alerta Meteorológica"
-                            
-                            alertas.append({
-                                "zona": area.get("name", f"Área {area_id}"),
-                                "fecha": w.get("date", "Hoy"),
-                                "fenomeno": fenom,
-                                "nivel": str_lvl,
-                                "color": col
-                            })
+                for w in area.get("warnings", []):
+                    lvl = w.get("max_level", 1)
+                    if lvl >= 2 and es_cuenca:
+                        col = "#ef4444" if lvl >= 4 else ("#ea580c" if lvl == 3 else "#f59e0b")
+                        str_lvl = "Rojo" if lvl >= 4 else ("Naranja" if lvl == 3 else "Amarillo")
+                        evs = [EVENTOS_SMN.get(ev.get("id"), "Alerta Meteorológica") for ev in w.get("events", []) if ev.get("max_level", 1) >= 2]
+                        fenom = ", ".join(set(evs)) if evs else "Tormentas / Lluvias"
 
-                            geom = geometrias.get(area_id)
-                            if geom:
-                                coords = geom.get("coordinates", [])
-                                if geom.get("type") == "MultiPolygon":
-                                    for p in coords:
-                                        if p:
-                                            poligonos.append({
-                                                "coords": [[pt[1], pt[0]] for pt in p[0] if len(pt) >= 2],
-                                                "color": col,
-                                                "nivel": str_lvl,
-                                                "zona": area.get("name"),
-                                                "evento": fenom
-                                            })
-                                elif geom.get("type") == "Polygon" and coords:
-                                    poligonos.append({
-                                        "coords": [[pt[1], pt[0]] for pt in coords[0] if len(pt) >= 2],
-                                        "color": col,
-                                        "nivel": str_lvl,
-                                        "zona": area.get("name"),
-                                        "evento": fenom
-                                    })
+                        alertas.append({
+                            "zona": area.get("name", f"Zona {area_id}"),
+                            "fecha": w.get("date", "Hoy"),
+                            "fenomeno": fenom,
+                            "nivel": str_lvl,
+                            "color": col
+                        })
+
+                        geom = geometrias.get(area_id)
+                        if geom:
+                            coords = geom.get("coordinates", [])
+                            if geom.get("type") == "MultiPolygon":
+                                for p in coords:
+                                    if p:
+                                        poligonos.append({
+                                            "coords": [[pt[1], pt[0]] for pt in p[0] if len(pt) >= 2],
+                                            "color": col,
+                                            "nivel": str_lvl,
+                                            "zona": area.get("name"),
+                                            "evento": fenom
+                                        })
+                            elif geom.get("type") == "Polygon" and coords:
+                                poligonos.append({
+                                    "coords": [[pt[1], pt[0]] for pt in coords[0] if len(pt) >= 2],
+                                    "color": col,
+                                    "nivel": str_lvl,
+                                    "zona": area.get("name"),
+                                    "evento": fenom
+                                })
     except Exception as e:
-        print(f"   [AVISO SAT API]: {e}")
+        print(f"   [AVISO API SMN]: {e}")
 
-    # 2. Fallback de respaldo con feed CAP WMO / SMN
+    # 2. Respaldo por feed CAP oficial SMN
     if not alertas:
         try:
-            r_cap = session.get("https://ssl.smn.gob.ar/CAP/AR.php", headers={"User-Agent": "Mozilla/5.0"}, timeout=7)
+            r_cap = session.get("https://ssl.smn.gob.ar/CAP/AR.php", headers={"User-Agent": "Mozilla/5.0"}, timeout=8)
             if r_cap.status_code == 200 and "<rss" in r_cap.text:
                 soup = BeautifulSoup(r_cap.content, "xml")
                 for item in soup.find_all("item"):
                     title = item.find("title").text if item.find("title") else ""
                     desc = item.find("description").text if item.find("description") else ""
-                    t_upper = (title + " " + desc).upper()
-                    if any(dep in t_upper for dep in DEPARTAMENTOS_CUENCA):
-                        col = "#ef4444" if "ROJO" in t_upper else ("#ea580c" if "NARANJA" in t_upper else "#f59e0b")
-                        str_lvl = "Rojo" if "ROJO" in t_upper else ("Naranja" if "NARANJA" in t_upper else "Amarillo")
+                    txt_cap = normalizar_txt(title + " " + desc)
+                    if any(t in txt_cap for t in TERMINOS_CUENCA):
+                        col = "#ef4444" if "ROJO" in txt_cap else ("#ea580c" if "NARANJA" in txt_cap else "#f59e0b")
+                        str_lvl = "Rojo" if "ROJO" in txt_cap else ("Naranja" if "NARANJA" in txt_cap else "Amarillo")
                         alertas.append({
-                            "zona": "Área Cuenca Río V (CAP Oficial)",
+                            "zona": "Cuenca del Río V (SAT SMN)",
                             "fecha": ahora.strftime("%d/%m"),
                             "fenomeno": title,
                             "nivel": str_lvl,
@@ -636,7 +570,7 @@ def calcular_tiempo_viaje_onda(lista_hidro_resumen, lista_rayos=[]):
     }
 
 # =============================================================
-# 8. GENERACIÓN DE ENTREGABLES Y VISOR CARTOGRÁFICO
+# 7. GENERACIÓN DE ENTREGABLES Y VISOR CARTOGRÁFICO
 # =============================================================
 def generar_entregables(estaciones_sl, estaciones_apa, estaciones_omx, registros_hidro, lista_rayos, alertas_smn, poligonos_smn, pronostico_ecmwf):
     print("7. Generando entregables y visor cartográfico optimizado...", flush=True)
@@ -708,7 +642,7 @@ def generar_entregables(estaciones_sl, estaciones_apa, estaciones_omx, registros
         ws2.append([p["nodo"], p["provincia"], p["region"], p["lluvia_hoy"], p["lluvia_24h"], p["lluvia_48h"], p["acum_72h"], p["mes_esperado_mm"], p["anual_mm"], p["pct_mes"]])
     wb.save(EXCEL_SALIDA)
 
-    # 3. Serialización JSON
+    # 3. JSON
     json_hidro = json.dumps(lista_hidro_resumen)
     json_rem_sl = json.dumps(estaciones_sl)
     json_apa_lp = json.dumps(estaciones_apa)
@@ -759,7 +693,7 @@ def generar_entregables(estaciones_sl, estaciones_apa, estaciones_omx, registros
         <p style='margin: 4px 0 0 0; font-size:13px; color:#475569;'><strong>Fenómeno:</strong> {a['fenomeno']} | <strong>Vigencia:</strong> {a['fecha']}</p>
     </div>""" for a in alertas_smn]) if alertas_smn else "<p style='color:#64748b; font-style:italic;'>No se registran alertas meteorológicas activas en los departamentos de la cuenca.</p>"
 
-    # 4. Portal HTML con Leaflet y Radares Integrados
+    # 4. Portal HTML con Capa de Radares de Cobertura Argentina
     html_portal = f"""<!DOCTYPE html>
 <html lang="es">
 <head>
@@ -784,465 +718,4 @@ def generar_entregables(estaciones_sl, estaciones_apa, estaciones_omx, registros
         .tab-content {{ display: none; padding: 20px; flex: 1; }}
         .tab-content.active {{ display: block; }}
         
-        #map-container {{ width: 100%; height: calc(100vh - 200px); min-height: 600px; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); border: 1px solid #cbd5e1; position: relative; }}
-        
-        .card {{ background: white; border-radius: 8px; padding: 20px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }}
-        .card h2 {{ font-size: 16px; color: #1e3a8a; margin-bottom: 14px; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px; }}
-        
-        .kpi-grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 16px; margin-bottom: 20px; }}
-        .kpi-card {{ background: #f8fafc; padding: 16px; border-radius: 8px; border-left: 4px solid #0284c7; }}
-        .kpi-title {{ font-size: 11.5px; color: #64748b; font-weight: 600; text-transform: uppercase; }}
-        .kpi-val {{ font-size: 22px; font-weight: 700; color: #0f172a; margin-top: 4px; }}
-        
-        table {{ width: 100%; border-collapse: collapse; font-size: 13px; }}
-        th {{ background: #f8fafc; color: #475569; font-weight: 600; padding: 10px; text-align: left; border-bottom: 2px solid #cbd5e1; }}
-        td {{ padding: 10px; border-bottom: 1px solid #e2e8f0; }}
-        tr:hover {{ background: #f8fafc; }}
-        
-        .btn {{ display: inline-block; background: #0284c7; color: white; padding: 7px 12px; border-radius: 6px; text-decoration: none; font-size: 12px; font-weight: 600; margin-left: 8px; }}
-        .btn-green {{ background: #10b981; }}
-
-        .map-legend {{
-            background: rgba(255, 255, 255, 0.95);
-            padding: 10px 14px;
-            border-radius: 6px;
-            border: 1px solid #cbd5e1;
-            font-size: 11.5px;
-            line-height: 1.5;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.25);
-            max-width: 250px;
-        }}
-        .legend-item {{ display: flex; align-items: center; margin-bottom: 3px; }}
-        .legend-color {{ width: 12px; height: 12px; border-radius: 50%; margin-right: 8px; flex-shrink: 0; }}
-    </style>
-</head>
-<body>
-
-    <header>
-        <div class="header-title">
-            <h1>SISTEMA DE ALERTA TEMPRANA TRIPROVINCIAL — CUENCA DEL RÍO V</h1>
-            <p>San Luis &bull; Córdoba &bull; La Pampa | Plataforma de Monitoreo Hidrometeorológico Operativo</p>
-        </div>
-        <div>
-            <a href="sat_unificado_rio_v_triprovincial.xlsx" download class="btn btn-green">📥 Descargar Excel</a>
-            <a href="resumen_cruce_rio_v_triprovincial.csv" download class="btn">📄 CSV</a>
-        </div>
-    </header>
-
-    <div class="banner">
-        {diag_onda['banner_msg']}
-    </div>
-
-    <!-- Barra de Pestañas -->
-    <div class="tabs">
-        <button class="tab-btn active" onclick="openTab(event, 'tab-dashboard')">📊 Panel de Control General</button>
-        <button class="tab-btn" onclick="openTab(event, 'tab-mapa')">🗺️ Visor Cartográfico</button>
-        <button class="tab-btn" onclick="openTab(event, 'tab-ecmwf')">🌧️ Pronóstico ECMWF 72h y Medias</button>
-        <button class="tab-btn" onclick="openTab(event, 'tab-alertas')">⚠️ Panel de Alertas SMN ({len(alertas_smn)})</button>
-        <button class="tab-btn" onclick="openTab(event, 'tab-hidro')">💧 Cuerpos de Agua y Cotas (INA)</button>
-        <button class="tab-btn" onclick="openTab(event, 'tab-onda')">🌊 Traslación de Onda a La Pampa</button>
-        <button class="tab-btn" onclick="openTab(event, 'tab-meteo')">🌦️ Redes Meteorológicas</button>
-    </div>
-
-    <!-- Pestaña 1: Panel de Control Ejecutivo Resumido -->
-    <div id="tab-dashboard" class="tab-content active">
-        <div class="kpi-grid">
-            <div class="kpi-card" style="border-left-color: {'#10b981' if not diag_onda['alerta_activa'] else '#ef4444'};">
-                <div class="kpi-title">ESTADO HIDROLÓGICO GENERAL</div>
-                <div class="kpi-val" style="font-size: 16px; color: {'#10b981' if not diag_onda['alerta_activa'] else '#ef4444'};">{diag_onda['estado_alerta'].upper()}</div>
-                <small style="color:#64748b;">Nacientes y Cuenca Media</small>
-            </div>
-            <div class="kpi-card" style="border-left-color: #0284c7;">
-                <div class="kpi-title">NIVEL LAGUNA LA MARGARITA</div>
-                <div class="kpi-val">{diag_onda['nivel_margarita']:.2f} m</div>
-                <small style="color:#64748b;">{diag_onda['factor_almacenamiento']}</small>
-            </div>
-            <div class="kpi-card" style="border-left-color: #f59e0b;">
-                <div class="kpi-title">TIEMPO TRÁNSITO A LA PAMPA</div>
-                <div class="kpi-val">{diag_onda['tiempo_viaje_min_dias']:.0f} a {diag_onda['tiempo_viaje_max_dias']:.0f} días</div>
-                <small style="color:#64748b;">Ventana prevista: {diag_onda['fecha_arribo']}</small>
-            </div>
-            <div class="kpi-card" style="border-left-color: {'#ef4444' if len(alertas_smn) > 0 else '#10b981'};">
-                <div class="kpi-title">ALERTAS METEOROLÓGICAS (SMN)</div>
-                <div class="kpi-val">{len(alertas_smn)} activas</div>
-                <small style="color:#64748b;">En departamentos de la cuenca</small>
-            </div>
-        </div>
-
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-            <div class="card">
-                <h2>Cuerpos de Agua Críticos / Alturas Actuales</h2>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Estación</th>
-                            <th style="text-align:center;">Nivel</th>
-                            <th style="text-align:center;">Alerta/Evac</th>
-                            <th style="text-align:center;">Estado</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {filas_hidro_html}
-                    </tbody>
-                </table>
-            </div>
-
-            <div class="card">
-                <h2>Alertas Meteorológicas Vigentes (SMN)</h2>
-                {alertas_html}
-            </div>
-        </div>
-    </div>
-
-    <!-- Pestaña 2: Visor Cartográfico Nativo con Rutas y Radares -->
-    <div id="tab-mapa" class="tab-content" style="padding: 10px 20px;">
-        <div id="map-container"></div>
-    </div>
-
-    <!-- Pestaña 3: Pronóstico ECMWF 72h y Comparativa Climática -->
-    <div id="tab-ecmwf" class="tab-content">
-        <div class="card">
-            <h2>Modelo Numérico ECMWF IFS 0.25° — Pronóstico 72h vs Medias Climáticas Históricas</h2>
-            <p style="font-size: 13px; color: #475569; margin-bottom: 14px;">
-                Precipitación acumulada diaria simulada por el modelo europeo y ponderación de impacto frente a la media mensual esperada de cada distrito de la cuenca.
-            </p>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Localidad / Nodo</th>
-                        <th>Provincia</th>
-                        <th style="text-align:center;">Hoy</th>
-                        <th style="text-align:center;">+24h</th>
-                        <th style="text-align:center;">+48h</th>
-                        <th style="text-align:center;">Acum. 72h</th>
-                        <th style="text-align:center;">Media Mensual</th>
-                        <th style="text-align:center;">% del Mes</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {filas_ecmwf_html}
-                </tbody>
-            </table>
-        </div>
-    </div>
-
-    <!-- Pestaña 4: Panel Alertas SMN -->
-    <div id="tab-alertas" class="tab-content">
-        <div class="card">
-            <h2>Alertas Meteorológicas Oficiales del SMN</h2>
-            {alertas_html}
-        </div>
-    </div>
-
-    <!-- Pestaña 5: Cuerpos de Agua INA -->
-    <div id="tab-hidro" class="tab-content">
-        <div class="card">
-            <h2>Niveles Hidrométricos en Nacientes y Cuenca Media (INA)</h2>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Estación / Cuerpo de Agua</th>
-                        <th style="text-align:center;">Nivel Actual</th>
-                        <th style="text-align:center;">Cota Alerta</th>
-                        <th style="text-align:center;">Cota Evac.</th>
-                        <th style="text-align:center;">Estado Semáforo</th>
-                        <th style="text-align:center;">Tendencia</th>
-                        <th style="text-align:right;">Última Obs.</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {filas_hidro_html}
-                </tbody>
-            </table>
-        </div>
-    </div>
-
-    <!-- Pestaña 6: Traslación de Onda -->
-    <div id="tab-onda" class="tab-content">
-        <div class="card">
-            <h2>Modelo de Amortiguación y Tránsito de Crecida</h2>
-            <div class="kpi-grid">
-                <div class="kpi-card">
-                    <div class="kpi-title">NIVEL LAGUNA LA MARGARITA</div>
-                    <div class="kpi-val">{diag_onda['nivel_margarita']:.2f} m</div>
-                </div>
-                <div class="kpi-card" style="border-left-color: #10b981;">
-                    <div class="kpi-title">ESTADO DE RETENCIÓN</div>
-                    <div class="kpi-val" style="font-size: 15px;">{diag_onda['factor_almacenamiento']}</div>
-                </div>
-                <div class="kpi-card" style="border-left-color: #f59e0b;">
-                    <div class="kpi-title">TIEMPO ESTIMADO A LA PAMPA</div>
-                    <div class="kpi-val">{diag_onda['tiempo_viaje_min_dias']:.0f} - {diag_onda['tiempo_viaje_max_dias']:.0f} días</div>
-                </div>
-            </div>
-            <p style="font-size: 13.5px; color: #334155; line-height: 1.6;">
-                La estimación calcula el tiempo de traslación desde nacientes en San Luis y cuenca media en Córdoba hacia el ingreso a La Pampa (Meridiano V / RN 35), evaluando el volumen de almacenamiento previo en bañados y vertederos reguladores.
-            </p>
-        </div>
-    </div>
-
-    <!-- Pestaña 7: Redes Meteorológicas -->
-    <div id="tab-meteo" class="tab-content">
-        <div class="card">
-            <h2>Redes Meteorológicas Integradas (San Luis, Córdoba, La Pampa)</h2>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Estación</th>
-                        <th>Provincia</th>
-                        <th>Red</th>
-                        <th style="text-align:center;">Temperatura</th>
-                        <th style="text-align:center;">Lluvia 24h</th>
-                        <th style="text-align:right;">Reporte</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {filas_meteo_html}
-                </tbody>
-            </table>
-        </div>
-    </div>
-
-    <!-- Leaflet JS y Renderizado Nativo -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script>
-        var map = null;
-
-        function initMap() {{
-            if (map !== null) {{
-                map.invalidateSize();
-                return;
-            }}
-
-            // 1. Mapas Base
-            var osmVial = L.tileLayer('https://{{s}}.tile.openstreetmap.org/{{z}}/{{x}}/{{y}}.png', {{
-                maxZoom: 19,
-                attribution: 'OpenStreetMap (Rutas RN 7, RN 35, RP 26)'
-            }});
-
-            var esriTopo = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{{z}}/{{y}}/{{x}}', {{
-                maxZoom: 18,
-                attribution: 'Esri Topográfico'
-            }});
-
-            var cartoPositron = L.tileLayer('https://{{s}}.basemaps.cartocdn.com/light_all/{{z}}/{{x}}/{{y}}{{r}}.png', {{
-                maxZoom: 19,
-                attribution: 'CartoDB Positron'
-            }});
-
-            map = L.map('map-container', {{
-                center: [-34.50, -64.50],
-                zoom: 7,
-                layers: [osmVial]
-            }});
-
-            // 2. Capas Vectoriales y de Monitoreo
-            var fgSMN = L.featureGroup().addTo(map);
-            var fgHidro = L.featureGroup().addTo(map);
-            var fgRemSL = L.featureGroup().addTo(map);
-            var fgApaLP = L.featureGroup().addTo(map);
-            var fgOmxCba = L.featureGroup().addTo(map);
-            var fgOmxLP = L.featureGroup().addTo(map);
-            var fgRayos = L.featureGroup().addTo(map);
-
-            // 3. Capas Raster Georreferenciadas de Radares SMN / SINARAME
-            var boundsReynolds = [[-35.88, -67.97], [-31.57, -62.78]];
-            var boundsSantaIsabel = [[-38.39, -69.47], [-34.07, -64.29]];
-            var boundsBolivar = [[-38.30, -63.50], [-34.30, -58.50]];
-
-            var tStamp = new Date().getTime();
-
-            var radarReynolds = L.imageOverlay('radar_reynolds.png?t=' + tStamp, boundsReynolds, {{
-                opacity: 0.65,
-                zIndex: 150,
-                interactive: false
-            }});
-
-            var radarSantaIsabel = L.imageOverlay('radar_santa_isabel.png?t=' + tStamp, boundsSantaIsabel, {{
-                opacity: 0.65,
-                zIndex: 150,
-                interactive: false
-            }});
-
-            var radarBolivar = L.imageOverlay('radar_bolivar.png?t=' + tStamp, boundsBolivar, {{
-                opacity: 0.65,
-                zIndex: 150,
-                interactive: false
-            }});
-
-            // Villa Reynolds activo por defecto en la cabecera
-            radarReynolds.addTo(map);
-
-            // Cuerpos de Agua (INA)
-            var datosHidro = {json_hidro};
-            datosHidro.forEach(function(h) {{
-                L.circleMarker([h.lat, h.lon], {{
-                    radius: 8,
-                    color: '#ffffff',
-                    fillColor: h.color,
-                    fillOpacity: 0.95,
-                    weight: 2
-                }}).bindPopup("<b>" + h.nombre + "</b><br>Río: " + h.rio + "<br>Nivel: <b>" + h.nivel_actual + " m</b><br>Alerta: " + h.cota_alerta + " m | Evac: " + h.cota_evac + " m<br>Estado: <b>" + h.estado + "</b><br><small>Obs: " + h.fecha + "</small>").addTo(fgHidro);
-            }});
-
-            // Redes Meteorológicas Discriminadas
-            // REM San Luis
-            var datosRem = {json_rem_sl};
-            datosRem.forEach(function(m) {{
-                L.circleMarker([m.lat, m.lon], {{
-                    radius: 5,
-                    color: '#c2410c',
-                    fillColor: '#fb923c',
-                    fillOpacity: 0.85,
-                    weight: 1.5
-                }}).bindPopup("<b>" + m.nombre + "</b><br>Red: <b>REM San Luis</b><br>Temp: " + m.temp_c + " °C<br>Lluvia 24h: <b>" + m.lluvia_24h_mm + " mm</b>").addTo(fgRemSL);
-            }});
-
-            // APA La Pampa
-            var datosApa = {json_apa_lp};
-            datosApa.forEach(function(m) {{
-                L.circleMarker([m.lat, m.lon], {{
-                    radius: 5,
-                    color: '#0369a1',
-                    fillColor: '#38bdf8',
-                    fillOpacity: 0.85,
-                    weight: 1.5
-                }}).bindPopup("<b>" + m.nombre + "</b><br>Red: <b>APA La Pampa</b><br>Temp: " + m.temp_c + " °C<br>Lluvia 24h: <b>" + m.lluvia_24h_mm + " mm</b>").addTo(fgApaLP);
-            }});
-
-            // Omixom Córdoba
-            var datosOmxCba = {json_omx_cba};
-            datosOmxCba.forEach(function(m) {{
-                L.circleMarker([m.lat, m.lon], {{
-                    radius: 5,
-                    color: '#6b21a8',
-                    fillColor: '#c084fc',
-                    fillOpacity: 0.85,
-                    weight: 1.5
-                }}).bindPopup("<b>" + m.nombre + "</b><br>Red: <b>Omixom Córdoba</b><br>Lluvia 24h: " + m.lluvia_24h_mm + " mm").addTo(fgOmxCba);
-            }});
-
-            // Omixom La Pampa
-            var datosOmxLP = {json_omx_lp};
-            datosOmxLP.forEach(function(m) {{
-                L.circleMarker([m.lat, m.lon], {{
-                    radius: 5,
-                    color: '#0f766e',
-                    fillColor: '#2dd4bf',
-                    fillOpacity: 0.85,
-                    weight: 1.5
-                }}).bindPopup("<b>" + m.nombre + "</b><br>Red: <b>Omixom La Pampa</b><br>Lluvia 24h: " + m.lluvia_24h_mm + " mm").addTo(fgOmxLP);
-            }});
-
-            // Polígonos SMN
-            var poligonos = {json_poligonos};
-            poligonos.forEach(function(p) {{
-                L.polygon(p.coords, {{
-                    color: p.color,
-                    fillColor: p.color,
-                    fillOpacity: 0.28,
-                    weight: 2
-                }}).bindPopup("<b>ALERTA " + p.nivel + "</b><br>" + p.zona + "<br>" + p.evento).addTo(fgSMN);
-            }});
-
-            // Rayos en vivo
-            var rayos = {json_rayos};
-            rayos.forEach(function(r) {{
-                L.circleMarker([r.lat, r.lon], {{
-                    radius: 5,
-                    color: '#b45309',
-                    fillColor: '#facc15',
-                    fillOpacity: 0.95,
-                    weight: 1.5
-                }}).bindPopup("⚡ Descarga Atmosférica (" + r.hora + " hs)").addTo(fgRayos);
-            }});
-
-            // Control de Capas y Mapas Base
-            var baseMaps = {{
-                "🗺️ Rutas y Vialidad (OpenStreetMap)": osmVial,
-                "⛰️ Topográfico (Esri)": esriTopo,
-                "🏙️ Mapa Claro (CartoDB)": cartoPositron
-            }};
-
-            var overlayMaps = {{
-                "💧 Cuerpos de Agua (INA)": fgHidro,
-                "⚠️ Alertas SAT SMN": fgSMN,
-                "📡 Radar Villa Reynolds (SMN/SINARAME)": radarReynolds,
-                "📡 Radar Santa Isabel (SMN/SINARAME)": radarSantaIsabel,
-                "📡 Radar Bolívar (SMN/SINARAME)": radarBolivar,
-                "⚡ Rayos / Descargas en Vivo": fgRayos,
-                "⛰️ REM San Luis": fgRemSL,
-                "💧 APA La Pampa": fgApaLP,
-                "🌾 Omixom Córdoba": fgOmxCba,
-                "🌾 Omixom La Pampa": fgOmxLP
-            }};
-
-            L.control.layers(baseMaps, overlayMaps, {{ collapsed: false, position: 'topright' }}).addTo(map);
-
-            // Leyenda
-            var legend = L.control({{ position: 'bottomleft' }});
-            legend.onAdd = function (map) {{
-                var div = L.DomUtil.create('div', 'map-legend');
-                div.innerHTML = '<strong>Cuerpos de Agua (INA)</strong><hr style="margin:4px 0;">' +
-                    '<div class="legend-item"><div class="legend-color" style="background:#10b981;"></div> 🟢 Normal / Seguro (< 75% Alerta)</div>' +
-                    '<div class="legend-item"><div class="legend-color" style="background:#f59e0b;"></div> 🟡 Precaución (≥ 75% Alerta)</div>' +
-                    '<div class="legend-item"><div class="legend-color" style="background:#ea580c;"></div> 🟠 Alerta Hidrológica</div>' +
-                    '<div class="legend-item"><div class="legend-color" style="background:#ef4444;"></div> 🔴 Evacuación Oficial</div><hr style="margin:4px 0;">' +
-                    '<strong>Redes Meteorológicas</strong><br>' +
-                    '<div class="legend-item"><div class="legend-color" style="background:#fb923c;"></div> REM San Luis</div>' +
-                    '<div class="legend-item"><div class="legend-color" style="background:#38bdf8;"></div> APA La Pampa</div>' +
-                    '<div class="legend-item"><div class="legend-color" style="background:#c084fc;"></div> Omixom Córdoba</div>' +
-                    '<div class="legend-item"><div class="legend-color" style="background:#2dd4bf;"></div> Omixom La Pampa</div>';
-                return div;
-            }};
-            legend.addTo(map);
-        }}
-
-        function openTab(evt, tabName) {{
-            var tabContents = document.getElementsByClassName("tab-content");
-            for (var i = 0; i < tabContents.length; i++) {{
-                tabContents[i].classList.remove("active");
-            }}
-            var tabBtns = document.getElementsByClassName("tab-btn");
-            for (var i = 0; i < tabBtns.length; i++) {{
-                tabBtns[i].classList.remove("active");
-            }}
-            document.getElementById(tabName).classList.add("active");
-            evt.currentTarget.classList.add("active");
-
-            if (tabName === 'tab-mapa') {{
-                setTimeout(initMap, 150);
-            }}
-        }}
-    </script>
-</body>
-</html>
-"""
-    with open(PORTAL_HTML_SALIDA, "w", encoding="utf-8") as f:
-        f.write(html_portal)
-    print(f"   -> [PORTAL CON PESTAÑAS GENERADO]: {PORTAL_HTML_SALIDA}")
-
-# =============================================================
-# 9. EJECUCIÓN PRINCIPAL
-# =============================================================
-if __name__ == "__main__":
-    print("=" * 70)
-    print(f"SISTEMA SAT CUENCA RÍO V — EJECUCIÓN: {FECHA_TXT}")
-    print("=" * 70)
-
-    # 1. Scrapeo y actualización de imágenes de radar
-    scrapear_radares_smn()
-
-    # 2. Extracción de redes meteorológicas e hidrométricas
-    estaciones_omx = obtener_estaciones_omixom()
-    estaciones_sl = obtener_estaciones_san_luis()
-    estaciones_apa = obtener_estaciones_apa()
-    registros_hidro = obtener_datos_hidrologicos()
-    rayos = obtener_rayos()
-    alertas_smn, poligonos_smn = obtener_alertas_smn()
-    pronostico_ecmwf = obtener_pronostico_ecmwf()
-
-    # 3. Consolidación de datos y renderizado del portal
-    generar_entregables(estaciones_sl, estaciones_apa, estaciones_omx, registros_hidro, rayos, alertas_smn, poligonos_smn, pronostico_ecmwf)
-    print("=" * 70)
-    print("PROCESO COMPLETADO EXITOSAMENTE.")
+        #map-container {{ width: 100%; height: calc(100
