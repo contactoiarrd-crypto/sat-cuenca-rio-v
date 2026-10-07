@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SAT Triprovincial - Cuenca del Río V</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background: #f1f5f9; color: #1e293b; display: flex; flex-direction: column; min-height: 100vh; }
+        header { background: #1e3a8a; color: white; padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+        .header-title h1 { font-size: 20px; font-weight: 700; }
+        .header-title p { font-size: 12px; opacity: 0.85; }
+        .banner { color: white; padding: 10px 24px; font-size: 13px; font-weight: 600; }
+        .tabs { background: #0f172a; display: flex; overflow-x: auto; padding: 0 20px; }
+        .tab-btn { background: none; border: none; color: #94a3b8; padding: 14px 18px; font-size: 13px; font-weight: 600; cursor: pointer; border-bottom: 3px solid transparent; transition: all 0.2s; white-space: nowrap; }
+        .tab-btn:hover { color: #ffffff; }
+        .tab-btn.active { color: #38bdf8; border-bottom-color: #38bdf8; background: rgba(255,255,255,0.05); }
+        .tab-content { display: none; padding: 20px; flex: 1; }
+        .tab-content.active { display: block; }
+        #map-container { width: 100%; height: calc(100vh - 200px); min-height: 600px; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); border: 1px solid #cbd5e1; position: relative; }
+        .card { background: white; border-radius: 8px; padding: 20px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+        .card h2 { font-size: 16px; color: #1e3a8a; margin-bottom: 14px; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px; }
+        .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 16px; margin-bottom: 20px; }
+        .kpi-card { background: #f8fafc; padding: 16px; border-radius: 8px; border-left: 4px solid #0284c7; }
+        .kpi-title { font-size: 11.5px; color: #64748b; font-weight: 600; text-transform: uppercase; }
+        .kpi-val { font-size: 22px; font-weight: 700; color: #0f172a; margin-top: 4px; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        th { background: #f8fafc; color: #475569; font-weight: 600; padding: 10px; text-align: left; border-bottom: 2px solid #cbd5e1; }
+        td { padding: 10px; border-bottom: 1px solid #e2e8f0; }
+        tr:hover { background: #f8fafc; }
+        .btn { display: inline-block; background: #0284c7; color: white; padding: 7px 12px; border-radius: 6px; text-decoration: none; font-size: 12px; font-weight: 600; margin-left: 8px; }
+        .btn-green { background: #10b981; }
+        .map-legend { background: rgba(255, 255, 255, 0.95); padding: 10px 14px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 11.5px; line-height: 1.5; box-shadow: 0 2px 6px rgba(0,0,0,0.25); max-width: 250px; }
+        .legend-item { display: flex; align-items: center; margin-bottom: 3px; }
+        .legend-color { width: 12px; height: 12px; border-radius: 50%; margin-right: 8px; flex-shrink: 0; }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-title">
+            <h1>SISTEMA DE ALERTA TEMPRANA TRIPROVINCIAL — CUENCA DEL RÍO V</h1>
+            <p>San Luis &bull; Córdoba &bull; La Pampa | Plataforma de Monitoreo Hidrometeorológico Operativo</p>
+        </div>
+        <div>
+            <a href="sat_unificado_rio_v_triprovincial.xlsx" download class="btn btn-green">📥 Descargar Excel</a>
+            <a href="resumen_cruce_rio_v_triprovincial.csv" download class="btn">📄 CSV</a>
+        </div>
+    </header>
+
+    <div class="banner" style="background: __BANNER_BG__;">
+        __BANNER_MSG__
+    </div>
+
+    <div class="tabs">
+        <button class="tab-btn active" onclick="openTab(event, 'tab-dashboard')">📊 Panel de Control General</button>
+        <button class="tab-btn" onclick="openTab(event, 'tab-mapa')">🗺️ Visor Cartográfico</button>
+        <button class="tab-btn" onclick="openTab(event, 'tab-ecmwf')">🌧️ Pronóstico ECMWF 72h y Medias</button>
+        <button class="tab-btn" onclick="openTab(event, 'tab-alertas')">⚠️ Panel de Alertas SMN (__TOTAL_ALERTAS__)</button>
+        <button class="tab-btn" onclick="openTab(event, 'tab-hidro')">💧 Cuerpos de Agua y Cotas (INA)</button>
+        <button class="tab-btn" onclick="openTab(event, 'tab-onda')">🌊 Traslación de Onda a La Pampa</button>
+        <button class="tab-btn" onclick="openTab(event, 'tab-meteo')">🌦️ Redes Meteorológicas</button>
+    </div>
+
+    <div id="tab-dashboard" class="tab-content active">
+        <div class="kpi-grid">
+            <div class="kpi-card" style="border-left-color: __KPI_ESTADO_COLOR__;">
+                <div class="kpi-title">ESTADO HIDROLÓGICO GENERAL</div>
+                <div class="kpi-val" style="font-size: 16px; color: __KPI_ESTADO_COLOR__;">__ESTADO_ALERTA__</div>
+                <small style="color:#64748b;">Nacientes y Cuenca Media</small>
+            </div>
+            <div class="kpi-card" style="border-left-color: #0284c7;">
+                <div class="kpi-title">NIVEL LAGUNA LA MARGARITA</div>
+                <div class="kpi-val">__NIVEL_MARGARITA__ m</div>
+                <small style="color:#64748b;">__FACTOR_ALMACENAMIENTO__</small>
+            </div>
+            <div class="kpi-card" style="border-left-color: #f59e0b;">
+                <div class="kpi-title">TIEMPO TRÁNSITO A LA PAMPA</div>
+                <div class="kpi-val">__TIEMPO_VIAJE__ días</div>
+                <small style="color:#64748b;">Ventana prevista: __FECHA_ARRIBO__</small>
+            </div>
+            <div class="kpi-card" style="border-left-color: __KPI_ALERTAS_COLOR__;">
+                <div class="kpi-title">ALERTAS METEOROLÓGICAS (SMN)</div>
+                <div class="kpi-val">__TOTAL_ALERTAS__ activas</div>
+                <small style="color:#64748b;">En departamentos de la cuenca</small>
+            </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+            <div class="card">
+                <h2>Cuerpos de Agua Críticos / Alturas Actuales</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Estación</th>
+                            <th style="text-align:center;">Nivel</th>
+                            <th style="text-align:center;">Alerta/Evac</th>
+                            <th style="text-align:center;">Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        __FILAS_HIDRO__
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="card">
+                <h2>Alertas Meteorológicas Vigentes (SMN)</h2>
+                __ALERTAS_SMN__
+            </div>
+        </div>
+    </div>
+
+    <div id="tab-mapa" class="tab-content" style="padding: 10px 20px;">
+        <div id="map-container"></div>
+    </div>
+
+    <div id="tab-ecmwf" class="tab-content">
+        <div class="card">
+            <h2>Modelo Numérico ECMWF IFS 0.25° — Pronóstico 72h vs Medias Climáticas Históricas</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Localidad / Nodo</th>
+                        <th>Provincia</th>
+                        <th style="text-align:center;">Hoy</th>
+                        <th style="text-align:center;">+24h</th>
+                        <th style="text-align:center;">+48h</th>
+                        <th style="text-align:center;">Acum. 72h</th>
+                        <th style="text-align:center;">Media Mensual</th>
+                        <th style="text-align:center;">% del Mes</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    __FILAS_ECMWF__
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="tab-alertas" class="tab-content">
+        <div class="card">
+            <h2>Alertas Meteorológicas Oficiales del SMN</h2>
+            __ALERTAS_SMN__
+        </div>
+    </div>
+
+    <div id="tab-hidro" class="tab-content">
+        <div class="card">
+            <h2>Niveles Hidrométricos en Nacientes y Cuenca Media (INA)</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Estación / Cuerpo de Agua</th>
+                        <th style="text-align:center;">Nivel Actual</th>
+                        <th style="text-align:center;">Cota Alerta</th>
+                        <th style="text-align:center;">Cota Evac.</th>
+                        <th style="text-align:center;">Estado Semáforo</th>
+                        <th style="text-align:center;">Tendencia</th>
+                        <th style="text-align:right;">Última Obs.</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    __FILAS_HIDRO__
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="tab-onda" class="tab-content">
+        <div class="card">
+            <h2>Modelo de Amortiguación y Tránsito de Crecida</h2>
+            <div class="kpi-grid">
+                <div class="kpi-card">
+                    <div class="kpi-title">NIVEL LAGUNA LA MARGARITA</div>
+                    <div class="kpi-val">__NIVEL_MARGARITA__ m</div>
+                </div>
+                <div class="kpi-card" style="border-left-color: #10b981;">
+                    <div class="kpi-title">ESTADO DE RETENCIÓN</div>
+                    <div class="kpi-val" style="font-size: 15px;">__FACTOR_ALMACENAMIENTO__</div>
+                </div>
+                <div class="kpi-card" style="border-left-color: #f59e0b;">
+                    <div class="kpi-title">TIEMPO ESTIMADO A LA PAMPA</div>
+                    <div class="kpi-val">__TIEMPO_VIAJE__ días</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="tab-meteo" class="tab-content">
+        <div class="card">
+            <h2>Redes Meteorológicas Integradas (San Luis, Córdoba, La Pampa)</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Estación</th>
+                        <th>Provincia</th>
+                        <th>Red</th>
+                        <th style="text-align:center;">Temperatura</th>
+                        <th style="text-align:center;">Lluvia 24h</th>
+                        <th style="text-align:right;">Reporte</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    __FILAS_METEO__
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        var map = null;
+
+        function initMap() {
+            if (map !== null) {
+                map.invalidateSize();
+                return;
+            }
+
+            var osmVial = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: 'OpenStreetMap (Rutas RN 7, RN 35, RP 26)'
+            });
+
+            var esriTopo = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', {
+                maxZoom: 18,
+                attribution: 'Esri Topográfico'
+            });
+
+            var cartoPositron = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+                maxZoom: 19,
+                attribution: 'CartoDB Positron'
+            });
+
+            map = L.map('map-container', {
+                center: [-34.50, -64.50],
+                zoom: 7,
+                layers: [osmVial]
+            });
+
+            var fgSMN = L.featureGroup().addTo(map);
+            var fgHidro = L.featureGroup().addTo(map);
+            var fgRemSL = L.featureGroup().addTo(map);
+            var fgApaLP = L.featureGroup().addTo(map);
+            var fgOmxCba = L.featureGroup().addTo(map);
+            var fgOmxLP = L.featureGroup().addTo(map);
+            var fgRayos = L.featureGroup().addTo(map);
+
+            var tNow = Math.floor(Date.now() / (1000 * 300)) * 300;
+            var radarMosaicoSMN = L.tileLayer('https://www.rain-alarm.com/tiles/{z}/{x}/{y}.png?t=' + tNow, {
+                opacity: 0.70,
+                zIndex: 120,
+                maxZoom: 15,
+                attribution: 'Radares SINARAME / SMN (Rain Alarm)'
+            }).addTo(map);
+
+            var datosHidro = __JSON_HIDRO__;
+            datosHidro.forEach(function(h) {
+                L.circleMarker([h.lat, h.lon], {
+                    radius: 8,
+                    color: '#ffffff',
+                    fillColor: h.color,
+                    fillOpacity: 0.95,
+                    weight: 2
+                }).bindPopup("<b>" + h.nombre + "</b><br>Río: " + h.rio + "<br>Nivel: <b>" + h.nivel_actual + " m</b><br>Alerta: " + h.cota_alerta + " m | Evac: " + h.cota_evac + " m<br>Estado: <b>" + h.estado + "</b><br><small>Obs: " + h.fecha + "</small>").addTo(fgHidro);
+            });
+
+            var datosRem = __JSON_REM_SL__;
+            datosRem.forEach(function(m) {
+                L.circleMarker([m.lat, m.lon], {
+                    radius: 5,
+                    color: '#c2410c',
+                    fillColor: '#fb923c',
+                    fillOpacity: 0.85,
+                    weight: 1.5
+                }).bindPopup("<b>" + m.nombre + "</b><br>Red: <b>REM San Luis</b><br>Temp: " + m.temp_c + " °C<br>Lluvia 24h: <b>" + m.lluvia_24h_mm + " mm</b>").addTo(fgRemSL);
+            });
+
+            var datosApa = __JSON_APA_LP__;
+            datosApa.forEach(function(m) {
+                L.circleMarker([m.lat, m.lon], {
+                    radius: 5,
+                    color: '#0369a1',
+                    fillColor: '#38bdf8',
+                    fillOpacity: 0.85,
+                    weight: 1.5
+                }).bindPopup("<b>" + m.nombre + "</b><br>Red: <b>APA La Pampa</b><br>Temp: " + m.temp_c + " °C<br>Lluvia 24h: <b>" + m.lluvia_24h_mm + " mm</b>").addTo(fgApaLP);
+            });
+
+            var datosOmxCba = __JSON_OMX_CBA__;
+            datosOmxCba.forEach(function(m) {
+                L.circleMarker([m.lat, m.lon], {
+                    radius: 5,
+                    color: '#6b21a8',
+                    fillColor: '#c084fc',
+                    fillOpacity: 0.85,
+                    weight: 1.5
+                }).bindPopup("<b>" + m.nombre + "</b><br>Red: <b>Omixom Córdoba</b><br>Lluvia 24h: " + m.lluvia_24h_mm + " mm").addTo(fgOmxCba);
+            });
+
+            var datosOmxLP = __JSON_OMX_LP__;
+            datosOmxLP.forEach(function(m) {
+                L.circleMarker([m.lat, m.lon], {
+                    radius: 5,
+                    color: '#0f766e',
+                    fillColor: '#2dd4bf',
+                    fillOpacity: 0.85,
+                    weight: 1.5
+                }).bindPopup("<b>" + m.nombre + "</b><br>Red: <b>Omixom La Pampa</b><br>Lluvia 24h: " + m.lluvia_24h_mm + " mm").addTo(fgOmxLP);
+            });
+
+            var poligonos = __JSON_POLIGONOS__;
+            poligonos.forEach(function(p) {
+                L.polygon(p.coords, {
+                    color: p.color,
+                    fillColor: p.color,
+                    fillOpacity: 0.28,
+                    weight: 2
+                }).bindPopup("<b>ALERTA " + p.nivel + "</b><br>" + p.zona + "<br>" + p.evento).addTo(fgSMN);
+            });
+
+            var rayos = __JSON_RAYOS__;
+            rayos.forEach(function(r) {
+                L.circleMarker([r.lat, r.lon], {
+                    radius: 5,
+                    color: '#b45309',
+                    fillColor: '#facc15',
+                    fillOpacity: 0.95,
+                    weight: 1.5
+                }).bindPopup("⚡ Descarga Atmosférica (" + r.hora + " hs)").addTo(fgRayos);
+            });
+
+            var baseMaps = {
+                "🗺️ Rutas y Vialidad (OpenStreetMap)": osmVial,
+                "⛰️ Topográfico (Esri)": esriTopo,
+                "🏙️ Mapa Claro (CartoDB)": cartoPositron
+            };
+
+            var overlayMaps = {
+                "💧 Cuerpos de Agua (INA)": fgHidro,
+                "⚠️ Alertas SAT SMN": fgSMN,
+                "📡 Radar en Vivo (SINARAME/SMN)": radarMosaicoSMN,
+                "⚡ Rayos / Descargas en Vivo": fgRayos,
+                "⛰️ REM San Luis": fgRemSL,
+                "💧 APA La Pampa": fgApaLP,
+                "🌾 Omixom Córdoba": fgOmxCba,
+                "🌾 Omixom La Pampa": fgOmxLP
+            };
+
+            L.control.layers(baseMaps, overlayMaps, { collapsed: false, position: 'topright' }).addTo(map);
+
+            var legend = L.control({ position: 'bottomleft' });
+            legend.onAdd = function (map) {
+                var div = L.DomUtil.create('div', 'map-legend');
+                div.innerHTML = '<strong>Cuerpos de Agua (INA)</strong><hr style="margin:4px 0;">' +
+                    '<div class="legend-item"><div class="legend-color" style="background:#10b981;"></div> 🟢 Normal / Seguro (< 75% Alerta)</div>' +
+                    '<div class="legend-item"><div class="legend-color" style="background:#f59e0b;"></div> 🟡 Precaución (≥ 75% Alerta)</div>' +
+                    '<div class="legend-item"><div class="legend-color" style="background:#ea580c;"></div> 🟠 Alerta Hidrológica</div>' +
+                    '<div class="legend-item"><div class="legend-color" style="background:#ef4444;"></div> 🔴 Evacuación Oficial</div><hr style="margin:4px 0;">' +
+                    '<strong>Redes Meteorológicas</strong><br>' +
+                    '<div class="legend-item"><div class="legend-color" style="background:#fb923c;"></div> REM San Luis</div>' +
+                    '<div class="legend-item"><div class="legend-color" style="background:#38bdf8;"></div> APA La Pampa</div>' +
+                    '<div class="legend-item"><div class="legend-color" style="background:#c084fc;"></div> Omixom Córdoba</div>' +
+                    '<div class="legend-item"><div class="legend-color" style="background:#2dd4bf;"></div> Omixom La Pampa</div>';
+                return div;
+            };
+            legend.addTo(map);
+        }
+
+        function openTab(evt, tabName) {
+            var tabContents = document.getElementsByClassName("tab-content");
+            for (var i = 0; i < tabContents.length; i++) {
+                tabContents[i].classList.remove("active");
+            }
+            var tabBtns = document.getElementsByClassName("tab-btn");
+            for (var i = 0; i < tabBtns.length; i++) {
+                tabBtns[i].classList.remove("active");
+            }
+            document.getElementById(tabName).classList.add("active");
+            evt.currentTarget.classList.add("active");
+
+            if (tabName === 'tab-mapa') {
+                setTimeout(initMap, 150);
+            }
+        }
+    </script>
+</body>
+</html>
