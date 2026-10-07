@@ -260,11 +260,32 @@
     <script>
         var map = null;
         var fgRayos = L.featureGroup();
+        var sateliteGOES = L.layerGroup();
 
+        // 1. Carga dinámica de Satélite Infrarrojo en Vivo (RainViewer / GOES)
+        function cargarSateliteEnVivo() {
+            fetch('https://api.rainviewer.com/public/weather-maps.json')
+                .then(res => res.json())
+                .then(data => {
+                    if (data && data.satellite && data.satellite.infrared && data.satellite.infrared.length > 0) {
+                        sateliteGOES.clearLayers();
+                        var ultimoSat = data.satellite.infrared[data.satellite.infrared.length - 1];
+                        var satTile = L.tileLayer(data.host + ultimoSat.path + '/256/{z}/{x}/{y}/0/0_0.png', {
+                            opacity: 0.65,
+                            zIndex: 110,
+                            maxZoom: 10,
+                            attribution: 'Satélite GOES-16 Infrarrojo (RainViewer)'
+                        });
+                        sateliteGOES.addLayer(satTile);
+                    }
+                })
+                .catch(err => console.warn("No se pudo cargar la capa satelital:", err));
+        }
+
+        // 2. Carga en tiempo real de Descargas Atmosféricas (Rayos Blitzortung)
         function actualizarRayosEnVivo() {
             fgRayos.clearLayers();
             
-            // Límites geográficos de la cuenca
             const latMin = -36.5, latMax = -32.8;
             const lonMin = -67.5, lonMax = -63.0;
 
@@ -335,16 +356,9 @@
             var fgApaLP = L.featureGroup().addTo(map);
             var fgOmxCba = L.featureGroup().addTo(map);
             var fgOmxLP = L.featureGroup().addTo(map);
+            
+            sateliteGOES.addTo(map);
             fgRayos.addTo(map);
-
-            // Capa Satelital GOES-East (Infrarrojo / Nubosidad en Vivo - NASA GIBS)
-            var sateliteGOES = L.tileLayer('https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/GOES-East_ABI_Band13_Clean_Infrared/default/{time}/GoogleMapsCompatible_Level8/{z}/{y}/{x}.png', {
-                time: 'default',
-                opacity: 0.65,
-                zIndex: 110,
-                maxZoom: 9,
-                attribution: 'Satélite GOES-East (NASA GIBS / NOAA)'
-            }).addTo(map);
 
             var datosHidro = __JSON_HIDRO__;
             datosHidro.forEach(function(h) {
@@ -420,7 +434,7 @@
             var overlayMaps = {
                 "💧 Cuerpos de Agua (INA)": fgHidro,
                 "⚠️ Alertas SAT SMN": fgSMN,
-                "🛰️ Satélite GOES-16 (Nubosidad en Vivo)": sateliteGOES,
+                "🛰️ Satélite GOES-16 (Infrarrojo en Vivo)": sateliteGOES,
                 "⚡ Rayos / Descargas en Vivo": fgRayos,
                 "⛰️ REM San Luis": fgRemSL,
                 "💧 APA La Pampa": fgApaLP,
@@ -447,9 +461,10 @@
             };
             legend.addTo(map);
 
-            // Inicia la carga y el refresco continuo de rayos
+            cargarSateliteEnVivo();
             actualizarRayosEnVivo();
             setInterval(actualizarRayosEnVivo, 120000);
+            setInterval(cargarSateliteEnVivo, 600000);
         }
 
         function openTab(evt, tabName) {
@@ -469,7 +484,7 @@
             }
         }
 
-        // Monitoreo en vivo de tiempo severo en nodos clave de la cuenca
+        // 3. Monitoreo calibrado de tiempo severo en nodos clave de la cuenca
         async function verificarTiempoSeveroCuenca() {
             const puntos = [
                 { nombre: "Villa Mercedes (SL)", lat: -33.67, lon: -65.46 },
@@ -479,7 +494,7 @@
 
             const lats = puntos.map(p => p.lat).join(',');
             const lons = puntos.map(p => p.lon).join(',');
-            const url = `https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lons}&current=temperature_2m,wind_speed_10m,weather_code&timezone=America%2FArgentina%2FBuenos_Aires`;
+            const url = `https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lons}&current=temperature_2m,relative_humidity_2m,wind_speed_10m,wind_gusts_10m,precipitation,weather_code&timezone=America%2FArgentina%2FBuenos_Aires`;
 
             try {
                 const res = await fetch(url);
@@ -496,21 +511,36 @@
 
                     const t = Math.round(cur.temperature_2m);
                     const v = Math.round(cur.wind_speed_10m);
+                    const gust = Math.round(cur.wind_gusts_10m || v);
+                    const prec = cur.precipitation || 0;
                     const code = cur.weather_code;
                     const nodo = puntos[idx].nombre;
 
-                    resumenNodos.push(`<b>${nodo}:</b> ${t}°C | Viento ${v} km/h`);
+                    resumenNodos.push(`<b>${nodo}:</b> ${t}°C | Viento ${v} km/h (Ráfagas ${gust} km/h) | Lluvia: ${prec} mm`);
 
-                    if (code >= 65 || v >= 50) {
+                    let motivo = [];
+                    if (code >= 95) {
+                        motivo.push("Tormenta eléctrica");
+                    } else if (code >= 80 || code >= 63) {
+                        motivo.push("Chaparrones / Lluvias fuertes");
+                    }
+                    if (gust >= 45 || v >= 35) {
+                        motivo.push(`Ráfagas de ${gust} km/h`);
+                    }
+                    if (prec >= 5.0) {
+                        motivo.push(`Precipitación intensa (${prec} mm/h)`);
+                    }
+
+                    if (motivo.length > 0) {
                         hayAlerta = true;
-                        let motivo = [];
-                        if (code >= 95) motivo.push("Tormenta eléctrica");
-                        else if (code >= 65) motivo.push("Lluvia copiosa");
-                        if (v >= 50) motivo.push(`Viento fuerte (${v} km/h)`);
-                        
                         avisos.push(`${nodo}: ${motivo.join(' y ')}`);
                     }
                 });
+
+                if (typeof fgRayos !== 'undefined' && fgRayos.getLayers().length > 0) {
+                    hayAlerta = true;
+                    avisos.push(`Actividad eléctrica detectada en la cuenca (${fgRayos.getLayers().length} descargas recientes)`);
+                }
 
                 const actualizarCajas = (idCaja, idTitulo, idBadge, idDetalle) => {
                     const caja = document.getElementById(idCaja);
@@ -523,17 +553,17 @@
                     if (hayAlerta) {
                         caja.classList.add('widget-severo');
                         titulo.style.color = '#991b1b';
-                        titulo.innerText = '⚠️ ALERTA: Tiempo Severo en Cuenca';
+                        titulo.innerText = '⚠️ ALERTA: Inestabilidad / Tormentas en Cuenca';
                         badge.style.background = '#dc2626';
                         badge.innerText = 'ALERTA ACTIVA';
-                        detalle.innerHTML = `<span style="color:#b91c1c; font-weight:bold;">${avisos.join(' | ')}</span><br><small style="color:#64748b; margin-top:4px; display:inline-block;">Precaución por transitabilidad y saturación rápida de cauces.</small>`;
+                        detalle.innerHTML = `<span style="color:#b91c1c; font-weight:bold;">${avisos.join(' | ')}</span><br><small style="color:#64748b; margin-top:4px; display:inline-block;">Se recomienda precaución en rutas y áreas anegables.</small>`;
                     } else {
                         caja.classList.remove('widget-severo');
                         titulo.style.color = '#166534';
                         titulo.innerText = '🟢 Monitoreo en Vivo: Parámetros Normales';
                         badge.style.background = '#16a34a';
                         badge.innerText = 'ESTABLE';
-                        detalle.innerHTML = resumenNodos.join('<br>') + '<br><small style="color:#64748b; margin-top:4px; display:inline-block;">Sin eventos meteorológicos severos detectados en tiempo real.</small>';
+                        detalle.innerHTML = resumenNodos.join('<br>') + '<br><small style="color:#64748b; margin-top:4px; display:inline-block;">Sin celdas de tormenta ni ráfagas severas registradas.</small>';
                     }
                 };
 
@@ -545,7 +575,10 @@
             }
         }
 
-        window.addEventListener('DOMContentLoaded', verificarTiempoSeveroCuenca);
+        window.addEventListener('DOMContentLoaded', function() {
+            verificarTiempoSeveroCuenca();
+            setInterval(verificarTiempoSeveroCuenca, 180000); // Chequea cada 3 minutos
+        });
     </script>
 </body>
 </html>
