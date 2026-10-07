@@ -43,6 +43,14 @@
             <h1>SISTEMA DE ALERTA TEMPRANA TRIPROVINCIAL — CUENCA DEL RÍO V</h1>
             <p>San Luis &bull; Córdoba &bull; La Pampa | Plataforma de Monitoreo Hidrometeorológico Operativo</p>
         </div>
+        <!-- BANNER TIEMPO SEVERO EN VIVO (OPEN-METEO) -->
+<div id="alertaSeveraEnVivo" style="display: none; background: #dc2626; color: white; padding: 12px 24px; font-size: 13.5px; font-weight: bold; border-left: 8px solid #7f1d1d; animation: pulse 2s infinite;">
+    ⚠️ <span id="txtAlertaSevera">TIEMPO SEVERO DETECTADO EN LA CUENCA</span>
+</div>
+
+<style>
+@keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.82; } 100% { opacity: 1; } }
+</style>
         <div>
             <a href="sat_unificado_rio_v_triprovincial.xlsx" download class="btn btn-green">📥 Descargar Excel</a>
             <a href="resumen_cruce_rio_v_triprovincial.csv" download class="btn">📄 CSV</a>
@@ -385,6 +393,59 @@
                 setTimeout(initMap, 150);
             }
         }
+        // Monitoreo en vivo de tiempo severo en nodos clave de la cuenca
+async function verificarTiempoSeveroCuenca() {
+    // Nodos representativos: Villa Mercedes (SL), Jovita (CBA), Realicó (LP)
+    const puntos = [
+        { nombre: "Nacientes (Villa Mercedes)", lat: -33.67, lon: -65.46 },
+        { nombre: "Cuenca Media (Jovita/Levalle)", lat: -34.52, lon: -63.97 },
+        { nombre: "Cuenca Baja (Norte Pampeano)", lat: -35.04, lon: -64.24 }
+    ];
+
+    const lats = puntos.map(p => p.lat).join(',');
+    const lons = puntos.map(p => p.lon).join(',');
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lons}&current=temperature_2m,wind_speed_10m,weather_code&timezone=America%2FArgentina%2FBuenos_Aires`;
+
+    try {
+        const res = await fetch(url);
+        const data = await res.json();
+        const lista = Array.isArray(data) ? data : [data];
+
+        let avisos = [];
+
+        lista.forEach((d, idx) => {
+            const cur = d.current;
+            if (!cur) return;
+
+            const t = Math.round(cur.temperature_2m);
+            const v = Math.round(cur.wind_speed_10m);
+            const code = cur.weather_code;
+            const nodo = puntos[idx].nombre;
+
+            // Condición severa: WMO >= 65 (lluvia copiosa/tormenta) o ráfagas sostenidas > 50 km/h
+            if (code >= 65 || v >= 50) {
+                let motivo = [];
+                if (code >= 95) motivo.push("Tormenta eléctrica severa");
+                else if (code >= 65) motivo.push("Lluvias intensas");
+                if (v >= 50) motivo.push(`Vientos de ${v} km/h`);
+                
+                avisos.push(`${nodo}: ${motivo.join(' y ')}`);
+            }
+        });
+
+        if (avisos.length > 0) {
+            const banner = document.getElementById('alertaSeveraEnVivo');
+            const texto = document.getElementById('txtAlertaSevera');
+            texto.innerHTML = `ALERTA TIEMPO SEVERO EN CURSO: ${avisos.join(' | ')}. Se recomienda extremar recaudos en el tránsito de rutas (RN 7, RN 35, RP 26) y desagües pluviales.`;
+            banner.style.display = 'block';
+        }
+    } catch (e) {
+        console.warn("No se pudo verificar el tiempo severo en tiempo real:", e);
+    }
+}
+
+// Se ejecuta automáticamente al cargar el documento
+window.addEventListener('DOMContentLoaded', verificarTiempoSeveroCuenca);
     </script>
 </body>
 </html>
