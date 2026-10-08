@@ -36,28 +36,36 @@
         .legend-item { display: flex; align-items: center; margin-bottom: 3px; }
         .legend-color { width: 12px; height: 12px; border-radius: 50%; margin-right: 8px; flex-shrink: 0; }
 
-        /* Estilos del widget de monitoreo en tiempo real */
-        .widget-tiempo-vivo {
-            background: #f0fdf4;
-            border: 1px solid #bbf7d0;
-            border-left: 5px solid #16a34a;
-            padding: 12px;
-            border-radius: 6px;
+        /* Estilos del widget multirriesgo analítico */
+        .widget-analitico {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            padding: 14px;
+            border-radius: 8px;
             margin-bottom: 16px;
             font-size: 12.5px;
-            transition: all 0.3s ease;
         }
-        .widget-severo {
-            background: #fef2f2 !important;
-            border-color: #fca5a5 !important;
-            border-left: 5px solid #dc2626 !important;
-            animation: pulse-severo 2s infinite;
+        .alerta-indicador {
+            padding: 8px 12px;
+            border-radius: 6px;
+            margin-bottom: 8px;
+            font-weight: 600;
+            display: none;
+            border-left: 6px solid;
+            font-size: 12px;
         }
-        @keyframes pulse-severo {
-            0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.4); }
-            70% { box-shadow: 0 0 0 8px rgba(220, 38, 38, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
+        .aviso-calor { background: #fff3cd; border-color: #f6ad55; color: #856404; }
+        .aviso-polar { background: #e0f2fe; border-color: #0284c7; color: #075985; }
+        .aviso-severo { background: #fee2e2; border-color: #ef4444; color: #991b1b; animation: pulse-aviso 2s infinite; }
+
+        @keyframes pulse-aviso {
+            0% { opacity: 1; }
+            50% { opacity: 0.85; }
+            100% { opacity: 1; }
         }
+
+        .index-bar-bg { background: #e2e8f0; height: 10px; border-radius: 5px; margin: 6px 0 10px 0; overflow: hidden; }
+        #indexBarFill { background: #10b981; width: 0%; height: 100%; transition: width 0.8s ease-in-out, background-color 0.4s; }
     </style>
 </head>
 <body>
@@ -132,19 +140,42 @@
                 </table>
             </div>
 
+            <!-- PANEL DERECHO DE ALERTAS E INDICADORES -->
             <div class="card">
-                <h2>Alertas Meteorológicas Vigentes (SMN)</h2>
+                <h2>Indicadores Analíticos y Alertas SMN</h2>
                 
-                <div id="cajaTiempoVivo" class="widget-tiempo-vivo">
+                <!-- WIDGET MULTIRRIESGO DE INDICADORES (OPEN-METEO) -->
+                <div class="widget-analitico">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 6px;">
-                        <strong id="tituloTiempoVivo" style="color: #166534; font-size: 13px;">📡 Monitoreo en Vivo (Open-Meteo)</strong>
-                        <span id="badgeEstadoVivo" style="background:#16a34a; color:white; padding:2px 7px; border-radius:10px; font-size:11px; font-weight:bold;">SIN ALERTA</span>
+                        <strong style="color: #1e3a8a; font-size: 13px;">📊 Indicadores Agroclimáticos en Tiempo Real</strong>
+                        <span id="badgeEstadoVivo" style="background:#10b981; color:white; padding:2px 7px; border-radius:10px; font-size:10.5px; font-weight:bold;">NORMAL</span>
                     </div>
-                    <div id="detalleTiempoVivo" style="color:#334155; line-height: 1.4;">
-                        Consultando condiciones atmosféricas en la cuenca...
+
+                    <!-- BANNERS TÉRMICOS Y SEVEROS -->
+                    <div id="alertaSeveraBox" class="alerta-indicador aviso-severo">⚠️ INESTABILIDAD: <span id="txtSeveroMsg"></span></div>
+                    <div id="alertaCalorBox" class="alerta-indicador aviso-calor">🔥 ESTRÉS TÉRMICO / OLA DE CALOR: Temperaturas elevadas (≥ 35°C).</div>
+                    <div id="alertaPolarBox" class="alerta-indicador aviso-polar">❄️ OLA POLAR / RIESGO DE HELADA: Temperaturas críticas (≤ 5°C).</div>
+
+                    <!-- ÍNDICE 30-30-30 -->
+                    <div style="margin-top: 8px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11.5px;">
+                            <span style="font-weight: 600; color: #475569;">Índice 30-30-30 (Riesgo Meteorológico de Incendio)</span>
+                            <strong id="val3030" style="color: #10b981;">0%</strong>
+                        </div>
+                        <div class="index-bar-bg"><div id="indexBarFill"></div></div>
+                    </div>
+
+                    <!-- CONDICIONES POR NODO -->
+                    <div id="detalleTiempoVivo" style="color:#334155; line-height: 1.45; margin-top: 4px; font-size: 11.5px;">
+                        Calculando métricas en nodos de cuenca...
+                    </div>
+
+                    <div style="margin-top: 8px; padding-top: 6px; border-top: 1px dashed #cbd5e1; font-size: 10.5px; color: #64748b; font-style: italic;">
+                        ℹ️ Fuente analítica: Nodos Open-Meteo. No reemplaza los avisos oficiales emitidos por el Servicio Meteorológico Nacional (SMN).
                     </div>
                 </div>
 
+                <h3 style="font-size: 13.5px; color: #475569; margin: 12px 0 8px 0; text-transform: uppercase;">Avisos Oficiales del SMN:</h3>
                 __ALERTAS_SMN__
             </div>
         </div>
@@ -180,17 +211,6 @@
     <div id="tab-alertas" class="tab-content">
         <div class="card">
             <h2>Alertas Meteorológicas Oficiales del SMN</h2>
-            
-            <div id="cajaTiempoVivoTab" class="widget-tiempo-vivo">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 6px;">
-                    <strong id="tituloTiempoVivoTab" style="color: #166534; font-size: 13px;">📡 Monitoreo en Vivo (Open-Meteo)</strong>
-                    <span id="badgeEstadoVivoTab" style="background:#16a34a; color:white; padding:2px 7px; border-radius:10px; font-size:11px; font-weight:bold;">SIN ALERTA</span>
-                </div>
-                <div id="detalleTiempoVivoTab" style="color:#334155; line-height: 1.4;">
-                    Consultando condiciones atmosféricas en la cuenca...
-                </div>
-            </div>
-
             __ALERTAS_SMN__
         </div>
     </div>
@@ -461,6 +481,7 @@
             }
         }
 
+        // Monitoreo multirriesgo: Inestabilidad, Ola de calor, Ola polar e Índice 30-30-30
         async function verificarTiempoSeveroCuenca() {
             const puntos = [
                 { nombre: "Villa Mercedes", lat: -33.67, lon: -65.46 },
@@ -470,81 +491,117 @@
 
             const lats = puntos.map(p => p.lat).join(',');
             const lons = puntos.map(p => p.lon).join(',');
-            const url = `https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lons}&current=temperature_2m,wind_speed_10m,wind_gusts_10m,precipitation,showers,weather_code&timezone=America%2FArgentina%2FBuenos_Aires`;
+            const url = `https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lons}&current=temperature_2m,relative_humidity_2m,wind_speed_10m,wind_gusts_10m,precipitation,showers,weather_code&timezone=America%2FArgentina%2FBuenos_Aires`;
 
             try {
                 const res = await fetch(url);
                 const data = await res.json();
                 const lista = Array.isArray(data) ? data : [data];
 
-                let hayAlerta = false;
+                let haySevero = false;
+                let hayCalor = false;
+                let hayPolar = false;
                 let avisos = [];
                 let resumenNodos = [];
+                let maxPuntos3030 = 0;
 
                 lista.forEach((d, idx) => {
                     const cur = d.current;
                     if (!cur) return;
 
                     const t = Math.round(cur.temperature_2m);
+                    const h = Math.round(cur.relative_humidity_2m || 50);
                     const v = Math.round(cur.wind_speed_10m);
                     const gust = Math.round(cur.wind_gusts_10m || v);
                     const prec = (cur.precipitation || 0) + (cur.showers || 0);
                     const code = cur.weather_code;
                     const nodo = puntos[idx].nombre;
 
-                    resumenNodos.push(`<b>${nodo}:</b> ${t}°C | Viento ${v} km/h (Ráfagas ${gust}) | Lluvia: ${prec.toFixed(1)} mm`);
+                    // Cálculo del Índice 30-30-30
+                    let pts = (t >= 30 ? 33.3 : (t / 30) * 20) + (v >= 30 ? 33.3 : (v / 30) * 20) + (h <= 30 ? 33.4 : ((100 - h) / 70) * 15);
+                    pts = Math.min(Math.round(pts), 100);
+                    if (pts > maxPuntos3030) maxPuntos3030 = pts;
 
+                    resumenNodos.push(`<b>${nodo}:</b> ${t}°C | Hum: ${h}% | Viento: ${v} km/h (Ráfagas ${gust}) | Lluvia: ${prec.toFixed(1)} mm`);
+
+                    // Detección de umbrales térmicos
+                    if (t >= 35) hayCalor = true;
+                    if (t <= 5) hayPolar = true;
+
+                    // Detección de tormentas e inestabilidad
                     let motivo = [];
                     if (code >= 95) motivo.push("Tormenta eléctrica");
-                    else if (code >= 80) motivo.push("Chaparrones convectivos");
-                    else if (code >= 51) motivo.push("Precipitaciones activas");
+                    else if (code >= 80) motivo.push("Chaparrones");
+                    else if (code >= 51) motivo.push("Precipitaciones");
 
-                    if (gust >= 40 || v >= 30) motivo.push(`Ráfagas de ${gust} km/h`);
-                    if (prec >= 1.5) motivo.push(`Lluvia en curso (${prec.toFixed(1)} mm)`);
+                    if (gust >= 45 || v >= 35) motivo.push(`Ráfagas (${gust} km/h)`);
+                    if (prec >= 2.0) motivo.push(`Precipitación activa (${prec.toFixed(1)} mm)`);
 
                     if (motivo.length > 0) {
-                        hayAlerta = true;
+                        haySevero = true;
                         avisos.push(`${nodo}: ${motivo.join(' y ')}`);
                     }
                 });
 
+                // Verificación de descargas de rayos
                 var totalRayos = 0;
                 try { totalRayos = (__JSON_RAYOS__).length; } catch(e){}
                 if (totalRayos > 0) {
-                    hayAlerta = true;
-                    avisos.push(`Actividad de descargas eléctricas (${totalRayos} rayos recientes)`);
+                    haySevero = true;
+                    avisos.push(`Actividad eléctrica detectada (${totalRayos} rayos recientes)`);
                 }
 
-                const actualizarCajas = (idCaja, idTitulo, idBadge, idDetalle) => {
-                    const caja = document.getElementById(idCaja);
-                    const titulo = document.getElementById(idTitulo);
-                    const badge = document.getElementById(idBadge);
-                    const detalle = document.getElementById(idDetalle);
+                // Actualizar Banners de Alerta Térmica y Severa
+                const boxSevero = document.getElementById('alertaSeveraBox');
+                const txtSevero = document.getElementById('txtSeveroMsg');
+                if (haySevero) {
+                    txtSevero.innerText = avisos.join(' | ');
+                    boxSevero.style.display = 'block';
+                } else {
+                    boxSevero.style.display = 'none';
+                }
 
-                    if (!caja) return;
+                document.getElementById('alertaCalorBox').style.display = hayCalor ? 'block' : 'none';
+                document.getElementById('alertaPolarBox').style.display = hayPolar ? 'block' : 'none';
 
-                    if (hayAlerta) {
-                        caja.classList.add('widget-severo');
-                        titulo.style.color = '#991b1b';
-                        titulo.innerText = '⚠️ ALERTA: Inestabilidad / Tormentas en Cuenca';
-                        badge.style.background = '#dc2626';
-                        badge.innerText = 'ALERTA ACTIVA';
-                        detalle.innerHTML = `<span style="color:#b91c1c; font-weight:bold;">${avisos.join(' | ')}</span><br><small style="color:#64748b; margin-top:4px; display:inline-block;">Se recomienda precaución en rutas y áreas anegables.</small>`;
-                    } else {
-                        caja.classList.remove('widget-severo');
-                        titulo.style.color = '#166534';
-                        titulo.innerText = '🟢 Monitoreo en Vivo: Parámetros Normales';
-                        badge.style.background = '#16a34a';
-                        badge.innerText = 'ESTABLE';
-                        detalle.innerHTML = resumenNodos.join('<br>') + '<br><small style="color:#64748b; margin-top:4px; display:inline-block;">Sin celdas severas detectadas en este momento.</small>';
-                    }
-                };
+                // Actualizar Badge General
+                const badge = document.getElementById('badgeEstadoVivo');
+                if (haySevero || hayCalor || hayPolar || maxPuntos3030 >= 75) {
+                    badge.style.background = '#dc2626';
+                    badge.innerText = 'RIESGO DETECTADO';
+                } else if (maxPuntos3030 >= 50) {
+                    badge.style.background = '#f59e0b';
+                    badge.innerText = 'PRECAUCIÓN';
+                } else {
+                    badge.style.background = '#10b981';
+                    badge.innerText = 'NORMAL';
+                }
 
-                actualizarCajas('cajaTiempoVivo', 'tituloTiempoVivo', 'badgeEstadoVivo', 'detalleTiempoVivo');
-                actualizarCajas('cajaTiempoVivoTab', 'tituloTiempoVivoTab', 'badgeEstadoVivoTab', 'detalleTiempoVivoTab');
+                // Renderizar barra de Índice 30-30-30
+                const barFill = document.getElementById('indexBarFill');
+                const valLabel = document.getElementById('val3030');
+                barFill.style.width = maxPuntos3030 + "%";
+                valLabel.innerText = maxPuntos3030 + "%";
+
+                if (maxPuntos3030 <= 25) {
+                    barFill.style.backgroundColor = "#10b981";
+                    valLabel.style.color = "#10b981";
+                } else if (maxPuntos3030 <= 50) {
+                    barFill.style.backgroundColor = "#f1c40f";
+                    valLabel.style.color = "#d97706";
+                } else if (maxPuntos3030 <= 75) {
+                    barFill.style.backgroundColor = "#ea580c";
+                    valLabel.style.color = "#ea580c";
+                } else {
+                    barFill.style.backgroundColor = "#dc2626";
+                    valLabel.style.color = "#dc2626";
+                }
+
+                // Renderizar datos por nodo
+                document.getElementById('detalleTiempoVivo').innerHTML = resumenNodos.join('<br>');
 
             } catch (e) {
-                console.warn("Error en monitoreo de tiempo severo:", e);
+                console.warn("Error en monitoreo de indicadores:", e);
             }
         }
 
