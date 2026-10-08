@@ -23,7 +23,7 @@ jobs:
 
       - name: Instalar dependencias
         run: |
-          pip install requests pandas numpy folium openpyxl beautifulsoup4 urllib3
+          pip install requests pandas numpy openpyxl beautifulsoup4 urllib3
 
       - name: Ejecutar Pipeline
         run: |
@@ -34,5 +34,4 @@ jobs:
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action Bot"
           git add index.html sat_unificado_rio_v_triprovincial.xlsx resumen_cruce_rio_v_triprovincial.csv
-          git commit -m "Auto-actualización SAT Río V - $(date -u +'%Y-%m-%d %H:%M UTC')" || echo "Sin cambios"
-          git push
+          git diff --staged --quiet || (git commit -m "Auto-actualización SAT Río V [skip ci]" && git push origin HEAD)
