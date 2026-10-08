@@ -120,8 +120,10 @@
                             <th style="text-align:center;">Actual</th>
                             <th style="text-align:center;">Anterior</th>
                             <th style="text-align:center;">Var. (Δh)</th>
-                            <th style="text-align:center;">Alerta/Evac</th>
+                            <th style="text-align:center;">Alerta</th>
+                            <th style="text-align:center;">Evac</th>
                             <th style="text-align:center;">Estado</th>
+                            <th style="text-align:right;">Obs.</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -130,11 +132,9 @@
                 </table>
             </div>
 
-            <!-- PANEL DERECHO DE ALERTAS -->
             <div class="card">
                 <h2>Alertas Meteorológicas Vigentes (SMN)</h2>
                 
-                <!-- MONITOR EN VIVO DE TIEMPO SEVERO -->
                 <div id="cajaTiempoVivo" class="widget-tiempo-vivo">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 6px;">
                         <strong id="tituloTiempoVivo" style="color: #166534; font-size: 13px;">📡 Monitoreo en Vivo (Open-Meteo)</strong>
@@ -265,7 +265,6 @@
         var fgRayos = L.featureGroup();
         var sateliteGOES = L.layerGroup();
 
-        // 1. Carga Satélite Infrarrojo Dinámico con Paleta Convectiva (RainViewer)
         function cargarSateliteEnVivo() {
             fetch('https://api.rainviewer.com/public/weather-maps.json')
                 .then(res => res.json())
@@ -285,7 +284,6 @@
                 .catch(err => console.warn("Error cargando satélite:", err));
         }
 
-        // 2. Dibuja los rayos procesados por Python
         function dibujarRayos() {
             fgRayos.clearLayers();
             try {
@@ -352,7 +350,7 @@
                     fillColor: h.color,
                     fillOpacity: 0.95,
                     weight: 2
-                }).bindPopup("<b>" + h.nombre + "</b><br>Río: " + h.rio + "<br>Nivel: <b>" + h.nivel_actual + " m</b>" + difTxt + "<br>Alerta: " + h.cota_alerta + " m | Evac: " + h.cota_evac + " m<br>Estado: <b>" + h.estado + "</b><br><small>Obs: " + h.fecha + "</small>").addTo(fgHidro);
+                }).bindPopup("<b>" + h.nombre + "</b><br>Río: " + h.rio + "<br>Nivel Actual: <b>" + h.nivel_actual + " m</b><br>Nivel Anterior: " + h.nivel_anterior + " m" + difTxt + "<br>Alerta: " + h.cota_alerta + " m | Evac: " + h.cota_evac + " m<br>Estado: <b>" + h.estado + "</b><br><small>Obs: " + h.fecha + "</small>").addTo(fgHidro);
             });
 
             var datosRem = __JSON_REM_SL__;
@@ -463,7 +461,6 @@
             }
         }
 
-        // 3. Monitoreo sensible en vivo de tiempo severo en nodos clave
         async function verificarTiempoSeveroCuenca() {
             const puntos = [
                 { nombre: "Villa Mercedes", lat: -33.67, lon: -65.46 },
