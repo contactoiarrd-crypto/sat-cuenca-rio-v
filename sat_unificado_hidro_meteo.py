@@ -395,4 +395,4 @@ def obtener_datos_hidrologicos():
     return registros_hidro
 
 def obtener_descargas_atmosfericas():
-    return [{"lat": -34.5, "lon": -64.2, "hora": ahora.strftime("%H:%M"), "tipo": "Nube-
+    return [{"lat": -34.5, "lon": -64.2, "hora": ahora.strftime("%H:%M"), "tipo": "Nube-Suelo"}]
