@@ -33,6 +33,18 @@
     header h1 { font-size: 1.15rem; font-weight: 700; display: flex; align-items: center; gap: 8px; }
     header .status-tag { font-size: 0.75rem; background: #0369a1; padding: 4px 8px; border-radius: 4px; }
 
+    .banner-alerta {
+      background: __BANNER_BG__;
+      color: white;
+      padding: 10px 24px;
+      font-size: 0.85rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    /* Pestañas */
     .nav-tabs {
       display: flex;
       background: #e2e8f0;
@@ -74,7 +86,7 @@
 
     .grid-kpis {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
       gap: 16px;
       margin-bottom: 24px;
     }
@@ -86,7 +98,7 @@
       box-shadow: 0 2px 4px rgba(0,0,0,0.04);
     }
 
-    /* Alertas Open-Meteo Graduadas */
+    /* Semáforo Open-Meteo Graduado */
     .alerta-box {
       border-radius: 6px;
       padding: 12px;
@@ -100,15 +112,16 @@
     .alerta-naranja { background: #ffedd5; border-left: 5px solid #ea580c; color: #7c2d12; }
     .alerta-rojo { background: #fee2e2; border-left: 5px solid #dc2626; color: #7f1d1d; }
 
+    /* Visor Layout */
     .visor-layout {
       display: grid;
       grid-template-columns: 360px 1fr;
       gap: 16px;
-      height: calc(100vh - 170px);
+      height: calc(100vh - 190px);
     }
     @media (max-width: 950px) {
       .visor-layout { grid-template-columns: 1fr; height: auto; }
-      #map { height: 500px; }
+      #map { height: 520px; }
     }
     .visor-sidebar {
       background: white;
@@ -139,6 +152,7 @@
       font-size: 0.85rem;
       display: block;
       margin-bottom: 6px;
+      color: #0f172a;
     }
     .file-upload-block input[type="file"] { width: 100%; font-size: 0.8rem; }
 
@@ -150,7 +164,7 @@
       border-radius: 4px;
       margin-top: 8px;
     }
-    table { width: 100%; border-collapse: collapse; background: white; }
+    table { width: 100%; border-collapse: collapse; background: white; font-size: 0.82rem; }
     th, td { padding: 6px 8px; border-bottom: 1px solid #e2e8f0; text-align: left; }
     th { background: #f1f5f9; font-weight: 700; position: sticky; top: 0; }
 
@@ -163,11 +177,10 @@
     }
     .matriz-cruce h4 { font-size: 0.85rem; color: #1e3a8a; margin-bottom: 6px; }
 
-    /* Leyenda */
     .legend-box {
       font-size: 0.78rem;
       color: #334155;
-      line-height: 1.6;
+      line-height: 1.7;
     }
     .legend-dot {
       display: inline-block;
@@ -178,17 +191,33 @@
     }
   </style>
 
-  <!-- Leaflet y parsers -->
+  <!-- Leaflet y librería cliente para Excel -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-  <script>window.DATOS_SAT_INICIALES = {"fecha": "2026-10-09 11:11", "meteo": [{"id": "REM_88", "nombre": "AgroZAL", "departamento": "San Luis", "provincia": "San Luis", "lat": -33.6450639, "lon": -65.3794056, "temp_c": 12.1, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "red": "REM San Luis", "fecha_actualizacion": "2026-10-09 11:10"}, {"id": "REM_1", "nombre": "Alto Pelado", "departamento": "San Luis", "provincia": "San Luis", "lat": -33.83756, "lon": -66.13864, "temp_c": 6.4, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "red": "REM San Luis", "fecha_actualizacion": "2026-10-09 10:39"}, {"id": "REM_5", "nombre": "Batavia", "departamento": "San Luis", "provincia": "San Luis", "lat": -34.77845, "lon": -65.68851, "temp_c": 8.4, "humedad_pct": 0.0, "lluvia_24h_mm": 3.1, "red": "REM San Luis", "fecha_actualizacion": "2026-10-09 10:39"}, {"id": "REM_7", "nombre": "Buena Esperanza", "departamento": "San Luis", "provincia": "San Luis", "lat": -34.75682, "lon": -65.25261, "temp_c": 9.2, "humedad_pct": 0.0, "lluvia_24h_mm": 0.5, "red": "REM San Luis", "fecha_actualizacion": "2026-10-09 10:39"}, {"id": "REM_49", "nombre": "Coronel Alzogaray", "departamento": "San Luis", "provincia": "San Luis", "lat": -33.46051, "lon": -65.42903, "temp_c": 10.6, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "red": "REM San Luis", "fecha_actualizacion": "2026-10-08 19:12"}, {"id": "REM_85", "nombre": "Donovan", "departamento": "San Luis", "provincia": "San Luis", "lat": -33.337614, "lon": -66.232069, "temp_c": 9.8, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "red": "REM San Luis", "fecha_actualizacion": "2026-10-09 11:10"}, {"id": "REM_47", "nombre": "El Trapiche", "departamento": "San Luis", "provincia": "San Luis", "lat": -33.102925, "lon": -66.05738056, "temp_c": 10.0, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "red": "REM San Luis", "fecha_actualizacion": "2026-10-09 10:39"}, {"id": "REM_55", "nombre": "Estancia Grande", "departamento": "San Luis", "provincia": "San Luis", "lat": -33.19227, "lon": -66.13736, "temp_c": 9.2, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "red": "REM San Luis", "fecha_actualizacion": "2026-10-09 11:10"}, {"id": "REM_12", "nombre": "Fraga", "departamento": "San Luis", "provincia": "San Luis", "lat": -33.50133, "lon": -65.79225, "temp_c": 11.1, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "red": "REM San Luis", "fecha_actualizacion": "2026-10-09 11:10"}, {"id": "REM_13", "nombre": "Justo Daract", "departamento": "San Luis", "provincia": "San Luis", "lat": -33.85085, "lon": -65.17382, "temp_c": 10.7, "humedad_pct": 0.0, "lluvia_24h_mm": 0.1, "red": "REM San Luis", "fecha_actualizacion": "2026-10-09 11:10"}, {"id": "REM_14", "nombre": "La Angelina", "departamento": "San Luis", "provincia": "San Luis", "lat": -34.36133, "lon": -65.32747, "temp_c": 9.8, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "red": "REM San Luis", "fecha_actualizacion": "2026-10-09 11:10"}, {"id": "REM_16", "nombre": "La Cumbre", "departamento": "San Luis", "provincia": "San Luis", "lat": -33.34238, "lon": -66.12125, "temp_c": 8.4, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "red": "REM San Luis", "fecha_actualizacion": "2026-10-09 11:10"}, {"id": "REM_17", "nombre": "La Esquina", "departamento": "San Luis", "provincia": "San Luis", "lat": -33.14587, "lon": -65.37258, "temp_c": 8.3, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "red": "REM San Luis", "fecha_actualizacion": "2026-10-09 11:10"}, {"id": "REM_87", "nombre": "La Florida - Dique", "departamento": "San Luis", "provincia": "San Luis", "lat": -33.1142, "lon": -66.0041, "temp_c": 9.9, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "red": "REM San Luis", "fecha_actualizacion": "2026-10-09 10:39"}, {"id": "REM_19", "nombre": "La Punilla", "departamento": "San Luis", "provincia": "San Luis", "lat": -33.14373, "lon": -65.0837, "temp_c": 8.4, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "red": "REM San Luis", "fecha_actualizacion": "2026-10-09 10:39"}, {"id": "REM_21", "nombre": "La Toma", "departamento": "San Luis", "provincia": "San Luis", "lat": -33.05243, "lon": -65.61933, "temp_c": 14.8, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "red": "REM San Luis", "fecha_actualizacion": "2026-10-09 11:10"}, {"id": "REM_56", "nombre": "Las Chacras", "departamento": "San Luis", "provincia": "San Luis", "lat": -33.26172, "lon": -66.24302, "temp_c": 11.4, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "red": "REM San Luis", "fecha_actualizacion": "2026-10-09 10:39"}, {"id": "REM_30", "nombre": "Nueva Galia", "departamento": "San Luis", "provincia": "San Luis", "lat": -35.11305, "lon": -65.25683, "temp_c": 9.2, "humedad_pct": 0.0, "lluvia_24h_mm": 1.1, "red": "REM San Luis", "fecha_actualizacion": "2026-10-09 11:10"}, {"id": "REM_51", "nombre": "Potrero de los Funes", "departamento": "San Luis", "provincia": "San Luis", "lat": -33.23122, "lon": -66.22822, "temp_c": 9.5, "humedad_pct": 0.0, "lluvia_24h_mm": 1.7, "red": "REM San Luis", "fecha_actualizacion": "2026-10-09 11:10"}, {"id": "REM_52", "nombre": "Soven", "departamento": "San Luis", "provincia": "San Luis", "lat": -34.17522, "lon": -65.33552, "temp_c": 9.6, "humedad_pct": 0.0, "lluvia_24h_mm": 0.1, "red": "REM San Luis", "fecha_actualizacion": "2026-10-09 11:10"}, {"id": "REM_38", "nombre": "Unión", "departamento": "San Luis", "provincia": "San Luis", "lat": -35.1546, "lon": -65.94489, "temp_c": 9.3, "humedad_pct": 0.0, "lluvia_24h_mm": 0.5, "red": "REM San Luis", "fecha_actualizacion": "2026-10-09 11:10"}, {"id": "REM_42", "nombre": "Villa Mercedes", "departamento": "San Luis", "provincia": "San Luis", "lat": -33.678586, "lon": -65.504645, "temp_c": 10.6, "humedad_pct": 0.0, "lluvia_24h_mm": 0.1, "red": "REM San Luis", "fecha_actualizacion": "2026-10-09 11:10"}, {"id": "REM_60", "nombre": "Villa Reynolds", "departamento": "San Luis", "provincia": "San Luis", "lat": -33.725452, "lon": -65.385817, "temp_c": 10.1, "humedad_pct": 0.0, "lluvia_24h_mm": 0.1, "red": "REM San Luis", "fecha_actualizacion": "2026-10-09 10:36"}, {"id": "REM_1755", "nombre": "Virorco", "departamento": "San Luis", "provincia": "San Luis", "lat": -33.1094444444444, "lon": -66.1091666666667, "temp_c": 14.7, "humedad_pct": 0.0, "lluvia_24h_mm": 2.3, "red": "REM San Luis", "fecha_actualizacion": "2025-10-24 05:00"}, {"id": "APA_ARATA", "nombre": "Arata (APA)", "departamento": "Trenel", "provincia": "La Pampa", "lat": -35.617, "lon": -64.356, "temp_c": 19.2, "humedad_pct": 55.0, "lluvia_24h_mm": 0.0, "red": "APA La Pampa", "fecha_actualizacion": "2026-10-09 11:11"}, {"id": "APA_QUEMU", "nombre": "Quemú Quemú (APA)", "departamento": "Quemú Quemú", "provincia": "La Pampa", "lat": -36.056, "lon": -63.551, "temp_c": 16.3, "humedad_pct": 55.0, "lluvia_24h_mm": 0.0, "red": "APA La Pampa", "fecha_actualizacion": "2026-10-09 11:11"}, {"id": "APA_TELEN", "nombre": "Telén (APA)", "departamento": "Loventué", "provincia": "La Pampa", "lat": -36.262, "lon": -65.511, "temp_c": 16.3, "humedad_pct": 55.0, "lluvia_24h_mm": 0.0, "red": "APA La Pampa", "fecha_actualizacion": "2026-10-09 11:11"}, {"id": "APA_GRALACHA", "nombre": "General Acha (APA)", "departamento": "Utracán", "provincia": "La Pampa", "lat": -37.378, "lon": -64.604, "temp_c": 15.0, "humedad_pct": 55.0, "lluvia_24h_mm": 0.0, "red": "APA La Pampa", "fecha_actualizacion": "2026-10-09 11:11"}, {"id": "OMX_CBA_1", "nombre": "General Levalle", "departamento": "Roque Sáenz Peña", "provincia": "Córdoba", "lat": -34.0, "lon": -63.9163, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Omixom Cba", "red": "Omixom Córdoba"}, {"id": "OMX_CBA_2", "nombre": "Río Bamba", "departamento": "Roque Sáenz Peña", "provincia": "Córdoba", "lat": -34.0537, "lon": -63.7332, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Omixom Cba", "red": "Omixom Córdoba"}, {"id": "OMX_CBA_3", "nombre": "Jovita", "departamento": "General Roca", "provincia": "Córdoba", "lat": -34.5194, "lon": -63.9683, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Omixom Cba", "red": "Omixom Córdoba"}, {"id": "OMX_CBA_4", "nombre": "Villa Valeria", "departamento": "General Roca", "provincia": "Córdoba", "lat": -34.3427, "lon": -64.929, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Omixom Cba", "red": "Omixom Córdoba"}, {"id": "OMX_CBA_5", "nombre": "Nicolás Bruzzone", "departamento": "General Roca", "provincia": "Córdoba", "lat": -34.4391, "lon": -64.3424, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Omixom Cba", "red": "Omixom Córdoba"}, {"id": "OMX_CBA_6", "nombre": "Melo", "departamento": "Roque Sáenz Peña", "provincia": "Córdoba", "lat": -34.3452, "lon": -63.4377, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Omixom Cba", "red": "Omixom Córdoba"}, {"id": "OMX_CBA_7", "nombre": "Huanchillas", "departamento": "Juárez Celman", "provincia": "Córdoba", "lat": -33.6665, "lon": -63.6395, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Omixom Cba", "red": "Omixom Córdoba"}, {"id": "OMX_CBA_8", "nombre": "Hipólito Bouchard", "departamento": "General Roca", "provincia": "Córdoba", "lat": -34.706, "lon": -63.503, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Omixom Cba", "red": "Omixom Córdoba"}, {"id": "OMX_CBA_9", "nombre": "General Roca", "departamento": "General Roca", "provincia": "Córdoba", "lat": -33.9948, "lon": -65.0754, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Omixom Cba", "red": "Omixom Córdoba"}, {"id": "OMX_CBA_10", "nombre": "Serrano", "departamento": "Roque Sáenz Peña", "provincia": "Córdoba", "lat": -34.4629, "lon": -63.5309, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Omixom Cba", "red": "Omixom Córdoba"}, {"id": "OMX_CBA_11", "nombre": "Coronel Moldes", "departamento": "Río Cuarto", "provincia": "Córdoba", "lat": -33.6481, "lon": -64.595, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Omixom Cba", "red": "Omixom Córdoba"}, {"id": "OMX_CBA_12", "nombre": "Viamonte", "departamento": "Unión", "provincia": "Córdoba", "lat": -33.7429, "lon": -63.0996, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Omixom Cba", "red": "Omixom Córdoba"}, {"id": "OMX_CBA_13", "nombre": "Chaján", "departamento": "Río Cuarto", "provincia": "Córdoba", "lat": -33.5508, "lon": -65.0059, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Omixom Cba", "red": "Omixom Córdoba"}, {"id": "OMX_CBA_14", "nombre": "Villa Rossi", "departamento": "General Roca", "provincia": "Córdoba", "lat": -34.2949, "lon": -63.2654, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Omixom Cba", "red": "Omixom Córdoba"}, {"id": "OMX_CBA_15", "nombre": "Presa El Chañar", "departamento": "Río Cuarto", "provincia": "Córdoba", "lat": -33.9608, "lon": -65.0551, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Omixom Cba", "red": "Omixom Córdoba"}, {"id": "OMX_CBA_16", "nombre": "Huinca Renancó", "departamento": "General Roca", "provincia": "Córdoba", "lat": -34.8208, "lon": -64.3738, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Omixom Cba", "red": "Omixom Córdoba"}, {"id": "OMX_CBA_17", "nombre": "Vicuña Mackenna", "departamento": "Río Cuarto", "provincia": "Córdoba", "lat": -33.9754, "lon": -64.3642, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Omixom Cba", "red": "Omixom Córdoba"}, {"id": "OMX_LP_1", "nombre": "MPLP 16 - El Tala", "departamento": "Realicó", "provincia": "La Pampa", "lat": -35.3119, "lon": -64.7144, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Omixom LP", "red": "Omixom La Pampa"}, {"id": "OMX_LP_2", "nombre": "MPLP 41 - Realicó", "departamento": "Realicó", "provincia": "La Pampa", "lat": -35.0576, "lon": -64.2129, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Omixom LP", "red": "Omixom La Pampa"}, {"id": "OMX_LP_3", "nombre": "Trilí", "departamento": "Quemú Quemú", "provincia": "La Pampa", "lat": -35.9036, "lon": -63.6429, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Omixom LP", "red": "Omixom La Pampa"}, {"id": "OMX_LP_4", "nombre": "Ingeniero Luiggi", "departamento": "Realicó", "provincia": "La Pampa", "lat": -35.4714, "lon": -64.6024, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Omixom LP", "red": "Omixom La Pampa"}, {"id": "OMX_LP_5", "nombre": "Conhelo", "departamento": "Conhelo", "provincia": "La Pampa", "lat": -35.9895, "lon": -64.5954, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Omixom LP", "red": "Omixom La Pampa"}, {"id": "OMX_LP_6", "nombre": "Arata", "departamento": "Trenel", "provincia": "La Pampa", "lat": -35.6391, "lon": -64.3564, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Omixom LP", "red": "Omixom La Pampa"}, {"id": "OMX_LP_7", "nombre": "Pichi Huinca", "departamento": "Rancul", "provincia": "La Pampa", "lat": -35.6482, "lon": -64.7699, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Omixom LP", "red": "Omixom La Pampa"}, {"id": "OMX_LP_8", "nombre": "Rancul", "departamento": "Rancul", "provincia": "La Pampa", "lat": -35.0883, "lon": -64.5082, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Omixom LP", "red": "Omixom La Pampa"}, {"id": "OMX_LP_9", "nombre": "Coronel Hilario Lagos", "departamento": "Chapaleufú", "provincia": "La Pampa", "lat": -35.0344, "lon": -63.9111, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Omixom LP", "red": "Omixom La Pampa"}, {"id": "OMX_LP_10", "nombre": "Colonia Barón", "departamento": "Quemú Quemú", "provincia": "La Pampa", "lat": -36.1508, "lon": -63.855, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Omixom LP", "red": "Omixom La Pampa"}, {"id": "OMX_LP_11", "nombre": "Intendente Alvear", "departamento": "Chapaleufú", "provincia": "La Pampa", "lat": -35.3182, "lon": -63.6054, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Omixom LP", "red": "Omixom La Pampa"}, {"id": "OMX_LP_12", "nombre": "Alta Italia", "departamento": "Realicó", "provincia": "La Pampa", "lat": -35.3317, "lon": -64.1191, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Omixom LP", "red": "Omixom La Pampa"}, {"id": "OMX_LP_13", "nombre": "Winifreda", "departamento": "Conhelo", "provincia": "La Pampa", "lat": -36.2229, "lon": -64.2487, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Omixom LP", "red": "Omixom La Pampa"}, {"id": "OMX_LP_14", "nombre": "General Pico", "departamento": "Maracó", "provincia": "La Pampa", "lat": -35.6969, "lon": -63.6207, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Omixom LP", "red": "Omixom La Pampa"}, {"id": "OMX_LP_15", "nombre": "Eduardo Castex", "departamento": "Conhelo", "provincia": "La Pampa", "lat": -35.916, "lon": -64.2956, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Omixom LP", "red": "Omixom La Pampa"}], "hidro": [{"nombre": "Quinto - Malvin Reich", "rio": "Río Quinto (Cuenca Alta)", "distrito": "San Luis", "lat": -33.438333, "lon": -65.883056, "nivel_actual": 0.95, "cota_alerta": 2.5, "estado": "Normal", "fecha": "2026-10-09 11:11"}, {"nombre": "Trapiche - Hosteria El Trapiche", "rio": "Río Trapiche (Afluente)", "distrito": "San Luis", "lat": -33.105833, "lon": -66.063333, "nivel_actual": 0.32, "cota_alerta": 1.8, "estado": "Normal", "fecha": "2026-10-09 11:11"}, {"nombre": "Quinto - Dique Villa Mercedes", "rio": "Río Quinto", "distrito": "San Luis", "lat": -33.653889, "lon": -65.533611, "nivel_actual": 1.08, "cota_alerta": 2.8, "estado": "Normal", "fecha": "2026-10-09 11:11"}, {"nombre": "Quinto - Av Circunvalación", "rio": "Río Quinto", "distrito": "San Luis", "lat": -33.739167, "lon": -65.376944, "nivel_actual": 0.16, "cota_alerta": 1.6, "estado": "Normal", "fecha": "2026-10-09 11:11"}, {"nombre": "Quinto - Justo Daract", "rio": "Río Quinto", "distrito": "San Luis", "lat": -33.918611, "lon": -65.151667, "nivel_actual": 1.79, "cota_alerta": 2.9, "estado": "Normal", "fecha": "2026-10-09 11:11"}, {"nombre": "Aº El Aji - RN Nº35 y RN Nº7", "rio": "Afluente Río Quinto", "distrito": "Córdoba / LP", "lat": -33.931111, "lon": -64.396389, "nivel_actual": 0.66, "cota_alerta": 1.9, "estado": "Normal", "fecha": "2026-10-09 11:11"}, {"nombre": "Quinto - R.N. 35", "rio": "Río Quinto", "distrito": "Córdoba / LP", "lat": -34.216389, "lon": -64.386111, "nivel_actual": 1.22, "cota_alerta": 2.6, "estado": "Normal", "fecha": "2026-10-09 11:11"}, {"nombre": "Quinto - Canal Devoto RP 4", "rio": "Río Quinto / Canal Devoto", "distrito": "Córdoba / LP", "lat": -33.933056, "lon": -63.449167, "nivel_actual": 1.69, "cota_alerta": 2.8, "estado": "Normal", "fecha": "2026-10-09 11:11"}, {"nombre": "Laguna La Margarita", "rio": "Cuenca Río Quinto", "distrito": "Córdoba / LP", "lat": -34.653333, "lon": -63.723056, "nivel_actual": 1.43, "cota_alerta": 2.4, "estado": "Normal", "fecha": "2026-10-09 11:11"}, {"nombre": "Quinto - RP Nº26", "rio": "Río Quinto", "distrito": "Córdoba / LP", "lat": -34.762778, "lon": -63.645, "nivel_actual": 0.78, "cota_alerta": 2.2, "estado": "Normal", "fecha": "2026-10-09 11:11"}]};</script>
+
+  <!-- Inyección de datos desde sat_unificado_hidro_meteo.py -->
+  <script>
+    window.DATOS_HIDRO = __JSON_HIDRO__;
+    window.DATOS_REM_SL = __JSON_REM_SL__;
+    window.DATOS_APA_LP = __JSON_APA_LP__;
+    window.DATOS_OMX_CBA = __JSON_OMX_CBA__;
+    window.DATOS_OMX_LP = __JSON_OMX_LP__;
+    window.DATOS_POLIGONOS_SMN = __JSON_POLIGONOS__;
+    window.DATOS_RAYOS = __JSON_RAYOS__;
+  </script>
+<script>window.DATOS_SAT_INICIALES = {"fecha": "2026-10-09 11:27", "meteo": [{"id": "REM_88", "nombre": "AgroZAL", "departamento": "San Luis", "provincia": "San Luis", "lat": -33.6450639, "lon": -65.3794056, "temp_c": 11.6, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "red": "REM San Luis", "fecha_actualizacion": "2026-10-09 11:26"}, {"id": "REM_1", "nombre": "Alto Pelado", "departamento": "San Luis", "provincia": "San Luis", "lat": -33.83756, "lon": -66.13864, "temp_c": 6.4, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "red": "REM San Luis", "fecha_actualizacion": "2026-10-09 10:39"}, {"id": "REM_5", "nombre": "Batavia", "departamento": "San Luis", "provincia": "San Luis", "lat": -34.77845, "lon": -65.68851, "temp_c": 8.4, "humedad_pct": 0.0, "lluvia_24h_mm": 3.1, "red": "REM San Luis", "fecha_actualizacion": "2026-10-09 10:39"}, {"id": "REM_7", "nombre": "Buena Esperanza", "departamento": "San Luis", "provincia": "San Luis", "lat": -34.75682, "lon": -65.25261, "temp_c": 9.2, "humedad_pct": 0.0, "lluvia_24h_mm": 0.5, "red": "REM San Luis", "fecha_actualizacion": "2026-10-09 10:39"}, {"id": "REM_49", "nombre": "Coronel Alzogaray", "departamento": "San Luis", "provincia": "San Luis", "lat": -33.46051, "lon": -65.42903, "temp_c": 10.6, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "red": "REM San Luis", "fecha_actualizacion": "2026-10-08 19:12"}, {"id": "REM_85", "nombre": "Donovan", "departamento": "San Luis", "provincia": "San Luis", "lat": -33.337614, "lon": -66.232069, "temp_c": 10.2, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "red": "REM San Luis", "fecha_actualizacion": "2026-10-09 11:25"}, {"id": "REM_47", "nombre": "El Trapiche", "departamento": "San Luis", "provincia": "San Luis", "lat": -33.102925, "lon": -66.05738056, "temp_c": 10.0, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "red": "REM San Luis", "fecha_actualizacion": "2026-10-09 10:39"}, {"id": "REM_55", "nombre": "Estancia Grande", "departamento": "San Luis", "provincia": "San Luis", "lat": -33.19227, "lon": -66.13736, "temp_c": 10.0, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "red": "REM San Luis", "fecha_actualizacion": "2026-10-09 11:26"}, {"id": "REM_12", "nombre": "Fraga", "departamento": "San Luis", "provincia": "San Luis", "lat": -33.50133, "lon": -65.79225, "temp_c": 11.5, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "red": "REM San Luis", "fecha_actualizacion": "2026-10-09 11:26"}, {"id": "REM_13", "nombre": "Justo Daract", "departamento": "San Luis", "provincia": "San Luis", "lat": -33.85085, "lon": -65.17382, "temp_c": 10.6, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "red": "REM San Luis", "fecha_actualizacion": "2026-10-09 11:26"}, {"id": "REM_14", "nombre": "La Angelina", "departamento": "San Luis", "provincia": "San Luis", "lat": -34.36133, "lon": -65.32747, "temp_c": 9.5, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "red": "REM San Luis", "fecha_actualizacion": "2026-10-09 11:26"}, {"id": "REM_16", "nombre": "La Cumbre", "departamento": "San Luis", "provincia": "San Luis", "lat": -33.34238, "lon": -66.12125, "temp_c": 8.6, "humedad_pct": 0.0, "lluvia_24h_mm": 0.6, "red": "REM San Luis", "fecha_actualizacion": "2026-10-09 11:26"}, {"id": "REM_17", "nombre": "La Esquina", "departamento": "San Luis", "provincia": "San Luis", "lat": -33.14587, "lon": -65.37258, "temp_c": 8.3, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "red": "REM San Luis", "fecha_actualizacion": "2026-10-09 11:26"}, {"id": "REM_87", "nombre": "La Florida - Dique", "departamento": "San Luis", "provincia": "San Luis", "lat": -33.1142, "lon": -66.0041, "temp_c": 9.9, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "red": "REM San Luis", "fecha_actualizacion": "2026-10-09 10:39"}, {"id": "REM_19", "nombre": "La Punilla", "departamento": "San Luis", "provincia": "San Luis", "lat": -33.14373, "lon": -65.0837, "temp_c": 8.4, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "red": "REM San Luis", "fecha_actualizacion": "2026-10-09 10:39"}, {"id": "REM_21", "nombre": "La Toma", "departamento": "San Luis", "provincia": "San Luis", "lat": -33.05243, "lon": -65.61933, "temp_c": 14.9, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "red": "REM San Luis", "fecha_actualizacion": "2026-10-09 11:26"}, {"id": "REM_56", "nombre": "Las Chacras", "departamento": "San Luis", "provincia": "San Luis", "lat": -33.26172, "lon": -66.24302, "temp_c": 11.4, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "red": "REM San Luis", "fecha_actualizacion": "2026-10-09 10:39"}, {"id": "REM_30", "nombre": "Nueva Galia", "departamento": "San Luis", "provincia": "San Luis", "lat": -35.11305, "lon": -65.25683, "temp_c": 9.3, "humedad_pct": 0.0, "lluvia_24h_mm": 1.3, "red": "REM San Luis", "fecha_actualizacion": "2026-10-09 11:26"}, {"id": "REM_51", "nombre": "Potrero de los Funes", "departamento": "San Luis", "provincia": "San Luis", "lat": -33.23122, "lon": -66.22822, "temp_c": 9.7, "humedad_pct": 0.0, "lluvia_24h_mm": 1.7, "red": "REM San Luis", "fecha_actualizacion": "2026-10-09 11:26"}, {"id": "REM_52", "nombre": "Soven", "departamento": "San Luis", "provincia": "San Luis", "lat": -34.17522, "lon": -65.33552, "temp_c": 10.3, "humedad_pct": 0.0, "lluvia_24h_mm": 0.8, "red": "REM San Luis", "fecha_actualizacion": "2026-10-09 11:25"}, {"id": "REM_38", "nombre": "Unión", "departamento": "San Luis", "provincia": "San Luis", "lat": -35.1546, "lon": -65.94489, "temp_c": 9.5, "humedad_pct": 0.0, "lluvia_24h_mm": 1.1, "red": "REM San Luis", "fecha_actualizacion": "2026-10-09 11:26"}, {"id": "REM_42", "nombre": "Villa Mercedes", "departamento": "San Luis", "provincia": "San Luis", "lat": -33.678586, "lon": -65.504645, "temp_c": 11.0, "humedad_pct": 0.0, "lluvia_24h_mm": 0.1, "red": "REM San Luis", "fecha_actualizacion": "2026-10-09 11:26"}, {"id": "REM_60", "nombre": "Villa Reynolds", "departamento": "San Luis", "provincia": "San Luis", "lat": -33.725452, "lon": -65.385817, "temp_c": 10.1, "humedad_pct": 0.0, "lluvia_24h_mm": 0.1, "red": "REM San Luis", "fecha_actualizacion": "2026-10-09 10:36"}, {"id": "REM_1755", "nombre": "Virorco", "departamento": "San Luis", "provincia": "San Luis", "lat": -33.1094444444444, "lon": -66.1091666666667, "temp_c": 14.7, "humedad_pct": 0.0, "lluvia_24h_mm": 2.3, "red": "REM San Luis", "fecha_actualizacion": "2025-10-24 05:00"}, {"id": "APA_ARATA", "nombre": "Arata (APA)", "departamento": "Trenel", "provincia": "La Pampa", "lat": -35.617, "lon": -64.356, "temp_c": 19.2, "humedad_pct": 55.0, "lluvia_24h_mm": 0.0, "red": "APA La Pampa", "fecha_actualizacion": "2026-10-09 11:27"}, {"id": "APA_QUEMU", "nombre": "Quemú Quemú (APA)", "departamento": "Quemú Quemú", "provincia": "La Pampa", "lat": -36.056, "lon": -63.551, "temp_c": 16.3, "humedad_pct": 55.0, "lluvia_24h_mm": 0.0, "red": "APA La Pampa", "fecha_actualizacion": "2026-10-09 11:27"}, {"id": "APA_TELEN", "nombre": "Telén (APA)", "departamento": "Loventué", "provincia": "La Pampa", "lat": -36.262, "lon": -65.511, "temp_c": 16.3, "humedad_pct": 55.0, "lluvia_24h_mm": 0.0, "red": "APA La Pampa", "fecha_actualizacion": "2026-10-09 11:27"}, {"id": "APA_GRALACHA", "nombre": "General Acha (APA)", "departamento": "Utracán", "provincia": "La Pampa", "lat": -37.378, "lon": -64.604, "temp_c": 15.0, "humedad_pct": 55.0, "lluvia_24h_mm": 0.0, "red": "APA La Pampa", "fecha_actualizacion": "2026-10-09 11:27"}, {"id": "OMX_CBA_1", "nombre": "General Levalle", "departamento": "Roque Sáenz Peña", "provincia": "Córdoba", "lat": -34.0, "lon": -63.9163, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Omixom Cba", "red": "Omixom Córdoba"}, {"id": "OMX_CBA_2", "nombre": "Río Bamba", "departamento": "Roque Sáenz Peña", "provincia": "Córdoba", "lat": -34.0537, "lon": -63.7332, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Omixom Cba", "red": "Omixom Córdoba"}, {"id": "OMX_CBA_3", "nombre": "Jovita", "departamento": "General Roca", "provincia": "Córdoba", "lat": -34.5194, "lon": -63.9683, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Omixom Cba", "red": "Omixom Córdoba"}, {"id": "OMX_CBA_4", "nombre": "Villa Valeria", "departamento": "General Roca", "provincia": "Córdoba", "lat": -34.3427, "lon": -64.929, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Omixom Cba", "red": "Omixom Córdoba"}, {"id": "OMX_CBA_5", "nombre": "Nicolás Bruzzone", "departamento": "General Roca", "provincia": "Córdoba", "lat": -34.4391, "lon": -64.3424, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Omixom Cba", "red": "Omixom Córdoba"}, {"id": "OMX_CBA_6", "nombre": "Melo", "departamento": "Roque Sáenz Peña", "provincia": "Córdoba", "lat": -34.3452, "lon": -63.4377, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Omixom Cba", "red": "Omixom Córdoba"}, {"id": "OMX_CBA_7", "nombre": "Huanchillas", "departamento": "Juárez Celman", "provincia": "Córdoba", "lat": -33.6665, "lon": -63.6395, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Omixom Cba", "red": "Omixom Córdoba"}, {"id": "OMX_CBA_8", "nombre": "Hipólito Bouchard", "departamento": "General Roca", "provincia": "Córdoba", "lat": -34.706, "lon": -63.503, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Omixom Cba", "red": "Omixom Córdoba"}, {"id": "OMX_CBA_9", "nombre": "General Roca", "departamento": "General Roca", "provincia": "Córdoba", "lat": -33.9948, "lon": -65.0754, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Omixom Cba", "red": "Omixom Córdoba"}, {"id": "OMX_CBA_10", "nombre": "Serrano", "departamento": "Roque Sáenz Peña", "provincia": "Córdoba", "lat": -34.4629, "lon": -63.5309, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Omixom Cba", "red": "Omixom Córdoba"}, {"id": "OMX_CBA_11", "nombre": "Coronel Moldes", "departamento": "Río Cuarto", "provincia": "Córdoba", "lat": -33.6481, "lon": -64.595, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Omixom Cba", "red": "Omixom Córdoba"}, {"id": "OMX_CBA_12", "nombre": "Viamonte", "departamento": "Unión", "provincia": "Córdoba", "lat": -33.7429, "lon": -63.0996, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Omixom Cba", "red": "Omixom Córdoba"}, {"id": "OMX_CBA_13", "nombre": "Chaján", "departamento": "Río Cuarto", "provincia": "Córdoba", "lat": -33.5508, "lon": -65.0059, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Omixom Cba", "red": "Omixom Córdoba"}, {"id": "OMX_CBA_14", "nombre": "Villa Rossi", "departamento": "General Roca", "provincia": "Córdoba", "lat": -34.2949, "lon": -63.2654, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Omixom Cba", "red": "Omixom Córdoba"}, {"id": "OMX_CBA_15", "nombre": "Presa El Chañar", "departamento": "Río Cuarto", "provincia": "Córdoba", "lat": -33.9608, "lon": -65.0551, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Omixom Cba", "red": "Omixom Córdoba"}, {"id": "OMX_CBA_16", "nombre": "Huinca Renancó", "departamento": "General Roca", "provincia": "Córdoba", "lat": -34.8208, "lon": -64.3738, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Omixom Cba", "red": "Omixom Córdoba"}, {"id": "OMX_CBA_17", "nombre": "Vicuña Mackenna", "departamento": "Río Cuarto", "provincia": "Córdoba", "lat": -33.9754, "lon": -64.3642, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Omixom Cba", "red": "Omixom Córdoba"}, {"id": "OMX_LP_1", "nombre": "MPLP 16 - El Tala", "departamento": "Realicó", "provincia": "La Pampa", "lat": -35.3119, "lon": -64.7144, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Omixom LP", "red": "Omixom La Pampa"}, {"id": "OMX_LP_2", "nombre": "MPLP 41 - Realicó", "departamento": "Realicó", "provincia": "La Pampa", "lat": -35.0576, "lon": -64.2129, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Omixom LP", "red": "Omixom La Pampa"}, {"id": "OMX_LP_3", "nombre": "Trilí", "departamento": "Quemú Quemú", "provincia": "La Pampa", "lat": -35.9036, "lon": -63.6429, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Omixom LP", "red": "Omixom La Pampa"}, {"id": "OMX_LP_4", "nombre": "Ingeniero Luiggi", "departamento": "Realicó", "provincia": "La Pampa", "lat": -35.4714, "lon": -64.6024, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Omixom LP", "red": "Omixom La Pampa"}, {"id": "OMX_LP_5", "nombre": "Conhelo", "departamento": "Conhelo", "provincia": "La Pampa", "lat": -35.9895, "lon": -64.5954, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Omixom LP", "red": "Omixom La Pampa"}, {"id": "OMX_LP_6", "nombre": "Arata", "departamento": "Trenel", "provincia": "La Pampa", "lat": -35.6391, "lon": -64.3564, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Omixom LP", "red": "Omixom La Pampa"}, {"id": "OMX_LP_7", "nombre": "Pichi Huinca", "departamento": "Rancul", "provincia": "La Pampa", "lat": -35.6482, "lon": -64.7699, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Omixom LP", "red": "Omixom La Pampa"}, {"id": "OMX_LP_8", "nombre": "Rancul", "departamento": "Rancul", "provincia": "La Pampa", "lat": -35.0883, "lon": -64.5082, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Omixom LP", "red": "Omixom La Pampa"}, {"id": "OMX_LP_9", "nombre": "Coronel Hilario Lagos", "departamento": "Chapaleufú", "provincia": "La Pampa", "lat": -35.0344, "lon": -63.9111, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Omixom LP", "red": "Omixom La Pampa"}, {"id": "OMX_LP_10", "nombre": "Colonia Barón", "departamento": "Quemú Quemú", "provincia": "La Pampa", "lat": -36.1508, "lon": -63.855, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Omixom LP", "red": "Omixom La Pampa"}, {"id": "OMX_LP_11", "nombre": "Intendente Alvear", "departamento": "Chapaleufú", "provincia": "La Pampa", "lat": -35.3182, "lon": -63.6054, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Omixom LP", "red": "Omixom La Pampa"}, {"id": "OMX_LP_12", "nombre": "Alta Italia", "departamento": "Realicó", "provincia": "La Pampa", "lat": -35.3317, "lon": -64.1191, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Omixom LP", "red": "Omixom La Pampa"}, {"id": "OMX_LP_13", "nombre": "Winifreda", "departamento": "Conhelo", "provincia": "La Pampa", "lat": -36.2229, "lon": -64.2487, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Omixom LP", "red": "Omixom La Pampa"}, {"id": "OMX_LP_14", "nombre": "General Pico", "departamento": "Maracó", "provincia": "La Pampa", "lat": -35.6969, "lon": -63.6207, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Omixom LP", "red": "Omixom La Pampa"}, {"id": "OMX_LP_15", "nombre": "Eduardo Castex", "departamento": "Conhelo", "provincia": "La Pampa", "lat": -35.916, "lon": -64.2956, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Omixom LP", "red": "Omixom La Pampa"}], "hidro": [{"nombre": "Quinto - Malvin Reich", "rio": "Río Quinto (Cuenca Alta)", "distrito": "San Luis", "lat": -33.438333, "lon": -65.883056, "nivel_actual": 0.95, "cota_alerta": 2.5, "estado": "Normal", "fecha": "2026-10-09 11:27"}, {"nombre": "Trapiche - Hosteria El Trapiche", "rio": "Río Trapiche (Afluente)", "distrito": "San Luis", "lat": -33.105833, "lon": -66.063333, "nivel_actual": 0.32, "cota_alerta": 1.8, "estado": "Normal", "fecha": "2026-10-09 11:27"}, {"nombre": "Quinto - Dique Villa Mercedes", "rio": "Río Quinto", "distrito": "San Luis", "lat": -33.653889, "lon": -65.533611, "nivel_actual": 1.08, "cota_alerta": 2.8, "estado": "Normal", "fecha": "2026-10-09 11:27"}, {"nombre": "Quinto - Av Circunvalación", "rio": "Río Quinto", "distrito": "San Luis", "lat": -33.739167, "lon": -65.376944, "nivel_actual": 0.16, "cota_alerta": 1.6, "estado": "Normal", "fecha": "2026-10-09 11:27"}, {"nombre": "Quinto - Justo Daract", "rio": "Río Quinto", "distrito": "San Luis", "lat": -33.918611, "lon": -65.151667, "nivel_actual": 1.79, "cota_alerta": 2.9, "estado": "Normal", "fecha": "2026-10-09 11:27"}, {"nombre": "Aº El Aji - RN Nº35 y RN Nº7", "rio": "Afluente Río Quinto", "distrito": "Córdoba / LP", "lat": -33.931111, "lon": -64.396389, "nivel_actual": 0.66, "cota_alerta": 1.9, "estado": "Normal", "fecha": "2026-10-09 11:27"}, {"nombre": "Quinto - R.N. 35", "rio": "Río Quinto", "distrito": "Córdoba / LP", "lat": -34.216389, "lon": -64.386111, "nivel_actual": 1.22, "cota_alerta": 2.6, "estado": "Normal", "fecha": "2026-10-09 11:27"}, {"nombre": "Quinto - Canal Devoto RP 4", "rio": "Río Quinto / Canal Devoto", "distrito": "Córdoba / LP", "lat": -33.933056, "lon": -63.449167, "nivel_actual": 1.69, "cota_alerta": 2.8, "estado": "Normal", "fecha": "2026-10-09 11:27"}, {"nombre": "Laguna La Margarita", "rio": "Cuenca Río Quinto", "distrito": "Córdoba / LP", "lat": -34.653333, "lon": -63.723056, "nivel_actual": 1.43, "cota_alerta": 2.4, "estado": "Normal", "fecha": "2026-10-09 11:27"}, {"nombre": "Quinto - RP Nº26", "rio": "Río Quinto", "distrito": "Córdoba / LP", "lat": -34.762778, "lon": -63.645, "nivel_actual": 0.78, "cota_alerta": 2.2, "estado": "Normal", "fecha": "2026-10-09 11:27"}]};</script>
 </head>
 <body>
 
   <header>
     <h1><i class="fa-solid fa-water"></i> SAT Cuenca Río Quinto (Río V) - La Pampa / Córdoba / San Luis</h1>
-    <span class="status-tag" id="header-fecha"><i class="fa-solid fa-satellite-dish"></i> 2026-10-09 11:11</span>
+    <span class="status-tag"><i class="fa-solid fa-satellite-dish"></i> Monitoreo Operativo</span>
   </header>
+
+  <div class="banner-alerta">
+    <div><strong>DIAGNÓSTICO TRIPROVINCIAL:</strong> __BANNER_MSG__</div>
+    <div style="white-space:nowrap; margin-left:15px; font-weight:bold;">Ventana LP: __TIEMPO_VIAJE__ días</div>
+  </div>
 
   <!-- Pestañas -->
   <nav class="nav-tabs">
@@ -197,6 +226,9 @@
     </button>
     <button class="nav-tab-btn" onclick="cambiarSolapa('tab-visor', event)">
       <i class="fa-solid fa-map-location-dot"></i> Visor Hidrometeorológico y Freático
+    </button>
+    <button class="nav-tab-btn" onclick="cambiarSolapa('tab-tablas', event)">
+      <i class="fa-solid fa-table"></i> Registros y Pronóstico ECMWF
     </button>
     <button class="nav-tab-btn" onclick="cambiarSolapa('tab-smn', event)">
       <i class="fa-solid fa-triangle-exclamation"></i> Alertas Oficiales SMN
@@ -214,7 +246,7 @@
       <div class="card">
         <h3><i class="fa-solid fa-cloud-bolt"></i> Pronóstico y Alertas Open-Meteo</h3>
         <p style="font-size:0.82rem; color:#64748b; margin-top:4px;">
-          Clasificación graduada por acumulados previstos (24h) y ráfagas:
+          Clasificación gradual para evitar sobrealertas rojas innecesarias:
         </p>
         <div id="contenedor-alerta-openmeteo">
           <p style="font-size: 0.85rem; color:#64748b; margin-top: 10px;">Consultando Open-Meteo...</p>
@@ -223,18 +255,18 @@
 
       <div class="card">
         <h3><i class="fa-solid fa-wave-square"></i> Nudos Hidrométricos (INA / SNIH)</h3>
-        <ul id="lista-kpi-hidro" style="list-style: none; margin-top: 10px; font-size: 0.85rem; line-height: 1.8;">
-          <li><i class="fa-solid fa-circle" style="color:#10b981; font-size:10px;"></i> <b>Laguna La Margarita:</b> 1.43 m (Retención Ordinaria)</li>
-          <li><i class="fa-solid fa-circle" style="color:#10b981; font-size:10px;"></i> <b>Río Quinto - R.N. 35:</b> 1.22 m (Normal)</li>
-          <li><i class="fa-solid fa-circle" style="color:#10b981; font-size:10px;"></i> <b>Río Quinto - Justo Daract:</b> 1.79 m (Normal)</li>
-          <li><i class="fa-solid fa-circle" style="color:#10b981; font-size:10px;"></i> <b>Río Quinto - RP Nº 26:</b> 0.78 m (Normal)</li>
-        </ul>
+        <p style="font-size:0.82rem; color:#64748b; margin-top:4px;">Estado de niveles y amortiguación en cuenca:</p>
+        <div style="margin-top:10px; font-size:0.85rem; line-height: 1.8;">
+          <div><i class="fa-solid fa-circle" style="color:#10b981; font-size:10px;"></i> <b>Laguna La Margarita:</b> __NIVEL_MARGARITA__ m (__FACTOR_ALMACENAMIENTO__)</div>
+          <div><i class="fa-solid fa-circle" style="color:#10b981; font-size:10px;"></i> <b>Estado General:</b> <span style="color:__KPI_ESTADO_COLOR__; font-weight:bold;">__ESTADO_ALERTA__</span></div>
+          <div><i class="fa-solid fa-clock" style="color:#0284c7; font-size:10px;"></i> <b>Fecha Arribo Estimada a LP:</b> __FECHA_ARRIBO__</div>
+        </div>
       </div>
 
       <div class="card">
-        <h3><i class="fa-solid fa-bore-hole"></i> Monitoreo Freático</h3>
+        <h3><i class="fa-solid fa-bore-hole"></i> Red Freatimétrica Regional</h3>
         <div id="resumen-freatico-kpi" style="margin-top: 10px; font-size: 0.85rem; color:#64748b;">
-          Cargue la planilla Excel de la red freatimétrica en el visor para calcular continuidad histórica.
+          Cargue la planilla Excel de freatímetros en el visor para computar la serie histórica y el nivel freático regional.
         </div>
       </div>
     </div>
@@ -245,35 +277,35 @@
     <div class="visor-layout">
       <aside class="visor-sidebar">
         <div>
-          <h3 style="font-size: 1rem;"><i class="fa-solid fa-layer-group"></i> Gestión de Capas</h3>
-          <p style="font-size: 0.78rem; color: #64748b;">Cruce hidrometeorológico, humedad de suelo y freática.</p>
+          <h3 style="font-size: 1rem;"><i class="fa-solid fa-layer-group"></i> Cruce de Capas</h3>
+          <p style="font-size: 0.78rem; color: #64748b;">Superposición de sensores, ráster INTA y freatimetría.</p>
         </div>
 
-        <!-- Carga KML Humedad INTA -->
+        <!-- 1. Carga de KML de Humedad del Suelo (INTA) -->
         <div class="file-upload-block">
-          <label><i class="fa-solid fa-seedling" style="color:#16a34a;"></i> Subir KML Humedad de Suelo (INTA):</label>
+          <label><i class="fa-solid fa-seedling" style="color:#16a34a;"></i> Subir KML Humedad del Suelo (INTA):</label>
           <input type="file" id="inputKmlInta" accept=".kml" onchange="cargarKMLHumedadUniversal(event)" />
           <div id="info-kml" style="font-size: 0.75rem; color: #475569; margin-top: 4px;"></div>
         </div>
 
-        <!-- Carga Excel Freatímetros -->
+        <!-- 2. Carga de Freatímetros en Excel -->
         <div class="file-upload-block">
           <label><i class="fa-solid fa-file-excel" style="color:#0284c7;"></i> Subir Freatímetros (Excel):</label>
           <input type="file" id="inputExcelFreatica" accept=".xlsx, .xls, .csv" onchange="cargarExcelFreatimetros(event)" />
-          <p style="font-size: 0.7rem; color: #64748b; margin-top: 4px;">Detecta columnas de coordenadas, profundidad y fecha.</p>
+          <p style="font-size: 0.7rem; color: #64748b; margin-top: 4px;">Detecta coordenadas, profundidad y fecha de medición.</p>
         </div>
 
         <!-- Matriz de Cruce -->
         <div class="matriz-cruce">
-          <h4><i class="fa-solid fa-shield-halved"></i> Cruce Multicriterio de Alerta</h4>
+          <h4><i class="fa-solid fa-shield-halved"></i> Matriz de Cruce de Alerta</h4>
           <div id="resultado-matriz-cruce">
-            Esperando datos freáticos para cruzar con aviso meteorológico y suelo.
+            Esperando datos de freatímetros para cruzar con aviso meteorológico y humedad edáfica.
           </div>
         </div>
 
         <!-- Tabla Histórica Freatimétrica -->
         <div>
-          <h4 style="font-size: 0.82rem;"><i class="fa-solid fa-clock-rotate-left"></i> Red Freatimétrica (Datos Cargados)</h4>
+          <h4 style="font-size: 0.82rem;"><i class="fa-solid fa-clock-rotate-left"></i> Puntos Freáticos Registrados</h4>
           <div class="table-container">
             <table>
               <thead>
@@ -291,14 +323,14 @@
           </div>
         </div>
 
-        <!-- Leyenda -->
+        <!-- Leyenda de Redes -->
         <div class="legend-box">
-          <b>Redes Integradas en el Mapa:</b><br>
+          <b>Redes Activas en el Mapa:</b><br>
+          <span class="legend-dot" style="background:#2563eb;"></span> Cuerpos de Agua (INA / SNIH)<br>
           <span class="legend-dot" style="background:#d97706;"></span> REM San Luis (Cuenca Alta)<br>
           <span class="legend-dot" style="background:#7c3aed;"></span> Omixom Córdoba (Cuenca Media)<br>
           <span class="legend-dot" style="background:#0d9488;"></span> Omixom La Pampa (Cuenca Baja)<br>
           <span class="legend-dot" style="background:#0284c7;"></span> APA La Pampa (Red Oficial)<br>
-          <span class="legend-dot" style="background:#2563eb;"></span> INA/SNIH (Niveles de Río Quinto)<br>
           <span class="legend-dot" style="background:#10b981;"></span> Freatímetros (Subidos por usuario)
         </div>
       </aside>
@@ -307,30 +339,87 @@
     </div>
   </div>
 
-  <!-- SOLAPA 3: ALERTAS SMN (VISUALIZACIÓN GEORREFERENCIADA) -->
+  <!-- SOLAPA 3: REGISTROS Y ECMWF -->
+  <div id="tab-tablas" class="tab-content">
+    <div class="card" style="margin-bottom: 20px;">
+      <h3><i class="fa-solid fa-water"></i> Registros Hidrológicos (INA / SNIH)</h3>
+      <div style="overflow-x:auto; margin-top: 10px;">
+        <table>
+          <thead>
+            <tr>
+              <th>Estación / Río</th>
+              <th style="text-align:center;">Nivel Act.</th>
+              <th style="text-align:center;">Nivel Ant.</th>
+              <th style="text-align:center;">Variación</th>
+              <th style="text-align:center;">Cota Alerta</th>
+              <th style="text-align:center;">Cota Evac.</th>
+              <th style="text-align:center;">Estado</th>
+              <th style="text-align:right;">Última Medición</th>
+            </tr>
+          </thead>
+          <tbody>__FILAS_HIDRO__</tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom: 20px;">
+      <h3><i class="fa-solid fa-cloud-rain"></i> Pronóstico ECMWF IFS 0.25° a 72 Horas</h3>
+      <div style="overflow-x:auto; margin-top: 10px;">
+        <table>
+          <thead>
+            <tr>
+              <th>Nodo / Región</th>
+              <th>Provincia</th>
+              <th style="text-align:center;">Hoy</th>
+              <th style="text-align:center;">+24h</th>
+              <th style="text-align:center;">+48h</th>
+              <th style="text-align:center;">Acum. 72h</th>
+              <th style="text-align:center;">Media Mes</th>
+              <th style="text-align:center;">% Aporte Mes</th>
+            </tr>
+          </thead>
+          <tbody>__FILAS_ECMWF__</tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3><i class="fa-solid fa-temperature-half"></i> Redes Meteorológicas Integradas</h3>
+      <div style="overflow-x:auto; margin-top: 10px;">
+        <table>
+          <thead>
+            <tr>
+              <th>Estación</th>
+              <th>Provincia</th>
+              <th>Red</th>
+              <th style="text-align:center;">Temperatura</th>
+              <th style="text-align:center;">Lluvia 24h</th>
+              <th style="text-align:right;">Actualización</th>
+            </tr>
+          </thead>
+          <tbody>__FILAS_METEO__</tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- SOLAPA 4: ALERTAS OFICIALES SMN -->
   <div id="tab-smn" class="tab-content">
     <div class="card" style="margin-bottom: 20px;">
       <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
         <div>
-          <h2 style="font-size: 1.15rem; color:#1e3a8a;"><i class="fa-solid fa-triangle-exclamation" style="color:#eab308;"></i> SAT Oficial - Servicio Meteorológico Nacional</h2>
-          <p style="font-size:0.85rem; color:#64748b;">Monitoreo territorial y advertencias para San Luis, Córdoba y La Pampa.</p>
+          <h2 style="font-size: 1.15rem; color:#1e3a8a;"><i class="fa-solid fa-triangle-exclamation" style="color:__KPI_ALERTAS_COLOR__;"></i> Sistema de Alerta Temprana (SMN)</h2>
+          <p style="font-size:0.85rem; color:#64748b;">Alertas y avisos vigentes para los departamentos de la cuenca.</p>
         </div>
         <a href="https://www.smn.gob.ar/alertas" target="_blank" rel="noopener noreferrer" style="background:#1e3a8a; color:white; padding:8px 16px; border-radius:6px; text-decoration:none; font-weight:600; font-size:0.85rem;">
-          Ir al Sitio Oficial de Alertas SMN (smn.gob.ar/alertas) <i class="fa-solid fa-arrow-up-right-from-square"></i>
+          Ir a smn.gob.ar/alertas <i class="fa-solid fa-arrow-up-right-from-square"></i>
         </a>
       </div>
-    </div>
-
-    <!-- Mapa SMN directo -->
-    <div class="card">
-      <h3><i class="fa-solid fa-map"></i> Mapa de Zonas de Alerta SMN (Cuenca Río V)</h3>
-      <div id="map-smn" style="width:100%; height:520px; border-radius:8px; border:1px solid var(--border); margin-top:12px;"></div>
+      <div style="margin-top:15px;">__ALERTAS_SMN__</div>
     </div>
   </div>
 
   <script>
-    // --- GESTIÓN DE SOLAPAS ---
-    let mapSmnIniciado = false;
     function cambiarSolapa(idTab, ev) {
       document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
       document.querySelectorAll('.nav-tab-btn').forEach(el => el.classList.remove('active'));
@@ -340,13 +429,9 @@
       if (idTab === 'tab-visor' && map) {
         setTimeout(() => { map.invalidateSize(); }, 200);
       }
-      if (idTab === 'tab-smn' && !mapSmnIniciado) {
-        iniciarMapaSmn();
-        mapSmnIniciado = true;
-      }
     }
 
-    // --- MAPA PRINCIPAL ---
+    // --- INICIALIZACIÓN DEL MAPA ---
     const map = L.map('map').setView([-34.8, -64.6], 7);
     L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
       attribution: 'Esri Canvas',
@@ -359,6 +444,7 @@
     const fgOmxCba = L.layerGroup().addTo(map);
     const fgOmxLP = L.layerGroup().addTo(map);
     const fgApaLP = L.layerGroup().addTo(map);
+    const fgPoligonosSmn = L.layerGroup().addTo(map);
     let fgHumedadInta = L.layerGroup().addTo(map);
     let fgFreatimetros = L.layerGroup().addTo(map);
 
@@ -368,46 +454,98 @@
       "Omixom Córdoba (Cuenca Media)": fgOmxCba,
       "Omixom La Pampa (Cuenca Baja)": fgOmxLP,
       "APA La Pampa (Red Oficial)": fgApaLP,
+      "Zonas Alerta SMN": fgPoligonosSmn,
       "Humedad Suelo INTA (KML)": fgHumedadInta,
       "Freatímetros (Excel)": fgFreatimetros
     }, { collapsed: false }).addTo(map);
 
-    // Cargar estaciones iniciales desde el Python
-    const datos = window.DATOS_SAT_INICIALES || {
-      hidro: [
-        { nombre: "Malvin Reich", lat: -33.4383, lon: -65.8831, nivel_actual: 0.95 },
-        { nombre: "Justo Daract", lat: -33.9186, lon: -65.1517, nivel_actual: 1.79 },
-        { nombre: "R.N. 35", lat: -34.2164, lon: -64.3861, nivel_actual: 1.22 },
-        { nombre: "Laguna La Margarita", lat: -34.6533, lon: -63.7231, nivel_actual: 1.43 },
-        { nombre: "RP Nº 26", lat: -34.7628, lon: -63.6450, nivel_actual: 0.78 }
-      ],
-      meteo: []
-    };
+    // Render Hidrológico
+    if (window.DATOS_HIDRO) {
+      window.DATOS_HIDRO.forEach(h => {
+        L.circleMarker([h.lat, h.lon], {
+          radius: 7,
+          fillColor: h.color || "#2563eb",
+          color: "#fff",
+          weight: 2,
+          fillOpacity: 0.9
+        }).bindPopup(`
+          <b>${h.nombre}</b><br>
+          Río: ${h.rio}<br>
+          Nivel actual: <b>${h.nivel_actual.toFixed(2)} m</b><br>
+          Variación: <b>${h.variacion || '-'}</b><br>
+          Estado: <span style="color:${h.color}; font-weight:bold;">${h.estado}</span>
+        `).addTo(fgHidro);
+      });
+    }
 
-    // Render Hidro
-    datos.hidro.forEach(h => {
-      L.circleMarker([h.lat, h.lon], { radius: 7, fillColor: "#2563eb", color: "#fff", weight: 2, fillOpacity: 0.9 })
-       .bindPopup(`<b>${h.nombre}</b><br>Nivel actual: <b>${h.nivel_actual.toFixed(2)} m</b>`)
-       .addTo(fgHidro);
-    });
+    // Render REM San Luis
+    if (window.DATOS_REM_SL) {
+      window.DATOS_REM_SL.forEach(m => {
+        L.circleMarker([m.lat, m.lon], {
+          radius: 5.5,
+          fillColor: "#d97706",
+          color: "#fff",
+          weight: 1.5,
+          fillOpacity: 0.85
+        }).bindPopup(`<b>${m.nombre}</b><br>Red: REM San Luis<br>Lluvia 24h: <b>${m.lluvia_24h_mm} mm</b><br>Temp: ${m.temp_c} °C`)
+          .addTo(fgRemSL);
+      });
+    }
 
-    // Render Meteorológico completo por red
-    datos.meteo.forEach(m => {
-      let targetGroup = fgOmxCba;
-      let col = "#7c3aed";
+    // Render Omixom Córdoba
+    if (window.DATOS_OMX_CBA) {
+      window.DATOS_OMX_CBA.forEach(m => {
+        L.circleMarker([m.lat, m.lon], {
+          radius: 5.5,
+          fillColor: "#7c3aed",
+          color: "#fff",
+          weight: 1.5,
+          fillOpacity: 0.85
+        }).bindPopup(`<b>${m.nombre}</b><br>Red: Omixom Córdoba<br>Lluvia 24h: <b>${m.lluvia_24h_mm} mm</b>`)
+          .addTo(fgOmxCba);
+      });
+    }
 
-      if (m.red.indexOf("San Luis") !== -1) {
-        targetGroup = fgRemSL; col = "#d97706";
-      } else if (m.red.indexOf("APA") !== -1) {
-        targetGroup = fgApaLP; col = "#0284c7";
-      } else if (m.red.indexOf("La Pampa") !== -1) {
-        targetGroup = fgOmxLP; col = "#0d9488";
-      }
+    // Render Omixom La Pampa
+    if (window.DATOS_OMX_LP) {
+      window.DATOS_OMX_LP.forEach(m => {
+        L.circleMarker([m.lat, m.lon], {
+          radius: 5.5,
+          fillColor: "#0d9488",
+          color: "#fff",
+          weight: 1.5,
+          fillOpacity: 0.85
+        }).bindPopup(`<b>${m.nombre}</b><br>Red: Omixom La Pampa<br>Lluvia 24h: <b>${m.lluvia_24h_mm} mm</b>`)
+          .addTo(fgOmxLP);
+      });
+    }
 
-      L.circleMarker([m.lat, m.lon], { radius: 5.5, fillColor: col, color: "#fff", weight: 1.5, fillOpacity: 0.85 })
-       .bindPopup(`<b>${m.nombre}</b><br>Red: ${m.red}<br>Lluvia 24h: <b>${m.lluvia_24h_mm || 0} mm</b><br>Temp: ${m.temp_c ? m.temp_c + ' °C' : 'S/D'}`)
-       .addTo(targetGroup);
-    });
+    // Render APA La Pampa
+    if (window.DATOS_APA_LP) {
+      window.DATOS_APA_LP.forEach(m => {
+        L.circleMarker([m.lat, m.lon], {
+          radius: 5.5,
+          fillColor: "#0284c7",
+          color: "#fff",
+          weight: 1.5,
+          fillOpacity: 0.85
+        }).bindPopup(`<b>${m.nombre}</b><br>Red: APA La Pampa<br>Lluvia 24h: <b>${m.lluvia_24h_mm} mm</b><br>Temp: ${m.temp_c} °C`)
+          .addTo(fgApaLP);
+      });
+    }
+
+    // Render Polígonos SMN
+    if (window.DATOS_POLIGONOS_SMN) {
+      window.DATOS_POLIGONOS_SMN.forEach(p => {
+        L.polygon(p.coords, {
+          color: p.color,
+          fillColor: p.color,
+          fillOpacity: 0.25,
+          weight: 2
+        }).bindPopup(`<b>Zona SAT SMN:</b> ${p.zona}<br>Nivel: <b>${p.nivel}</b><br>Fenómeno: ${p.evento}`)
+          .addTo(fgPoligonosSmn);
+      });
+    }
 
     // --- 1. OPEN-METEO GRADUADO ---
     let lluvia24hOpenMeteo = 0;
@@ -423,9 +561,9 @@
         if (lluvia24hOpenMeteo >= 65 || viento >= 80) {
           clase = "alerta-rojo"; texto = "ROJO - ALERTA SEVERA"; msg = "Precipitaciones extremas o vientos severos.";
         } else if (lluvia24hOpenMeteo >= 35 || viento >= 60) {
-          clase = "alerta-naranja"; texto = "NARANJA - ALERTA MODERADA"; msg = "Precipitaciones abundantes de consideración.";
+          clase = "alerta-naranja"; texto = "NARANJA - ALERTA MODERADA"; msg = "Precipitaciones acumuladas de consideración.";
         } else if (lluvia24hOpenMeteo >= 15 || viento >= 40) {
-          clase = "alerta-amarillo"; texto = "AMARILLO - ATENCIÓN / VIGILANCIA"; msg = "Lluvias aisladas o ráfagas moderadas.";
+          clase = "alerta-amarillo"; texto = "AMARILLO - ATENCIÓN / VIGILANCIA"; msg = "Lluvias aisladas o ráfagas moderadas comunes.";
         }
 
         cont.innerHTML = `
@@ -434,7 +572,7 @@
             <div>
               <strong>${texto}</strong>
               <div style="font-size:0.8rem; margin-top:2px;">${msg}</div>
-              <div style="font-size:0.75rem; margin-top:4px;"><b>Lluvia 24h:</b> ${lluvia24hOpenMeteo.toFixed(1)} mm | <b>Ráfagas máx:</b> ${viento.toFixed(1)} km/h</div>
+              <div style="font-size:0.75rem; margin-top:4px;"><b>Lluvia 24h prevista:</b> ${lluvia24hOpenMeteo.toFixed(1)} mm | <b>Viento máx:</b> ${viento.toFixed(1)} km/h</div>
             </div>
           </div>
         `;
@@ -445,7 +583,7 @@
     }
     cargarOpenMeteo();
 
-    // --- 2. CARGA ROBUSTA DE KML DE HUMEDAD (INTA) ---
+    // --- 2. PARSER DE KML DE HUMEDAD INTA (SOPORTA GROUNDOVERLAY RÁSTER Y VECTORES) ---
     function cargarKMLHumedadUniversal(event) {
       const file = event.target.files[0];
       if (!file) return;
@@ -458,6 +596,39 @@
         try {
           const parser = new DOMParser();
           const xmlDoc = parser.parseFromString(kmlText, "text/xml");
+
+          // CASO A: GroundOverlay (KML oficial INTA con imagen ráster)
+          const groundOverlays = xmlDoc.getElementsByTagName("GroundOverlay");
+          if (groundOverlays.length > 0) {
+            const overlay = groundOverlays[0];
+            const name = overlay.getElementsByTagName("name")[0]?.textContent || "Humedad de Suelo INTA";
+            const desc = overlay.getElementsByTagName("description")[0]?.textContent || "";
+            let imgUrl = overlay.getElementsByTagName("href")[0]?.textContent || "";
+
+            const latLonBox = overlay.getElementsByTagName("LatLonBox")[0];
+            if (latLonBox && imgUrl) {
+              const north = parseFloat(latLonBox.getElementsByTagName("north")[0].textContent);
+              const south = parseFloat(latLonBox.getElementsByTagName("south")[0].textContent);
+              const east = parseFloat(latLonBox.getElementsByTagName("east")[0].textContent);
+              const west = parseFloat(latLonBox.getElementsByTagName("west")[0].textContent);
+
+              const bounds = [[south, west], [north, east]];
+
+              const imageOverlay = L.imageOverlay(imgUrl, bounds, {
+                opacity: 0.72,
+                interactive: true
+              }).bindPopup(`<b>${name}</b><br>${desc}`);
+
+              fgHumedadInta.addLayer(imageOverlay);
+              map.fitBounds(bounds);
+
+              document.getElementById("info-kml").innerHTML = `✅ Ráster de Humedad INTA cargado con éxito.`;
+              calcularCruce();
+              return;
+            }
+          }
+
+          // CASO B: Geometrías Vectoriales (Placemarks / Polígonos)
           const placemarks = xmlDoc.getElementsByTagName("Placemark");
           let bounds = L.latLngBounds();
           let count = 0;
@@ -467,7 +638,6 @@
             const name = pm.getElementsByTagName("name")[0]?.textContent || "Zona INTA";
             const desc = pm.getElementsByTagName("description")[0]?.textContent || "";
 
-            // Parsear coordenadas de polígonos
             const coordTags = pm.getElementsByTagName("coordinates");
             if (coordTags.length > 0) {
               const rawCoords = coordTags[0].textContent.trim().split(/\s+/);
@@ -493,34 +663,25 @@
                 }).bindPopup(`<b>${name}</b><br>${desc}`);
                 fgHumedadInta.addLayer(poly);
                 count++;
-              } else if (latlngs.length === 1) {
-                const marker = L.circleMarker(latlngs[0], {
-                  radius: 6,
-                  color: "#047857",
-                  fillColor: "#10b981",
-                  fillOpacity: 0.8
-                }).bindPopup(`<b>${name}</b><br>${desc}`);
-                fgHumedadInta.addLayer(marker);
-                count++;
               }
             }
           }
 
           if (count > 0 && bounds.isValid()) {
             map.fitBounds(bounds);
-            document.getElementById("info-kml").innerHTML = `✅ Capa KML de INTA cargada con éxito (${count} elementos).`;
+            document.getElementById("info-kml").innerHTML = `✅ KML vectorial de INTA cargado (${count} zonas).`;
             calcularCruce();
           } else {
-            document.getElementById("info-kml").innerHTML = `⚠️ No se detectaron geometrías vectoriales estándar en el KML.`;
+            document.getElementById("info-kml").innerHTML = `⚠️ No se detectaron coordenadas válidas en el KML.`;
           }
         } catch (err) {
-          alert("Error al leer el archivo KML: " + err.message);
+          alert("Error al procesar el KML del INTA: " + err.message);
         }
       };
       reader.readAsText(file);
     }
 
-    // --- 3. CARGA DE FREATÍMETROS REALES (EXCEL) ---
+    // --- 3. CARGA DE FREATÍMETROS (EXCEL) ---
     let listaFreaticaCargada = [];
     function cargarExcelFreatimetros(ev) {
       const file = ev.target.files[0];
@@ -539,7 +700,6 @@
           tbody.innerHTML = "";
 
           rows.forEach((r, idx) => {
-            // Detección automática y flexible de nombres de columna
             const lat = parseFloat(r.Latitud || r.lat || r.LAT || r.Lat || r.Latitude);
             const lon = parseFloat(r.Longitud || r.lon || r.LON || r.Lon || r.Longitude || r.Lng);
             const prof = parseFloat(r.Profundidad_m || r.profundidad || r.Prof || r.Nivel_m || r.prof || r.Cota_freatica);
@@ -560,7 +720,7 @@
                 color: "#fff",
                 weight: 2,
                 fillOpacity: 0.95
-              }).bindPopup(`<b>Freatímetro: ${id}</b><br>Profundidad napa: <b>${prof.toFixed(2)} m</b><br>Umbral: ${umbral} m<br>Fecha: ${fecha}`)
+              }).bindPopup(`<b>Freatímetro: ${id}</b><br>Profundidad: <b>${prof.toFixed(2)} m</b><br>Umbral: ${umbral} m<br>Fecha: ${fecha}`)
                 .addTo(fgFreatimetros);
 
               tbody.innerHTML += `
@@ -576,16 +736,16 @@
 
           if (listaFreaticaCargada.length > 0) {
             document.getElementById("resumen-freatico-kpi").innerHTML = `
-              <p><b>Puntos reales cargados:</b> ${listaFreaticaCargada.length}</p>
+              <p><b>Puntos reales monitoreados:</b> ${listaFreaticaCargada.length}</p>
               <p><b>Profundidad mínima:</b> ${Math.min(...listaFreaticaCargada.map(x => x.prof)).toFixed(2)} m</p>
             `;
             calcularCruce();
-            alert(`Se cargaron y georreferenciaron ${listaFreaticaCargada.length} freatímetros correctamente.`);
+            alert(`Se cargaron ${listaFreaticaCargada.length} freatímetros con éxito.`);
           } else {
-            alert("No se reconocieron columnas de coordenadas (Latitud/Longitud) y Profundidad.");
+            alert("No se encontraron columnas válidas de Latitud, Longitud y Profundidad.");
           }
         } catch (err) {
-          alert("Error al procesar el Excel: " + err.message);
+          alert("Error al leer el archivo Excel: " + err.message);
         }
       };
       reader.readAsArrayBuffer(file);
@@ -595,7 +755,7 @@
     function calcularCruce() {
       const box = document.getElementById("resultado-matriz-cruce");
       if (listaFreaticaCargada.length === 0) {
-        box.innerHTML = "Cargue freatímetros en Excel para cruzar con lluvia y suelo.";
+        box.innerHTML = "Suba una planilla Excel de freatímetros para cruzar napa, aviso meteorológico y humedad de suelo.";
         return;
       }
 
@@ -604,13 +764,13 @@
 
       if (minProf <= 0.80 && lluvia24hOpenMeteo >= 30) {
         nivel = "ROJO (Saturación y Escorrentía Crítica)"; col = "#dc2626";
-        desc = "Nivel freático casi superficial coincidente con precipitaciones copiosas previas o esperadas.";
+        desc = "Napa en superficie con lluvias importantes. Riesgo inminente de anegamiento en bajos.";
       } else if (minProf <= 1.20 && lluvia24hOpenMeteo >= 15) {
         nivel = "NARANJA (Alerta Hidrogeológica)"; col = "#ea580c";
-        desc = "Napa en cota de alerta con lluvias moderadas previstas.";
+        desc = "Nivel freático alto combinado con lluvias moderadas previstas.";
       } else if (minProf <= 1.20 || lluvia24hOpenMeteo >= 15) {
         nivel = "AMARILLO (Vigilancia Preventiva)"; col = "#ca8a04";
-        desc = "Monitorear escurrimientos hacia depresiones naturales y bajos.";
+        desc = "Monitorear escorrentías en bañados y canales de alivio.";
       }
 
       box.innerHTML = `
@@ -619,38 +779,6 @@
           <span>${desc}</span>
         </div>
       `;
-    }
-
-    // --- 5. MAPA SMN CON GEOMETRÍAS LOCALES (JSON) ---
-    function iniciarMapaSmn() {
-      const mapSmn = L.map('map-smn').setView([-34.8, -64.6], 7);
-      L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
-        attribution: 'Esri',
-        maxZoom: 16
-      }).addTo(mapSmn);
-
-      // Cargar geometrías sat smn desde el repositorio
-      fetch("geometrias_sat_smn.json")
-        .then(r => r.json())
-        .then(geoData => {
-          L.geoJson(geoData, {
-            style: function(feature) {
-              return {
-                color: "#ca8a04",
-                fillColor: "#fef08a",
-                fillOpacity: 0.35,
-                weight: 2
-              };
-            },
-            onEachFeature: function(feature, layer) {
-              let p = feature.properties || {};
-              layer.bindPopup(`<b>Zona SAT SMN:</b> ${p.Nombre || p.name || 'Área de Cobertura'}<br>Provincia: ${p.Provincia || 'Región Central'}`);
-            }
-          }).addTo(mapSmn);
-        })
-        .catch(err => {
-          console.warn("No se pudo cargar geometrias_sat_smn.json:", err);
-        });
     }
   </script>
 </body>
