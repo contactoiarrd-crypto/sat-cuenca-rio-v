@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 SISTEMA DE ALERTA TEMPRANA TRIPROVINCIAL: CUENCA RÍO V (SAN LUIS - CÓRDOBA - LA PAMPA)
-Monitoreo Hidrometeorológico Online, Red Freatimétrica, Cruce Multicriterio y Descarga de Informes.
+Monitoreo Hidrometeorológico Online, Red Freatimétrica, Cruce Multicriterio y Renderizador Web.
 """
 import os
 import sys
@@ -41,6 +41,8 @@ EXCEL_SALIDA = "sat_unificado_rio_v_triprovincial.xlsx"
 MAPA_HTML_SALIDA = "mapa_sat_rio_v_triprovincial.html"
 CSV_SALIDA = "resumen_cruce_rio_v_triprovincial.csv"
 HISTORICO_FREATIMETROS_FILE = "historico_freatimetros_cuenca.xlsx"
+TEMPLATE_HTML_FILE = "template.html"
+INDEX_HTML_FILE = "index.html"
 
 # =============================================================
 # 2. CATÁLOGO ESTÁTICO REDES OMIXOM (CÓRDOBA Y LA PAMPA)
@@ -100,8 +102,6 @@ session.mount("https://", HTTPAdapter(max_retries=retries))
 # 4. CATÁLOGO CUERPOS DE AGUA (INA / SNIH) Y COTAS FÍSICAS
 # =============================================================
 BASE_URL_INA = "https://alerta.ina.gob.ar/pub/datos"
-URL_API_SNIH = "https://snih.hidricosargentina.gob.ar/MuestraDatos.aspx/LeerDatosActuales"
-
 timestart_str = (ahora - timedelta(days=4)).strftime("%Y-%m-%d")
 timeend_str = (ahora + timedelta(days=1)).strftime("%Y-%m-%d")
 
@@ -138,17 +138,17 @@ UMBRALES_NOMINALES = {
 # =============================================================
 def cargar_historico_freatimetros(ruta_excel=HISTORICO_FREATIMETROS_FILE):
     """
-    Carga o inicializa la red freatimétrica histórica de la cuenca.
+    Carga o inicializa la base histórica de freatímetros en la cuenca.
     """
     if os.path.exists(ruta_excel):
         try:
             df = pd.read_excel(ruta_excel)
-            print(f" -> [FREATÍMETROS] {len(df)} registros históricos cargados desde {ruta_excel}.")
+            print(f" -> [FREATÍMETROS] {len(df)} registros cargados desde {ruta_excel}.")
             return df
         except Exception as e:
-            print(f" [AVISO FREATÍMETROS]: Error al leer archivo: {e}")
+            print(f" [AVISO FREATÍMETROS]: Error al abrir archivo: {e}")
     
-    # Red base inicial en caso de no existir archivo aún
+    # Red inicial por defecto si aún no se subió el archivo
     datos_base = [
         {"id": "FR-PICO-01", "localidad": "General Pico", "lat": -35.658, "lon": -63.758, "fecha": ahora.strftime("%Y-%m-%d"), "profundidad_m": 1.65, "umbral_critico_m": 1.20, "provincia": "La Pampa"},
         {"id": "FR-REAL-02", "localidad": "Realicó", "lat": -35.034, "lon": -64.245, "fecha": ahora.strftime("%Y-%m-%d"), "profundidad_m": 1.90, "umbral_critico_m": 1.20, "provincia": "La Pampa"},
@@ -158,7 +158,7 @@ def cargar_historico_freatimetros(ruta_excel=HISTORICO_FREATIMETROS_FILE):
     df = pd.DataFrame(datos_base)
     try:
         df.to_excel(ruta_excel, index=False)
-        print(f" -> [FREATÍMETROS] Creada base inicial en {ruta_excel}.")
+        print(f" -> [FREATÍMETROS] Base inicial generada en {ruta_excel}.")
     except Exception:
         pass
     return df
@@ -198,24 +198,24 @@ def clasificar_alerta_multicriterio(lluvia_24h, viento_kmh=0.0, prof_freatica_mi
     - Verde: lluvia < 15 mm
     - Amarillo: 15 <= lluvia < 35 mm o viento moderado
     - Naranja: 35 <= lluvia < 65 mm o napa alta (<1.2m) con lluvias
-    - Rojo: lluvia >= 65 mm o napa casi aflorando (<0.8m) con lluvias abundantes
+    - Rojo: lluvia >= 65 mm o napa casi en superficie (<0.8m) con lluvias copiosas
     """
     if prof_freatica_min is not None and prof_freatica_min <= 0.80:
         if lluvia_24h >= 30:
-            return "#dc2626", "Rojo - Alerta Severa (Saturación y Escorrentía)", "Napas aflorando y lluvias copiosas. Riesgo crítico de colmatación."
+            return "#dc2626", "Rojo - Alerta Severa (Saturación y Escorrentía)", "Napas aflorando y lluvias importantes. Riesgo de anegamiento directo."
         elif lluvia_24h >= 10:
-            return "#ea580c", "Naranja - Alerta Moderada", "Napa freática en superficie con aportes pluviales moderados."
+            return "#ea580c", "Naranja - Alerta Moderada", "Napa superficial con aportes pluviales moderados."
         else:
-            return "#ca8a04", "Amarillo - Atención Freática", "Napa casi superficial sin precipitaciones inmediatas."
+            return "#ca8a04", "Amarillo - Atención Freática", "Napa freática alta sin precipitaciones inmediatas."
 
     if lluvia_24h >= 65 or viento_kmh >= 80:
         return "#dc2626", "Rojo - Alerta Severa", "Precipitaciones extremas o ráfagas destructivas previstas."
     elif lluvia_24h >= 35 or viento_kmh >= 60:
-        return "#ea580c", "Naranja - Alerta Moderada", "Lluvias abundantes previstas; vigilar anegamientos locales."
+        return "#ea580c", "Naranja - Alerta Moderada", "Lluvias abundantes; monitorear drenajes y zonas bajas."
     elif lluvia_24h >= 15 or viento_kmh >= 40:
-        return "#ca8a04", "Amarillo - Atención / Vigilancia", "Lluvias o vientos moderados sin peligro inminente."
+        return "#ca8a04", "Amarillo - Atención / Vigilancia", "Lluvias y ráfagas moderadas ordinarias."
     else:
-        return "#16a34a", "Verde - Normal / Seguro", "Condiciones ordinarias estables en cuenca."
+        return "#16a34a", "Verde - Normal / Seguro", "Condiciones ordinarias estables."
 
 def calcular_tiempo_viaje_onda(lista_hidro_resumen, lista_rayos=[], df_freatico=None):
     dict_h = {h["nombre"]: h for h in lista_hidro_resumen}
@@ -268,13 +268,11 @@ def calcular_tiempo_viaje_onda(lista_hidro_resumen, lista_rayos=[], df_freatico=
     f_llegada_max = ahora + timedelta(days=t_est_max)
 
     alerta_activa = estado_alerta_origen in ["Alerta Hidrológica", "Evacuación Oficial", "Precaución"]
-    
-    # Comprobar estado freático mínimo
     prof_freatica_min = df_freatico["profundidad_m"].min() if (df_freatico is not None and not df_freatico.empty) else 1.50
     
     banner_msg = (
         f"CUENCA EN MONITOREO METEOROLÓGICO Y FREÁTICO | "
-        f"Nivel en Laguna La Margarita: {nivel_margarita:.2f} m ({factor_almacenamiento}). "
+        f"Laguna La Margarita: {nivel_margarita:.2f} m ({factor_almacenamiento}). "
         f"Ventana teórica estimada a límite pampeano: {t_est_min:.0f} a {t_est_max:.0f} días "
         f"({f_llegada_min.strftime('%d/%m')} al {f_llegada_max.strftime('%d/%m/%Y')}). "
         f"Freática regional mínima: {prof_freatica_min:.2f} m."
@@ -298,7 +296,7 @@ def calcular_tiempo_viaje_onda(lista_hidro_resumen, lista_rayos=[], df_freatico=
 # 7. EXTRACCIÓN METEOROLÓGICA Y DESCARGAS
 # =============================================================
 def obtener_estaciones_omixom():
-    print("1. Cargando catálogo de redes Omixom (Córdoba y La Pampa)...", flush=True)
+    print("1. Cargando catálogo de redes Omixom...", flush=True)
     return ESTACIONES_OMIXOM_ESTATICAS
 
 def obtener_estaciones_san_luis():
@@ -375,13 +373,6 @@ def obtener_estaciones_apa_lapampa():
         })
     return estaciones_apa
 
-def normalizar_a_lista(resp_json):
-    if isinstance(resp_json, list): return resp_json
-    if isinstance(resp_json, dict):
-        for k in ["data", "datos", "series", "estaciones", "results"]:
-            if k in resp_json and isinstance(resp_json[k], list): return resp_json[k]
-    return []
-
 def obtener_datos_hidrologicos():
     print("4. Extrayendo niveles de cuenca (INA / Catálogo Operativo)...", flush=True)
     base_niveles = {
@@ -404,276 +395,4 @@ def obtener_datos_hidrologicos():
     return registros_hidro
 
 def obtener_descargas_atmosfericas():
-    return [{"lat": -34.5, "lon": -64.2, "hora": ahora.strftime("%H:%M"), "tipo": "Nube-Suelo"}]
-
-# =============================================================
-# 8. GENERACIÓN DE ENTREGABLES (EXCEL, CSV Y MAPA HTML)
-# =============================================================
-def generar_entregables(estaciones_meteo, registros_hidro, lista_rayos, df_freatico):
-    print("5. Compilando modelo hidrológico y generando archivos...", flush=True)
-    
-    df_hidro_raw = pd.DataFrame(registros_hidro)
-    df_hidro_raw["fecha_dt"] = pd.to_datetime(df_hidro_raw["fecha"], errors="coerce")
-    
-    lista_hidro_resumen = []
-    for nombre_est, grp in df_hidro_raw.groupby("nombre"):
-        grp_ord = grp.sort_values("fecha_dt")
-        ult = grp_ord.iloc[-1]
-        color, estado, c_alerta, c_evac = clasificar_nivel_hidrologico(ult["valor"], nombre_est)
-        lista_hidro_resumen.append({
-            "nombre": nombre_est,
-            "rio": ult["rio"],
-            "distrito": ult["distrito"],
-            "lat": ult["lat"],
-            "lon": ult["lon"],
-            "nivel_actual": ult["valor"],
-            "media_hist": round(grp_ord["valor"].mean(), 2),
-            "cota_alerta": c_alerta,
-            "cota_evac": c_evac,
-            "margen_alerta": round(c_alerta - ult["valor"], 2),
-            "tendencia": "Estable ▬",
-            "variacion": 0.0,
-            "color": color,
-            "estado": estado,
-            "fecha": ult["fecha"],
-            "fuente": ult["fuente"]
-        })
-
-    diag_onda = calcular_tiempo_viaje_onda(lista_hidro_resumen, lista_rayos, df_freatico)
-
-    # A. Archivo CSV de Cruce
-    filas_cruce = []
-    for h in lista_hidro_resumen:
-        min_d = float("inf")
-        m_cercana = None
-        for m in estaciones_meteo:
-            d = distancia_haversine(h["lat"], h["lon"], m["lat"], m["lon"])
-            if d < min_d:
-                min_d = d
-                m_cercana = m
-        
-        lluvia_val = m_cercana["lluvia_24h_mm"] if m_cercana else 0.0
-        _, tag_alerta, desc_alerta = clasificar_alerta_multicriterio(lluvia_val, prof_freatica_min=diag_onda["prof_freatica_min"])
-
-        filas_cruce.append({
-            "Estación Hidrológica": h["nombre"],
-            "Río / Cuenca": h["rio"],
-            "Nivel Actual (m)": h["nivel_actual"],
-            "Media Histórica (m)": h["media_hist"],
-            "Cota Alerta (m)": h["cota_alerta"],
-            "Estado Semáforo": h["estado"],
-            "Estación Meteo Cercana": f"{m_cercana['nombre']} ({m_cercana['provincia']})" if m_cercana else "N/A",
-            "Lluvia 24h (mm)": lluvia_val,
-            "Nivel Alerta Meteo-Freático": tag_alerta,
-            "Evaluación de Riesgo": desc_alerta
-        })
-
-    df_cruce = pd.DataFrame(filas_cruce)
-    df_cruce.to_csv(CSV_SALIDA, index=False, encoding="utf-8-sig")
-    print(f" -> [CSV CRUCE GUARDADO]: {CSV_SALIDA}")
-
-    # B. Libro Excel Multisolapa Ejecutivo
-    wb = openpyxl.Workbook()
-    wb.remove(wb.active)
-
-    font_title = Font(name="Segoe UI", size=13, bold=True, color="FFFFFF")
-    font_tbl_head = Font(name="Segoe UI", size=9.5, bold=True, color="FFFFFF")
-    font_data = Font(name="Segoe UI", size=9)
-    fill_navy = PatternFill(start_color="1B365D", end_color="1B365D", fill_type="solid")
-    fill_med_blue = PatternFill(start_color="2B4C7E", end_color="2B4C7E", fill_type="solid")
-
-    ws1 = wb.create_sheet(title="Monitoreo en Tiempo Real")
-    ws1.views.sheetView[0].showGridLines = True
-    ws1.merge_cells("A1:J1")
-    # TEXTO ACTUALIZADO
-    ws1["A1"] = "MONITOREO METEOROLÓGICO EN TIEMPO REAL - CUENCA RÍO V"
-    ws1["A1"].font = font_title
-    ws1["A1"].fill = fill_navy
-    ws1["A1"].alignment = Alignment(horizontal="center", vertical="center")
-
-    headers_c = ["N°", "Punto Hidrológico", "Río", "Nivel (m)", "Cota Alerta (m)", "Semáforo", "Estación Meteo", "Lluvia 24h", "Alerta Cruzada", "Diagnóstico"]
-    for c, h in enumerate(headers_c, start=1):
-        cell = ws1.cell(row=3, column=c, value=h)
-        cell.font = font_tbl_head
-        cell.fill = fill_med_blue
-        cell.alignment = Alignment(horizontal="center", vertical="center")
-
-    for idx, r in df_cruce.iterrows():
-        rn = 4 + idx
-        ws1.cell(row=rn, column=1, value=idx+1)
-        ws1.cell(row=rn, column=2, value=r["Estación Hidrológica"])
-        ws1.cell(row=rn, column=3, value=r["Río / Cuenca"])
-        ws1.cell(row=rn, column=4, value=r["Nivel Actual (m)"])
-        ws1.cell(row=rn, column=5, value=r["Cota Alerta (m)"])
-        ws1.cell(row=rn, column=6, value=r["Estado Semáforo"])
-        ws1.cell(row=rn, column=7, value=r["Estación Meteo Cercana"])
-        ws1.cell(row=rn, column=8, value=r["Lluvia 24h (mm)"])
-        ws1.cell(row=rn, column=9, value=r["Nivel Alerta Meteo-Freático"])
-        ws1.cell(row=rn, column=10, value=r["Evaluación de Riesgo"])
-        for c in range(1, 11):
-            ws1.cell(row=rn, column=c).font = font_data
-
-    # Solapa de Freatímetros
-    ws_freatica = wb.create_sheet(title="Red Freatimétrica Histórica")
-    ws_freatica.views.sheetView[0].showGridLines = True
-    ws_freatica.merge_cells("A1:G1")
-    ws_freatica["A1"] = "CONTINUIDAD HISTÓRICA DE NIVELES FREÁTICOS"
-    ws_freatica["A1"].font = font_title
-    ws_freatica["A1"].fill = fill_navy
-    ws_freatica["A1"].alignment = Alignment(horizontal="center", vertical="center")
-
-    headers_fr = ["ID", "Localidad", "Provincia", "Latitud", "Longitud", "Profundidad (m)", "Umbral Crítico (m)"]
-    for c, h in enumerate(headers_fr, start=1):
-        cell = ws_freatica.cell(row=3, column=c, value=h)
-        cell.font = font_tbl_head
-        cell.fill = fill_med_blue
-
-    for idx, r in df_freatico.iterrows():
-        rn = 4 + idx
-        ws_freatica.cell(row=rn, column=1, value=r["id"])
-        ws_freatica.cell(row=rn, column=2, value=r["localidad"])
-        ws_freatica.cell(row=rn, column=3, value=r["provincia"])
-        ws_freatica.cell(row=rn, column=4, value=r["lat"])
-        ws_freatica.cell(row=rn, column=5, value=r["lon"])
-        ws_freatica.cell(row=rn, column=6, value=r["profundidad_m"])
-        ws_freatica.cell(row=rn, column=7, value=r["umbral_critico_m"])
-
-    wb.save(EXCEL_SALIDA)
-    print(f" -> [EXCEL GUARDADO]: {EXCEL_SALIDA}")
-
-    # C. Mapa Folium con Módulo de Carga KML INTA y Embebido SMN
-    lat_centro = np.mean([h["lat"] for h in lista_hidro_resumen])
-    lon_centro = np.mean([h["lon"] for h in lista_hidro_resumen])
-    
-    mapa = folium.Map(location=[lat_centro, lon_centro], zoom_start=7, tiles=None)
-
-    folium.TileLayer(
-        tiles="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}",
-        attr="Esri",
-        name="Cartografía Base Clara (Esri Canvas)",
-        max_zoom=16
-    ).add_to(mapa)
-
-    fg_hidro = folium.FeatureGroup(name="Cuerpos de Agua (INA/SNIH)", show=True)
-    fg_meteo = folium.FeatureGroup(name="Estaciones Meteorológicas", show=True)
-    fg_freatica = folium.FeatureGroup(name="Freatímetros (Red Histórica)", show=True)
-
-    # Cuerpos de agua
-    for h in lista_hidro_resumen:
-        folium.CircleMarker(
-            location=[h["lat"], h["lon"]],
-            radius=7,
-            color=h["color"],
-            fill=True,
-            fill_color=h["color"],
-            fill_opacity=0.9,
-            tooltip=f"{h['nombre']}: {h['nivel_actual']:.2f} m ({h['estado']})"
-        ).add_to(fg_hidro)
-
-    # Estaciones Meteo
-    for m in estaciones_meteo:
-        folium.CircleMarker(
-            location=[m["lat"], m["lon"]],
-            radius=5,
-            color="#0284c7",
-            fill=True,
-            fill_color="#38bdf8",
-            fill_opacity=0.85,
-            tooltip=f"{m['nombre']} | Lluvia: {m['lluvia_24h_mm']:.1f} mm"
-        ).add_to(fg_meteo)
-
-    # Freatímetros
-    for _, fr in df_freatico.iterrows():
-        prof = fr["profundidad_m"]
-        color_fr = "#dc2626" if prof <= 0.80 else ("#f59e0b" if prof <= fr["umbral_critico_m"] else "#10b981")
-        folium.CircleMarker(
-            location=[fr["lat"], fr["lon"]],
-            radius=6,
-            color=color_fr,
-            fill=True,
-            fill_color=color_fr,
-            fill_opacity=0.95,
-            tooltip=f"Freatímetro {fr['id']} ({fr['localidad']}): Napa a {prof:.2f} m"
-        ).add_to(fg_freatica)
-
-    fg_hidro.add_to(mapa)
-    fg_meteo.add_to(mapa)
-    fg_freatica.add_to(mapa)
-    folium.LayerControl(position="topright", collapsed=False).add_to(mapa)
-
-    # Inyección de componentes interactivos (KML INTA, Embebido SMN y Panel Freático)
-    html_complementos = """
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-omnivore/0.3.4/leaflet-omnivore.min.js"></script>
-    <div style="position: fixed; bottom: 25px; left: 20px; width: 330px; background: white;
-                border: 1px solid #cbd5e1; border-radius: 8px; z-index: 1000; font-family: Arial, sans-serif;
-                font-size: 11px; padding: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.2);">
-        <b style="font-size: 12px; color: #1e3a8a;">SAT CUENCA RÍO V | CRUCE MULTICRITERIO</b><hr style="margin:6px 0;">
-        
-        <b>Subir KML Humedad Suelo (INTA):</b>
-        <input type="file" id="kmlIntaInput" accept=".kml" style="width:100%; font-size:10px; margin-top:3px; margin-bottom:8px;">
-        
-        <b>Alertas SMN Oficiales:</b><br>
-        <a href="https://www.smn.gob.ar/alertas" target="_blank" style="color: #0284c7; text-decoration: underline; font-weight: bold;">
-            Abrir Portal de Alertas SMN (smn.gob.ar/alertas) ↗
-        </a>
-        <hr style="margin:6px 0;">
-        <span style="font-size: 10px; color: #64748b;">
-            El semáforo cruza precipitación prevista, afloramiento freático y retención de suelos.
-        </span>
-    </div>
-
-    <script>
-    document.addEventListener("DOMContentLoaded", function() {
-        var mapInstance = null;
-        for (var k in window) {
-            if (k.startsWith("map_") && window[k] instanceof L.Map) {
-                mapInstance = window[k];
-                break;
-            }
-        }
-        if (!mapInstance) return;
-
-        var inputKml = document.getElementById("kmlIntaInput");
-        if (inputKml) {
-            inputKml.addEventListener("change", function(e) {
-                var file = e.target.files[0];
-                if (!file) return;
-                var reader = new FileReader();
-                reader.onload = function(evt) {
-                    var kmlText = evt.target.result;
-                    var capaKml = omnivore.kml.parse(kmlText, null, L.geoJson(null, {
-                        style: { color: "#059669", fillColor: "#10b981", fillOpacity: 0.35, weight: 1.5 }
-                    })).addTo(mapInstance);
-                    alert("Capa KML de Humedad de Suelo INTA agregada al visor.");
-                };
-                reader.readAsText(file);
-            });
-        }
-    });
-    </script>
-    """
-    mapa.get_root().html.add_child(folium.Element(html_complementos))
-    mapa.save(MAPA_HTML_SALIDA)
-    print(f" -> [MAPA HTML GENERADO]: {MAPA_HTML_SALIDA}")
-
-# =============================================================
-# 9. EJECUCIÓN PRINCIPAL
-# =============================================================
-if __name__ == "__main__":
-    print("=" * 70)
-    print(">>> SAT TRIPROVINCIAL: ACTUALIZACIÓN HIDROMETEOROLÓGICA Y FREÁTICA <<<")
-    print("=" * 70)
-    
-    df_freatico = cargar_historico_freatimetros()
-    meteo_omixom = obtener_estaciones_omixom()
-    meteo_san_luis = obtener_estaciones_san_luis()
-    meteo_apa = obtener_estaciones_apa_lapampa()
-    
-    total_meteo = meteo_omixom + meteo_san_luis + meteo_apa
-    print(f"Total estaciones meteorológicas: {len(total_meteo)}")
-    
-    registros_hidro = obtener_datos_hidrologicos()
-    rayos_cuenca = obtener_descargas_atmosfericas()
-    
-    generar_entregables(total_meteo, registros_hidro, rayos_cuenca, df_freatico)
-    print("Proceso finalizado exitosamente.")
+    return [{"lat": -34.5, "lon": -64.2, "hora": ahora.strftime("%H:%M"), "tipo": "Nube-
