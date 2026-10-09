@@ -1,11 +1,10 @@
-﻿nombre,rio,distrito,lat,lon,nivel_actual,cota_alerta,estado,fecha
-Quinto - Malvin Reich,Río Quinto (Cuenca Alta),San Luis,-33.438333,-65.883056,0.95,2.5,Normal,2026-10-09 11:27
-Trapiche - Hosteria El Trapiche,Río Trapiche (Afluente),San Luis,-33.105833,-66.063333,0.32,1.8,Normal,2026-10-09 11:27
-Quinto - Dique Villa Mercedes,Río Quinto,San Luis,-33.653889,-65.533611,1.08,2.8,Normal,2026-10-09 11:27
-Quinto - Av Circunvalación,Río Quinto,San Luis,-33.739167,-65.376944,0.16,1.6,Normal,2026-10-09 11:27
-Quinto - Justo Daract,Río Quinto,San Luis,-33.918611,-65.151667,1.79,2.9,Normal,2026-10-09 11:27
-Aº El Aji - RN Nº35 y RN Nº7,Afluente Río Quinto,Córdoba / LP,-33.931111,-64.396389,0.66,1.9,Normal,2026-10-09 11:27
-Quinto - R.N. 35,Río Quinto,Córdoba / LP,-34.216389,-64.386111,1.22,2.6,Normal,2026-10-09 11:27
-Quinto - Canal Devoto RP 4,Río Quinto / Canal Devoto,Córdoba / LP,-33.933056,-63.449167,1.69,2.8,Normal,2026-10-09 11:27
-Laguna La Margarita,Cuenca Río Quinto,Córdoba / LP,-34.653333,-63.723056,1.43,2.4,Normal,2026-10-09 11:27
-Quinto - RP Nº26,Río Quinto,Córdoba / LP,-34.762778,-63.645,0.78,2.2,Normal,2026-10-09 11:27
+﻿Estación Hidrológica,Río,Nivel Actual (m),Nivel Anterior (m),Variación,Cota Alerta (m),Cota Evac (m),Estado,Meteo Cercana,Lluvia 24h (mm),Ventana Onda LP
+Aº El Aji - RN Nº35 y RN Nº7,Afluente Río Quinto,0.66,0.66,▬ +0.00 m,1.9,2.4,Normal / Seguro,Vicuña Mackenna,0.0,7-10 d
+Laguna La Margarita,Cuenca Río Quinto,1.45,1.45,▬ +0.00 m,2.4,3.0,Normal / Seguro,Hipólito Bouchard,0.0,7-10 d
+Quinto - Av Circunvalación,Río Quinto,0.12,0.12,▬ +0.00 m,2.5,3.2,Normal / Seguro,Villa Reynolds,0.1,7-10 d
+Quinto - Canal Devoto RP 4,Río Quinto / Canal Devoto,1.03,1.02,▬ +0.01 m,2.8,3.4,Normal / Seguro,Río Bamba,0.0,7-10 d
+Quinto - Dique Villa Mercedes,Río Quinto,1.09,1.09,▬ +0.00 m,2.8,3.5,Normal / Seguro,Villa Mercedes,0.3,7-10 d
+Quinto - Justo Daract,Río Quinto,1.77,1.77,▬ +0.00 m,2.9,3.6,Normal / Seguro,Justo Daract,0.0,7-10 d
+Quinto - R.N. 35,Río Quinto,1.16,1.16,▬ +0.00 m,2.6,3.2,Normal / Seguro,Nicolás Bruzzone,0.0,7-10 d
+Quinto - RP Nº26,Río Quinto,0.75,0.75,▬ +0.00 m,2.2,2.8,Normal / Seguro,Hipólito Bouchard,0.0,7-10 d
+Trapiche - Hosteria El Trapiche,Río Trapiche (Afluente),0.31,0.31,▬ +0.00 m,1.8,2.3,Normal / Seguro,El Trapiche,0.1,7-10 d
