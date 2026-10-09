@@ -1,21 +1,23 @@
-name: Actualizar SAT Cuenca Rio V
+name: Actualización Automática SAT Cuenca Río V
 
 on:
   schedule:
-    - cron: '*/10 * * * *'
-  workflow_dispatch:
+    # Se ejecuta automáticamente cada 3 horas (puedes ajustar el cron si prefieres otra frecuencia)
+    - cron: '0 */3 * * *'
+  workflow_dispatch: # Permite ejecutarlo manualmente desde la pestaña 'Actions' de GitHub
 
 permissions:
   contents: write
 
 jobs:
-  update-sat:
+  actualizar-sat:
     runs-on: ubuntu-latest
+
     steps:
       - name: Clonar repositorio
         uses: actions/checkout@v4
 
-      - name: Configurar Python
+      - name: Configurar entorno Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
@@ -23,15 +25,25 @@ jobs:
 
       - name: Instalar dependencias
         run: |
-          pip install requests pandas numpy openpyxl beautifulsoup4 urllib3
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then
+            pip install -r requirements.txt
+          fi
+          # Instalación explícita de respaldo para asegurar que no falte ninguna librería crítica
+          pip install requests beautifulsoup4 pandas numpy openpyxl folium urllib3
 
-      - name: Ejecutar Pipeline
+      - name: Ejecutar script unificado SAT
         run: |
           python sat_unificado_hidro_meteo.py
 
-      - name: Publicar cambios
+      - name: Confirmar y subir cambios a GitHub
         run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action Bot"
-          git add index.html sat_unificado_rio_v_triprovincial.xlsx resumen_cruce_rio_v_triprovincial.csv
-          git diff --staged --quiet || (git commit -m "Auto-actualización SAT Río V [skip ci]" && git push origin HEAD)
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --staged --quiet; then
+            echo "No se registraron cambios nuevos en los datos."
+          else
+            git commit -m "Auto-actualización datos SAT Cuenca Río V [skip ci]"
+            git push
+          fi
