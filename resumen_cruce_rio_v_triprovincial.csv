@@ -1,10 +1,11 @@
-﻿Estación Hidrológica,Río,Nivel Actual (m),Nivel Anterior (m),Variación,Cota Alerta (m),Cota Evac (m),Estado,Meteo Cercana,Lluvia 24h (mm),Ventana Onda LP
-Aº El Aji - RN Nº35 y RN Nº7,Afluente Río Quinto,0.66,0.66,▬ +0.00 m,1.9,2.4,Normal / Seguro,Vicuña Mackenna,0.0,7-10 d
-Laguna La Margarita,Cuenca Río Quinto,1.45,1.45,▬ +0.00 m,2.4,3.0,Normal / Seguro,Hipólito Bouchard,0.0,7-10 d
-Quinto - Av Circunvalación,Río Quinto,0.12,0.12,▬ +0.00 m,2.5,3.2,Normal / Seguro,Villa Reynolds,0.1,7-10 d
-Quinto - Canal Devoto RP 4,Río Quinto / Canal Devoto,1.03,1.02,▬ +0.01 m,2.8,3.4,Normal / Seguro,Río Bamba,0.0,7-10 d
-Quinto - Dique Villa Mercedes,Río Quinto,1.09,1.09,▬ +0.00 m,2.8,3.5,Normal / Seguro,Villa Mercedes,0.3,7-10 d
-Quinto - Justo Daract,Río Quinto,1.77,1.77,▬ +0.00 m,2.9,3.6,Normal / Seguro,Justo Daract,0.0,7-10 d
-Quinto - R.N. 35,Río Quinto,1.16,1.16,▬ +0.00 m,2.6,3.2,Normal / Seguro,Nicolás Bruzzone,0.0,7-10 d
-Quinto - RP Nº26,Río Quinto,0.75,0.75,▬ +0.00 m,2.2,2.8,Normal / Seguro,Hipólito Bouchard,0.0,7-10 d
-Trapiche - Hosteria El Trapiche,Río Trapiche (Afluente),0.31,0.31,▬ +0.00 m,1.8,2.3,Normal / Seguro,El Trapiche,0.1,7-10 d
+﻿Estación Hidrológica,Río / Cuenca,Nivel Actual (m),Media Histórica (m),Cota Alerta (m),Estado Semáforo,Estación Meteo Cercana,Lluvia 24h (mm),Nivel Alerta Meteo-Freático,Evaluación de Riesgo
+Aº El Aji - RN Nº35 y RN Nº7,Afluente Río Quinto,0.66,0.66,1.9,Normal / Seguro,"Vicuña Mackenna, Cordoba, Argentina (Córdoba)",0.0,Verde - Normal / Seguro,Condiciones ordinarias estables en cuenca.
+Laguna La Margarita,Cuenca Río Quinto,1.43,1.43,2.4,Normal / Seguro,"Hipólito Bouchard, Cordoba, Argentina (Córdoba)",0.0,Verde - Normal / Seguro,Condiciones ordinarias estables en cuenca.
+Quinto - Av Circunvalación,Río Quinto,0.16,0.16,2.5,Normal / Seguro,Villa Reynolds (San Luis),0.0,Verde - Normal / Seguro,Condiciones ordinarias estables en cuenca.
+Quinto - Canal Devoto RP 4,Río Quinto / Canal Devoto,1.69,1.69,2.8,Normal / Seguro,"Río Bamba, Cordoba, Argentina (Córdoba)",0.0,Verde - Normal / Seguro,Condiciones ordinarias estables en cuenca.
+Quinto - Dique Villa Mercedes,Río Quinto,1.08,1.08,2.8,Normal / Seguro,Villa Mercedes (San Luis),0.0,Verde - Normal / Seguro,Condiciones ordinarias estables en cuenca.
+Quinto - Justo Daract,Río Quinto,1.79,1.79,2.9,Normal / Seguro,Justo Daract (San Luis),0.1,Verde - Normal / Seguro,Condiciones ordinarias estables en cuenca.
+Quinto - Malvin Reich,Río Quinto (Cuenca Alta),0.95,0.95,2.5,Normal / Seguro,Fraga (San Luis),0.1,Verde - Normal / Seguro,Condiciones ordinarias estables en cuenca.
+Quinto - R.N. 35,Río Quinto,1.22,1.22,2.6,Normal / Seguro,"Nicolás Bruzzone, Cordoba, Argentina (Córdoba)",0.0,Verde - Normal / Seguro,Condiciones ordinarias estables en cuenca.
+Quinto - RP Nº26,Río Quinto,0.78,0.78,2.2,Normal / Seguro,"Hipólito Bouchard, Cordoba, Argentina (Córdoba)",0.0,Verde - Normal / Seguro,Condiciones ordinarias estables en cuenca.
+Trapiche - Hosteria El Trapiche,Río Trapiche (Afluente),0.32,0.32,1.8,Normal / Seguro,El Trapiche (San Luis),0.1,Verde - Normal / Seguro,Condiciones ordinarias estables en cuenca.

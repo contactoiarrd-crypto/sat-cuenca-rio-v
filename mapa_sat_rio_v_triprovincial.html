@@ -1,0 +1,1384 @@
+<!DOCTYPE html>
+<html>
+<head>
+    
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+    <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.js"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/css/bootstrap.min.css"/>
+    <link rel="stylesheet" href="https://netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap-glyphicons.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.2.0/css/all.min.css"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/python-visualization/folium/folium/templates/leaflet.awesome.rotate.min.css"/>
+    
+            <meta name="viewport" content="width=device-width,
+                initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+            <style>
+                #map_d383ed83e1d76df443c02dbba3165214 {
+                    position: relative;
+                    width: 100.0%;
+                    height: 100.0%;
+                    left: 0.0%;
+                    top: 0.0%;
+                }
+                .leaflet-container { font-size: 1rem; }
+            </style>
+
+            <style>html, body {
+                width: 100%;
+                height: 100%;
+                margin: 0;
+                padding: 0;
+            }
+            </style>
+
+            <style>#map {
+                position:absolute;
+                top:0;
+                bottom:0;
+                right:0;
+                left:0;
+                }
+            </style>
+
+            <script>
+                L_NO_TOUCH = false;
+                L_DISABLE_3D = false;
+            </script>
+
+        
+</head>
+<body>
+    
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-omnivore/0.3.4/leaflet-omnivore.min.js"></script>
+    <div style="position: fixed; bottom: 25px; left: 20px; width: 330px; background: white;
+                border: 1px solid #cbd5e1; border-radius: 8px; z-index: 1000; font-family: Arial, sans-serif;
+                font-size: 11px; padding: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.2);">
+        <b style="font-size: 12px; color: #1e3a8a;">SAT CUENCA RÍO V | CRUCE MULTICRITERIO</b><hr style="margin:6px 0;">
+        
+        <b>Subir KML Humedad Suelo (INTA):</b>
+        <input type="file" id="kmlIntaInput" accept=".kml" style="width:100%; font-size:10px; margin-top:3px; margin-bottom:8px;">
+        
+        <b>Alertas SMN Oficiales:</b><br>
+        <a href="https://www.smn.gob.ar/alertas" target="_blank" style="color: #0284c7; text-decoration: underline; font-weight: bold;">
+            Abrir Portal de Alertas SMN (smn.gob.ar/alertas) ↗
+        </a>
+        <hr style="margin:6px 0;">
+        <span style="font-size: 10px; color: #64748b;">
+            El semáforo cruza precipitación prevista, afloramiento freático y retención de suelos.
+        </span>
+    </div>
+
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        var mapInstance = null;
+        for (var k in window) {
+            if (k.startsWith("map_") && window[k] instanceof L.Map) {
+                mapInstance = window[k];
+                break;
+            }
+        }
+        if (!mapInstance) return;
+
+        var inputKml = document.getElementById("kmlIntaInput");
+        if (inputKml) {
+            inputKml.addEventListener("change", function(e) {
+                var file = e.target.files[0];
+                if (!file) return;
+                var reader = new FileReader();
+                reader.onload = function(evt) {
+                    var kmlText = evt.target.result;
+                    var capaKml = omnivore.kml.parse(kmlText, null, L.geoJson(null, {
+                        style: { color: "#059669", fillColor: "#10b981", fillOpacity: 0.35, weight: 1.5 }
+                    })).addTo(mapInstance);
+                    alert("Capa KML de Humedad de Suelo INTA agregada al visor.");
+                };
+                reader.readAsText(file);
+            });
+        }
+    });
+    </script>
+    
+    
+            <div class="folium-map" id="map_d383ed83e1d76df443c02dbba3165214" ></div>
+        
+</body>
+<script>
+    
+    
+            var map_d383ed83e1d76df443c02dbba3165214 = L.map(
+                "map_d383ed83e1d76df443c02dbba3165214",
+                {
+                    center: [-33.93525, -64.7608334],
+                    crs: L.CRS.EPSG3857,
+                    ...{
+  "zoom": 7,
+  "zoomControl": true,
+  "preferCanvas": false,
+}
+
+                }
+            );
+
+            
+
+        
+    
+            var tile_layer_e82de00e16ffe60675113d0bbbeffd19 = L.tileLayer(
+                "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}",
+                {
+  "minZoom": 0,
+  "maxZoom": 16,
+  "maxNativeZoom": 16,
+  "noWrap": false,
+  "attribution": "Esri",
+  "subdomains": "abc",
+  "detectRetina": false,
+  "tms": false,
+  "opacity": 1,
+}
+
+            );
+        
+    
+            tile_layer_e82de00e16ffe60675113d0bbbeffd19.addTo(map_d383ed83e1d76df443c02dbba3165214);
+        
+    
+            var feature_group_ab2833301581045a4fb1472ea2940476 = L.featureGroup(
+                {
+}
+            );
+        
+    
+            var circle_marker_178c1e7e7c2c99260957c10e8df7cc36 = L.circleMarker(
+                [-33.931111, -64.396389],
+                {"bubblingMouseEvents": true, "color": "#2b9348", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#2b9348", "fillOpacity": 0.9, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 7, "stroke": true, "weight": 3}
+            ).addTo(feature_group_ab2833301581045a4fb1472ea2940476);
+        
+    
+            circle_marker_178c1e7e7c2c99260957c10e8df7cc36.bindTooltip(
+                `<div>
+                     Aº El Aji - RN Nº35 y RN Nº7: 0.66 m (Normal / Seguro)
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_a97c13002731240387470c3ed7d177d8 = L.circleMarker(
+                [-34.653333, -63.723056],
+                {"bubblingMouseEvents": true, "color": "#2b9348", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#2b9348", "fillOpacity": 0.9, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 7, "stroke": true, "weight": 3}
+            ).addTo(feature_group_ab2833301581045a4fb1472ea2940476);
+        
+    
+            circle_marker_a97c13002731240387470c3ed7d177d8.bindTooltip(
+                `<div>
+                     Laguna La Margarita: 1.43 m (Normal / Seguro)
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_076327bb079e01b1b747b654ae75a30a = L.circleMarker(
+                [-33.739167, -65.376944],
+                {"bubblingMouseEvents": true, "color": "#2b9348", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#2b9348", "fillOpacity": 0.9, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 7, "stroke": true, "weight": 3}
+            ).addTo(feature_group_ab2833301581045a4fb1472ea2940476);
+        
+    
+            circle_marker_076327bb079e01b1b747b654ae75a30a.bindTooltip(
+                `<div>
+                     Quinto - Av Circunvalación: 0.16 m (Normal / Seguro)
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_f9547ee9f93a4e1206d1c14fe70b61a6 = L.circleMarker(
+                [-33.933056, -63.449167],
+                {"bubblingMouseEvents": true, "color": "#2b9348", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#2b9348", "fillOpacity": 0.9, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 7, "stroke": true, "weight": 3}
+            ).addTo(feature_group_ab2833301581045a4fb1472ea2940476);
+        
+    
+            circle_marker_f9547ee9f93a4e1206d1c14fe70b61a6.bindTooltip(
+                `<div>
+                     Quinto - Canal Devoto RP 4: 1.69 m (Normal / Seguro)
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_69651c9dd82e0330472fbfe67d0ab0b6 = L.circleMarker(
+                [-33.653889, -65.533611],
+                {"bubblingMouseEvents": true, "color": "#2b9348", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#2b9348", "fillOpacity": 0.9, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 7, "stroke": true, "weight": 3}
+            ).addTo(feature_group_ab2833301581045a4fb1472ea2940476);
+        
+    
+            circle_marker_69651c9dd82e0330472fbfe67d0ab0b6.bindTooltip(
+                `<div>
+                     Quinto - Dique Villa Mercedes: 1.08 m (Normal / Seguro)
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_ea33ca26656ee45165f1e2d21f51e72c = L.circleMarker(
+                [-33.918611, -65.151667],
+                {"bubblingMouseEvents": true, "color": "#2b9348", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#2b9348", "fillOpacity": 0.9, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 7, "stroke": true, "weight": 3}
+            ).addTo(feature_group_ab2833301581045a4fb1472ea2940476);
+        
+    
+            circle_marker_ea33ca26656ee45165f1e2d21f51e72c.bindTooltip(
+                `<div>
+                     Quinto - Justo Daract: 1.79 m (Normal / Seguro)
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_7ee49967d4caa67d46333577576df9b9 = L.circleMarker(
+                [-33.438333, -65.883056],
+                {"bubblingMouseEvents": true, "color": "#2b9348", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#2b9348", "fillOpacity": 0.9, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 7, "stroke": true, "weight": 3}
+            ).addTo(feature_group_ab2833301581045a4fb1472ea2940476);
+        
+    
+            circle_marker_7ee49967d4caa67d46333577576df9b9.bindTooltip(
+                `<div>
+                     Quinto - Malvin Reich: 0.95 m (Normal / Seguro)
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_497f88486999729552afa51f47a3c5d2 = L.circleMarker(
+                [-34.216389, -64.386111],
+                {"bubblingMouseEvents": true, "color": "#2b9348", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#2b9348", "fillOpacity": 0.9, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 7, "stroke": true, "weight": 3}
+            ).addTo(feature_group_ab2833301581045a4fb1472ea2940476);
+        
+    
+            circle_marker_497f88486999729552afa51f47a3c5d2.bindTooltip(
+                `<div>
+                     Quinto - R.N. 35: 1.22 m (Normal / Seguro)
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_42d3d9e2a8d2b11b9cadb5e9b7429b90 = L.circleMarker(
+                [-34.762778, -63.645],
+                {"bubblingMouseEvents": true, "color": "#2b9348", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#2b9348", "fillOpacity": 0.9, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 7, "stroke": true, "weight": 3}
+            ).addTo(feature_group_ab2833301581045a4fb1472ea2940476);
+        
+    
+            circle_marker_42d3d9e2a8d2b11b9cadb5e9b7429b90.bindTooltip(
+                `<div>
+                     Quinto - RP Nº26: 0.78 m (Normal / Seguro)
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_e675a2154f7c5454fa620be3c5af1b79 = L.circleMarker(
+                [-33.105833, -66.063333],
+                {"bubblingMouseEvents": true, "color": "#2b9348", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#2b9348", "fillOpacity": 0.9, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 7, "stroke": true, "weight": 3}
+            ).addTo(feature_group_ab2833301581045a4fb1472ea2940476);
+        
+    
+            circle_marker_e675a2154f7c5454fa620be3c5af1b79.bindTooltip(
+                `<div>
+                     Trapiche - Hosteria El Trapiche: 0.32 m (Normal / Seguro)
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            feature_group_ab2833301581045a4fb1472ea2940476.addTo(map_d383ed83e1d76df443c02dbba3165214);
+        
+    
+            var feature_group_4ff67c202aadf9e5019811ca042631f0 = L.featureGroup(
+                {
+}
+            );
+        
+    
+            var circle_marker_294e86afe94131a15ed96b29ebf3bcab = L.circleMarker(
+                [-34.0, -63.9163],
+                {"bubblingMouseEvents": true, "color": "#0284c7", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#38bdf8", "fillOpacity": 0.85, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
+            ).addTo(feature_group_4ff67c202aadf9e5019811ca042631f0);
+        
+    
+            circle_marker_294e86afe94131a15ed96b29ebf3bcab.bindTooltip(
+                `<div>
+                     General Levalle, Cordoba, Argentina | Lluvia: 0.0 mm
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_626440e1f3b55ae95b1415c38d8f0e10 = L.circleMarker(
+                [-34.0537, -63.7332],
+                {"bubblingMouseEvents": true, "color": "#0284c7", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#38bdf8", "fillOpacity": 0.85, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
+            ).addTo(feature_group_4ff67c202aadf9e5019811ca042631f0);
+        
+    
+            circle_marker_626440e1f3b55ae95b1415c38d8f0e10.bindTooltip(
+                `<div>
+                     Río Bamba, Cordoba, Argentina | Lluvia: 0.0 mm
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_ca21f7ee5c21aa30cf7c275a63044a62 = L.circleMarker(
+                [-34.5194, -63.9683],
+                {"bubblingMouseEvents": true, "color": "#0284c7", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#38bdf8", "fillOpacity": 0.85, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
+            ).addTo(feature_group_4ff67c202aadf9e5019811ca042631f0);
+        
+    
+            circle_marker_ca21f7ee5c21aa30cf7c275a63044a62.bindTooltip(
+                `<div>
+                     Jovita, Cordoba, Argentina | Lluvia: 0.0 mm
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_2b308829a0e573221fc7cb244d22a99d = L.circleMarker(
+                [-34.3427, -64.929],
+                {"bubblingMouseEvents": true, "color": "#0284c7", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#38bdf8", "fillOpacity": 0.85, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
+            ).addTo(feature_group_4ff67c202aadf9e5019811ca042631f0);
+        
+    
+            circle_marker_2b308829a0e573221fc7cb244d22a99d.bindTooltip(
+                `<div>
+                     Villa Valeria, Cordoba, Argentina | Lluvia: 0.0 mm
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_768de5423ac6362244a9794862af058f = L.circleMarker(
+                [-34.4391, -64.3424],
+                {"bubblingMouseEvents": true, "color": "#0284c7", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#38bdf8", "fillOpacity": 0.85, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
+            ).addTo(feature_group_4ff67c202aadf9e5019811ca042631f0);
+        
+    
+            circle_marker_768de5423ac6362244a9794862af058f.bindTooltip(
+                `<div>
+                     Nicolás Bruzzone, Cordoba, Argentina | Lluvia: 0.0 mm
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_2af89690696839b160c80412737b707d = L.circleMarker(
+                [-34.3452, -63.4377],
+                {"bubblingMouseEvents": true, "color": "#0284c7", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#38bdf8", "fillOpacity": 0.85, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
+            ).addTo(feature_group_4ff67c202aadf9e5019811ca042631f0);
+        
+    
+            circle_marker_2af89690696839b160c80412737b707d.bindTooltip(
+                `<div>
+                     Melo, Cordoba, Argentina | Lluvia: 0.0 mm
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_2321a4132e91fb2c7d859e207297942d = L.circleMarker(
+                [-33.6665, -63.6395],
+                {"bubblingMouseEvents": true, "color": "#0284c7", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#38bdf8", "fillOpacity": 0.85, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
+            ).addTo(feature_group_4ff67c202aadf9e5019811ca042631f0);
+        
+    
+            circle_marker_2321a4132e91fb2c7d859e207297942d.bindTooltip(
+                `<div>
+                     Huanchillas, Cordoba, Argentina | Lluvia: 0.0 mm
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_da028241360551ef482941a6fd319900 = L.circleMarker(
+                [-34.706, -63.503],
+                {"bubblingMouseEvents": true, "color": "#0284c7", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#38bdf8", "fillOpacity": 0.85, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
+            ).addTo(feature_group_4ff67c202aadf9e5019811ca042631f0);
+        
+    
+            circle_marker_da028241360551ef482941a6fd319900.bindTooltip(
+                `<div>
+                     Hipólito Bouchard, Cordoba, Argentina | Lluvia: 0.0 mm
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_7ea14ced0d35cd3a14ca0a8887cc2979 = L.circleMarker(
+                [-33.9948, -65.0754],
+                {"bubblingMouseEvents": true, "color": "#0284c7", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#38bdf8", "fillOpacity": 0.85, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
+            ).addTo(feature_group_4ff67c202aadf9e5019811ca042631f0);
+        
+    
+            circle_marker_7ea14ced0d35cd3a14ca0a8887cc2979.bindTooltip(
+                `<div>
+                     General Roca, Cordoba, Argentina | Lluvia: 0.0 mm
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_8addbe73ca4cc1dd99320c0990a8aea6 = L.circleMarker(
+                [-34.4629, -63.5309],
+                {"bubblingMouseEvents": true, "color": "#0284c7", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#38bdf8", "fillOpacity": 0.85, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
+            ).addTo(feature_group_4ff67c202aadf9e5019811ca042631f0);
+        
+    
+            circle_marker_8addbe73ca4cc1dd99320c0990a8aea6.bindTooltip(
+                `<div>
+                     Serrano, Cordoba, Argentina | Lluvia: 0.0 mm
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_86e7ebea6682404fb0eeee8e0127c4a0 = L.circleMarker(
+                [-33.6481, -64.595],
+                {"bubblingMouseEvents": true, "color": "#0284c7", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#38bdf8", "fillOpacity": 0.85, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
+            ).addTo(feature_group_4ff67c202aadf9e5019811ca042631f0);
+        
+    
+            circle_marker_86e7ebea6682404fb0eeee8e0127c4a0.bindTooltip(
+                `<div>
+                     Coronel Moldes, Cordoba, Argentina | Lluvia: 0.0 mm
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_1e53b0e1381ef9fa4244da8f9ac53bd0 = L.circleMarker(
+                [-33.7429, -63.0996],
+                {"bubblingMouseEvents": true, "color": "#0284c7", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#38bdf8", "fillOpacity": 0.85, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
+            ).addTo(feature_group_4ff67c202aadf9e5019811ca042631f0);
+        
+    
+            circle_marker_1e53b0e1381ef9fa4244da8f9ac53bd0.bindTooltip(
+                `<div>
+                     Viamonte, Cordoba, Argentina | Lluvia: 0.0 mm
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_b592fed234739b2d4f2d277f7360ffaa = L.circleMarker(
+                [-33.5508, -65.0059],
+                {"bubblingMouseEvents": true, "color": "#0284c7", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#38bdf8", "fillOpacity": 0.85, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
+            ).addTo(feature_group_4ff67c202aadf9e5019811ca042631f0);
+        
+    
+            circle_marker_b592fed234739b2d4f2d277f7360ffaa.bindTooltip(
+                `<div>
+                     Chaján, Cordoba, Argentina | Lluvia: 0.0 mm
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_4a625d51fd14a4e6f5e79d0a8797c918 = L.circleMarker(
+                [-34.2949, -63.2654],
+                {"bubblingMouseEvents": true, "color": "#0284c7", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#38bdf8", "fillOpacity": 0.85, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
+            ).addTo(feature_group_4ff67c202aadf9e5019811ca042631f0);
+        
+    
+            circle_marker_4a625d51fd14a4e6f5e79d0a8797c918.bindTooltip(
+                `<div>
+                     Villa Rossi, Cordoba, Argentina | Lluvia: 0.0 mm
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_f5300c46b47811bdc6d674acc61d9964 = L.circleMarker(
+                [-33.9608, -65.0551],
+                {"bubblingMouseEvents": true, "color": "#0284c7", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#38bdf8", "fillOpacity": 0.85, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
+            ).addTo(feature_group_4ff67c202aadf9e5019811ca042631f0);
+        
+    
+            circle_marker_f5300c46b47811bdc6d674acc61d9964.bindTooltip(
+                `<div>
+                     Presa El Chañar, Cordoba, Argentina | Lluvia: 0.0 mm
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_34d86b6aeb983b37681d815e2812a2fe = L.circleMarker(
+                [-34.8208, -64.3738],
+                {"bubblingMouseEvents": true, "color": "#0284c7", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#38bdf8", "fillOpacity": 0.85, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
+            ).addTo(feature_group_4ff67c202aadf9e5019811ca042631f0);
+        
+    
+            circle_marker_34d86b6aeb983b37681d815e2812a2fe.bindTooltip(
+                `<div>
+                     Huinca Renancó, Cordoba, Argentina | Lluvia: 0.0 mm
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_e000eb15f2c4b8270a68066fe9036afe = L.circleMarker(
+                [-33.9754, -64.3642],
+                {"bubblingMouseEvents": true, "color": "#0284c7", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#38bdf8", "fillOpacity": 0.85, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
+            ).addTo(feature_group_4ff67c202aadf9e5019811ca042631f0);
+        
+    
+            circle_marker_e000eb15f2c4b8270a68066fe9036afe.bindTooltip(
+                `<div>
+                     Vicuña Mackenna, Cordoba, Argentina | Lluvia: 0.0 mm
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_34fc81f8b6ddb11c38679eff093e6e65 = L.circleMarker(
+                [-35.3119, -64.7144],
+                {"bubblingMouseEvents": true, "color": "#0284c7", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#38bdf8", "fillOpacity": 0.85, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
+            ).addTo(feature_group_4ff67c202aadf9e5019811ca042631f0);
+        
+    
+            circle_marker_34fc81f8b6ddb11c38679eff093e6e65.bindTooltip(
+                `<div>
+                     MPLP 16 - El Tala - La Veneta | Lluvia: 0.0 mm
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_024e9183fe067a6ee9548eca8c95eb2b = L.circleMarker(
+                [-35.0576, -64.2129],
+                {"bubblingMouseEvents": true, "color": "#0284c7", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#38bdf8", "fillOpacity": 0.85, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
+            ).addTo(feature_group_4ff67c202aadf9e5019811ca042631f0);
+        
+    
+            circle_marker_024e9183fe067a6ee9548eca8c95eb2b.bindTooltip(
+                `<div>
+                     MPLP 41 - Realicó | Lluvia: 0.0 mm
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_726c732a0da8c7725827f3831fa26050 = L.circleMarker(
+                [-35.9036, -63.6429],
+                {"bubblingMouseEvents": true, "color": "#0284c7", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#38bdf8", "fillOpacity": 0.85, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
+            ).addTo(feature_group_4ff67c202aadf9e5019811ca042631f0);
+        
+    
+            circle_marker_726c732a0da8c7725827f3831fa26050.bindTooltip(
+                `<div>
+                     Trilí, La Pampa, Argentina | Lluvia: 0.0 mm
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_01d9ffe14365da83064b379edc46d42c = L.circleMarker(
+                [-35.4714, -64.6024],
+                {"bubblingMouseEvents": true, "color": "#0284c7", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#38bdf8", "fillOpacity": 0.85, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
+            ).addTo(feature_group_4ff67c202aadf9e5019811ca042631f0);
+        
+    
+            circle_marker_01d9ffe14365da83064b379edc46d42c.bindTooltip(
+                `<div>
+                     Ingeniero Luiggi, La Pampa, Argentina | Lluvia: 0.0 mm
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_2fa00ed01b7babb900eaf75e7f3bdbb2 = L.circleMarker(
+                [-35.9895, -64.5954],
+                {"bubblingMouseEvents": true, "color": "#0284c7", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#38bdf8", "fillOpacity": 0.85, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
+            ).addTo(feature_group_4ff67c202aadf9e5019811ca042631f0);
+        
+    
+            circle_marker_2fa00ed01b7babb900eaf75e7f3bdbb2.bindTooltip(
+                `<div>
+                     Conhelo, La Pampa, Argentina | Lluvia: 0.0 mm
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_d21a387bfdc3105020bbdb0674269d7a = L.circleMarker(
+                [-35.6391, -64.3564],
+                {"bubblingMouseEvents": true, "color": "#0284c7", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#38bdf8", "fillOpacity": 0.85, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
+            ).addTo(feature_group_4ff67c202aadf9e5019811ca042631f0);
+        
+    
+            circle_marker_d21a387bfdc3105020bbdb0674269d7a.bindTooltip(
+                `<div>
+                     Arata, La Pampa, Argentina | Lluvia: 0.0 mm
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_2da93d42ea8492957ff7932caed6b103 = L.circleMarker(
+                [-35.6482, -64.7699],
+                {"bubblingMouseEvents": true, "color": "#0284c7", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#38bdf8", "fillOpacity": 0.85, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
+            ).addTo(feature_group_4ff67c202aadf9e5019811ca042631f0);
+        
+    
+            circle_marker_2da93d42ea8492957ff7932caed6b103.bindTooltip(
+                `<div>
+                     Pichi Huinca, La Pampa, Argentina | Lluvia: 0.0 mm
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_d03167a3748b8788cf152f4751f76e0f = L.circleMarker(
+                [-35.0883, -64.5082],
+                {"bubblingMouseEvents": true, "color": "#0284c7", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#38bdf8", "fillOpacity": 0.85, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
+            ).addTo(feature_group_4ff67c202aadf9e5019811ca042631f0);
+        
+    
+            circle_marker_d03167a3748b8788cf152f4751f76e0f.bindTooltip(
+                `<div>
+                     Rancul, La Pampa, Argentina | Lluvia: 0.0 mm
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_400d7efed4dc5933875fd4cc6e949652 = L.circleMarker(
+                [-35.0344, -63.9111],
+                {"bubblingMouseEvents": true, "color": "#0284c7", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#38bdf8", "fillOpacity": 0.85, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
+            ).addTo(feature_group_4ff67c202aadf9e5019811ca042631f0);
+        
+    
+            circle_marker_400d7efed4dc5933875fd4cc6e949652.bindTooltip(
+                `<div>
+                     Coronel Hilario Lagos, La Pampa, Argentina | Lluvia: 0.0 mm
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_ec1c83012e75147a451bd7f407f3fbca = L.circleMarker(
+                [-36.1508, -63.855],
+                {"bubblingMouseEvents": true, "color": "#0284c7", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#38bdf8", "fillOpacity": 0.85, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
+            ).addTo(feature_group_4ff67c202aadf9e5019811ca042631f0);
+        
+    
+            circle_marker_ec1c83012e75147a451bd7f407f3fbca.bindTooltip(
+                `<div>
+                     Colonia Barón, La Pampa, Argentina | Lluvia: 0.0 mm
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_69e369a37bf91f0290dda3dca619426f = L.circleMarker(
+                [-35.3182, -63.6054],
+                {"bubblingMouseEvents": true, "color": "#0284c7", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#38bdf8", "fillOpacity": 0.85, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
+            ).addTo(feature_group_4ff67c202aadf9e5019811ca042631f0);
+        
+    
+            circle_marker_69e369a37bf91f0290dda3dca619426f.bindTooltip(
+                `<div>
+                     Intendente Alvear, La Pampa, Argentina | Lluvia: 0.0 mm
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_78810f796062d0459e67f2eb278bea2f = L.circleMarker(
+                [-35.3317, -64.1191],
+                {"bubblingMouseEvents": true, "color": "#0284c7", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#38bdf8", "fillOpacity": 0.85, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
+            ).addTo(feature_group_4ff67c202aadf9e5019811ca042631f0);
+        
+    
+            circle_marker_78810f796062d0459e67f2eb278bea2f.bindTooltip(
+                `<div>
+                     Alta Italia, La Pampa, Argentina | Lluvia: 0.0 mm
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_e31283d6ca1453fc02acd6eb5860d03c = L.circleMarker(
+                [-36.2229, -64.2487],
+                {"bubblingMouseEvents": true, "color": "#0284c7", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#38bdf8", "fillOpacity": 0.85, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
+            ).addTo(feature_group_4ff67c202aadf9e5019811ca042631f0);
+        
+    
+            circle_marker_e31283d6ca1453fc02acd6eb5860d03c.bindTooltip(
+                `<div>
+                     Winifreda, La Pampa, Argentina | Lluvia: 0.0 mm
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_23de26d513d004e9506ac2b4a3655602 = L.circleMarker(
+                [-35.6969, -63.6207],
+                {"bubblingMouseEvents": true, "color": "#0284c7", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#38bdf8", "fillOpacity": 0.85, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
+            ).addTo(feature_group_4ff67c202aadf9e5019811ca042631f0);
+        
+    
+            circle_marker_23de26d513d004e9506ac2b4a3655602.bindTooltip(
+                `<div>
+                     General Pico, La Pampa, Argentina | Lluvia: 0.0 mm
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_28759afb093de7d8434419063d13c44f = L.circleMarker(
+                [-35.916, -64.2956],
+                {"bubblingMouseEvents": true, "color": "#0284c7", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#38bdf8", "fillOpacity": 0.85, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
+            ).addTo(feature_group_4ff67c202aadf9e5019811ca042631f0);
+        
+    
+            circle_marker_28759afb093de7d8434419063d13c44f.bindTooltip(
+                `<div>
+                     Eduardo Castex, La Pampa, Argentina | Lluvia: 0.0 mm
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_4883830364c8ed20da3babd8170f1cb7 = L.circleMarker(
+                [-33.6450639, -65.3794056],
+                {"bubblingMouseEvents": true, "color": "#0284c7", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#38bdf8", "fillOpacity": 0.85, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
+            ).addTo(feature_group_4ff67c202aadf9e5019811ca042631f0);
+        
+    
+            circle_marker_4883830364c8ed20da3babd8170f1cb7.bindTooltip(
+                `<div>
+                     AgroZAL | Lluvia: 0.0 mm
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_92798f4cf6d8ca929d033705a93d8b0f = L.circleMarker(
+                [-33.83756, -66.13864],
+                {"bubblingMouseEvents": true, "color": "#0284c7", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#38bdf8", "fillOpacity": 0.85, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
+            ).addTo(feature_group_4ff67c202aadf9e5019811ca042631f0);
+        
+    
+            circle_marker_92798f4cf6d8ca929d033705a93d8b0f.bindTooltip(
+                `<div>
+                     Alto Pelado | Lluvia: 0.0 mm
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_1e93e4410ea8e8b819d271c9f5226d77 = L.circleMarker(
+                [-34.77845, -65.68851],
+                {"bubblingMouseEvents": true, "color": "#0284c7", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#38bdf8", "fillOpacity": 0.85, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
+            ).addTo(feature_group_4ff67c202aadf9e5019811ca042631f0);
+        
+    
+            circle_marker_1e93e4410ea8e8b819d271c9f5226d77.bindTooltip(
+                `<div>
+                     Batavia | Lluvia: 0.0 mm
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_3a296caa219c4c8c2a98dcbafe0eb58f = L.circleMarker(
+                [-34.75682, -65.25261],
+                {"bubblingMouseEvents": true, "color": "#0284c7", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#38bdf8", "fillOpacity": 0.85, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
+            ).addTo(feature_group_4ff67c202aadf9e5019811ca042631f0);
+        
+    
+            circle_marker_3a296caa219c4c8c2a98dcbafe0eb58f.bindTooltip(
+                `<div>
+                     Buena Esperanza | Lluvia: 0.0 mm
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_b84ef335b576a91bce3874dda02df725 = L.circleMarker(
+                [-33.46051, -65.42903],
+                {"bubblingMouseEvents": true, "color": "#0284c7", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#38bdf8", "fillOpacity": 0.85, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
+            ).addTo(feature_group_4ff67c202aadf9e5019811ca042631f0);
+        
+    
+            circle_marker_b84ef335b576a91bce3874dda02df725.bindTooltip(
+                `<div>
+                     Coronel Alzogaray | Lluvia: 0.0 mm
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_20f7cd1412db763a365dc2db75d9a22e = L.circleMarker(
+                [-33.337614, -66.232069],
+                {"bubblingMouseEvents": true, "color": "#0284c7", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#38bdf8", "fillOpacity": 0.85, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
+            ).addTo(feature_group_4ff67c202aadf9e5019811ca042631f0);
+        
+    
+            circle_marker_20f7cd1412db763a365dc2db75d9a22e.bindTooltip(
+                `<div>
+                     Donovan | Lluvia: 0.0 mm
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_23f71bd249e00bc000addc89c6c20da8 = L.circleMarker(
+                [-33.102925, -66.05738056],
+                {"bubblingMouseEvents": true, "color": "#0284c7", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#38bdf8", "fillOpacity": 0.85, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
+            ).addTo(feature_group_4ff67c202aadf9e5019811ca042631f0);
+        
+    
+            circle_marker_23f71bd249e00bc000addc89c6c20da8.bindTooltip(
+                `<div>
+                     El Trapiche | Lluvia: 0.1 mm
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_0b88195d9d57da6f6e11e1e9bd52cacd = L.circleMarker(
+                [-33.19227, -66.13736],
+                {"bubblingMouseEvents": true, "color": "#0284c7", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#38bdf8", "fillOpacity": 0.85, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
+            ).addTo(feature_group_4ff67c202aadf9e5019811ca042631f0);
+        
+    
+            circle_marker_0b88195d9d57da6f6e11e1e9bd52cacd.bindTooltip(
+                `<div>
+                     Estancia Grande | Lluvia: 0.0 mm
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_7aa6152b953d7807d62fa8432a549022 = L.circleMarker(
+                [-33.50133, -65.79225],
+                {"bubblingMouseEvents": true, "color": "#0284c7", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#38bdf8", "fillOpacity": 0.85, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
+            ).addTo(feature_group_4ff67c202aadf9e5019811ca042631f0);
+        
+    
+            circle_marker_7aa6152b953d7807d62fa8432a549022.bindTooltip(
+                `<div>
+                     Fraga | Lluvia: 0.1 mm
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_53f2aa4a825d8e077a74ade6e75ff1e9 = L.circleMarker(
+                [-33.85085, -65.17382],
+                {"bubblingMouseEvents": true, "color": "#0284c7", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#38bdf8", "fillOpacity": 0.85, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
+            ).addTo(feature_group_4ff67c202aadf9e5019811ca042631f0);
+        
+    
+            circle_marker_53f2aa4a825d8e077a74ade6e75ff1e9.bindTooltip(
+                `<div>
+                     Justo Daract | Lluvia: 0.1 mm
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_d1e82e8831de495c336bded84ff39e98 = L.circleMarker(
+                [-34.36133, -65.32747],
+                {"bubblingMouseEvents": true, "color": "#0284c7", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#38bdf8", "fillOpacity": 0.85, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
+            ).addTo(feature_group_4ff67c202aadf9e5019811ca042631f0);
+        
+    
+            circle_marker_d1e82e8831de495c336bded84ff39e98.bindTooltip(
+                `<div>
+                     La Angelina | Lluvia: 0.0 mm
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_c9d6db7ee2f4c4fe1717f9f144b77434 = L.circleMarker(
+                [-33.34238, -66.12125],
+                {"bubblingMouseEvents": true, "color": "#0284c7", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#38bdf8", "fillOpacity": 0.85, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
+            ).addTo(feature_group_4ff67c202aadf9e5019811ca042631f0);
+        
+    
+            circle_marker_c9d6db7ee2f4c4fe1717f9f144b77434.bindTooltip(
+                `<div>
+                     La Cumbre | Lluvia: 0.1 mm
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_ae7d5a0a24bdb83c466ca5b503fc2d7b = L.circleMarker(
+                [-33.14587, -65.37258],
+                {"bubblingMouseEvents": true, "color": "#0284c7", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#38bdf8", "fillOpacity": 0.85, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
+            ).addTo(feature_group_4ff67c202aadf9e5019811ca042631f0);
+        
+    
+            circle_marker_ae7d5a0a24bdb83c466ca5b503fc2d7b.bindTooltip(
+                `<div>
+                     La Esquina | Lluvia: 0.0 mm
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_40962ea0bc3a13ea57efc99f8f9194f9 = L.circleMarker(
+                [-33.1142, -66.0041],
+                {"bubblingMouseEvents": true, "color": "#0284c7", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#38bdf8", "fillOpacity": 0.85, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
+            ).addTo(feature_group_4ff67c202aadf9e5019811ca042631f0);
+        
+    
+            circle_marker_40962ea0bc3a13ea57efc99f8f9194f9.bindTooltip(
+                `<div>
+                     La Florida - Dique | Lluvia: 0.0 mm
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_717a1cb0a814c70713cff26407e2245e = L.circleMarker(
+                [-33.14373, -65.0837],
+                {"bubblingMouseEvents": true, "color": "#0284c7", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#38bdf8", "fillOpacity": 0.85, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
+            ).addTo(feature_group_4ff67c202aadf9e5019811ca042631f0);
+        
+    
+            circle_marker_717a1cb0a814c70713cff26407e2245e.bindTooltip(
+                `<div>
+                     La Punilla | Lluvia: 0.3 mm
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_d83afd91e479981343fd8fcaac80ebdd = L.circleMarker(
+                [-33.05243, -65.61933],
+                {"bubblingMouseEvents": true, "color": "#0284c7", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#38bdf8", "fillOpacity": 0.85, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
+            ).addTo(feature_group_4ff67c202aadf9e5019811ca042631f0);
+        
+    
+            circle_marker_d83afd91e479981343fd8fcaac80ebdd.bindTooltip(
+                `<div>
+                     La Toma | Lluvia: 0.0 mm
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_0c04d7a2d9909d4b210658052b969759 = L.circleMarker(
+                [-33.26172, -66.24302],
+                {"bubblingMouseEvents": true, "color": "#0284c7", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#38bdf8", "fillOpacity": 0.85, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
+            ).addTo(feature_group_4ff67c202aadf9e5019811ca042631f0);
+        
+    
+            circle_marker_0c04d7a2d9909d4b210658052b969759.bindTooltip(
+                `<div>
+                     Las Chacras | Lluvia: 0.0 mm
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_af0e2e623b8b4833af56e7baaa050918 = L.circleMarker(
+                [-35.11305, -65.25683],
+                {"bubblingMouseEvents": true, "color": "#0284c7", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#38bdf8", "fillOpacity": 0.85, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
+            ).addTo(feature_group_4ff67c202aadf9e5019811ca042631f0);
+        
+    
+            circle_marker_af0e2e623b8b4833af56e7baaa050918.bindTooltip(
+                `<div>
+                     Nueva Galia | Lluvia: 0.0 mm
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_0136efadcbc558ace6890ef807a3de62 = L.circleMarker(
+                [-33.23122, -66.22822],
+                {"bubblingMouseEvents": true, "color": "#0284c7", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#38bdf8", "fillOpacity": 0.85, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
+            ).addTo(feature_group_4ff67c202aadf9e5019811ca042631f0);
+        
+    
+            circle_marker_0136efadcbc558ace6890ef807a3de62.bindTooltip(
+                `<div>
+                     Potrero de los Funes | Lluvia: 0.0 mm
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_ba40233a0c7c99e85a2c7bfcf2c16dce = L.circleMarker(
+                [-34.17522, -65.33552],
+                {"bubblingMouseEvents": true, "color": "#0284c7", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#38bdf8", "fillOpacity": 0.85, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
+            ).addTo(feature_group_4ff67c202aadf9e5019811ca042631f0);
+        
+    
+            circle_marker_ba40233a0c7c99e85a2c7bfcf2c16dce.bindTooltip(
+                `<div>
+                     Soven | Lluvia: 0.1 mm
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_a49a03a23f41847d6d5c8a903e858e2d = L.circleMarker(
+                [-35.1546, -65.94489],
+                {"bubblingMouseEvents": true, "color": "#0284c7", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#38bdf8", "fillOpacity": 0.85, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
+            ).addTo(feature_group_4ff67c202aadf9e5019811ca042631f0);
+        
+    
+            circle_marker_a49a03a23f41847d6d5c8a903e858e2d.bindTooltip(
+                `<div>
+                     Unión | Lluvia: 0.3 mm
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_bfa3851f61ef0456a39b27e0c41bc6e1 = L.circleMarker(
+                [-33.678586, -65.504645],
+                {"bubblingMouseEvents": true, "color": "#0284c7", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#38bdf8", "fillOpacity": 0.85, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
+            ).addTo(feature_group_4ff67c202aadf9e5019811ca042631f0);
+        
+    
+            circle_marker_bfa3851f61ef0456a39b27e0c41bc6e1.bindTooltip(
+                `<div>
+                     Villa Mercedes | Lluvia: 0.0 mm
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_c502cb00469606e826bda624c8b68754 = L.circleMarker(
+                [-33.725452, -65.385817],
+                {"bubblingMouseEvents": true, "color": "#0284c7", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#38bdf8", "fillOpacity": 0.85, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
+            ).addTo(feature_group_4ff67c202aadf9e5019811ca042631f0);
+        
+    
+            circle_marker_c502cb00469606e826bda624c8b68754.bindTooltip(
+                `<div>
+                     Villa Reynolds | Lluvia: 0.0 mm
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_6dcefae8a1b24f544cb16d87333dfd9d = L.circleMarker(
+                [-33.1094444444444, -66.1091666666667],
+                {"bubblingMouseEvents": true, "color": "#0284c7", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#38bdf8", "fillOpacity": 0.85, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
+            ).addTo(feature_group_4ff67c202aadf9e5019811ca042631f0);
+        
+    
+            circle_marker_6dcefae8a1b24f544cb16d87333dfd9d.bindTooltip(
+                `<div>
+                     Virorco | Lluvia: 2.3 mm
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_a7833f0223fba1c800cac31469f98689 = L.circleMarker(
+                [-35.617, -64.356],
+                {"bubblingMouseEvents": true, "color": "#0284c7", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#38bdf8", "fillOpacity": 0.85, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
+            ).addTo(feature_group_4ff67c202aadf9e5019811ca042631f0);
+        
+    
+            circle_marker_a7833f0223fba1c800cac31469f98689.bindTooltip(
+                `<div>
+                     Arata (APA) | Lluvia: 0.0 mm
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_b9788ecf810995e033c401420f5e8f88 = L.circleMarker(
+                [-36.056, -63.551],
+                {"bubblingMouseEvents": true, "color": "#0284c7", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#38bdf8", "fillOpacity": 0.85, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
+            ).addTo(feature_group_4ff67c202aadf9e5019811ca042631f0);
+        
+    
+            circle_marker_b9788ecf810995e033c401420f5e8f88.bindTooltip(
+                `<div>
+                     Quemú Quemú (APA) | Lluvia: 0.0 mm
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_74cbe0de0a68c23e83ec75f9990f0db4 = L.circleMarker(
+                [-36.262, -65.511],
+                {"bubblingMouseEvents": true, "color": "#0284c7", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#38bdf8", "fillOpacity": 0.85, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
+            ).addTo(feature_group_4ff67c202aadf9e5019811ca042631f0);
+        
+    
+            circle_marker_74cbe0de0a68c23e83ec75f9990f0db4.bindTooltip(
+                `<div>
+                     Telén (APA) | Lluvia: 0.0 mm
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_359e56beff81cdeec11c27d3451a4371 = L.circleMarker(
+                [-37.378, -64.604],
+                {"bubblingMouseEvents": true, "color": "#0284c7", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#38bdf8", "fillOpacity": 0.85, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
+            ).addTo(feature_group_4ff67c202aadf9e5019811ca042631f0);
+        
+    
+            circle_marker_359e56beff81cdeec11c27d3451a4371.bindTooltip(
+                `<div>
+                     General Acha (APA) | Lluvia: 0.0 mm
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            feature_group_4ff67c202aadf9e5019811ca042631f0.addTo(map_d383ed83e1d76df443c02dbba3165214);
+        
+    
+            var feature_group_6811916e4ca16e2b8a9614a79fe2a49c = L.featureGroup(
+                {
+}
+            );
+        
+    
+            var circle_marker_1fec8cc05b0adb5ecd28ec2938bee6b9 = L.circleMarker(
+                [-35.658, -63.758],
+                {"bubblingMouseEvents": true, "color": "#10b981", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#10b981", "fillOpacity": 0.95, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 6, "stroke": true, "weight": 3}
+            ).addTo(feature_group_6811916e4ca16e2b8a9614a79fe2a49c);
+        
+    
+            circle_marker_1fec8cc05b0adb5ecd28ec2938bee6b9.bindTooltip(
+                `<div>
+                     Freatímetro FR-PICO-01 (General Pico): Napa a 1.65 m
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_8909e323612c5bd742caa9ce9e78b926 = L.circleMarker(
+                [-35.034, -64.245],
+                {"bubblingMouseEvents": true, "color": "#10b981", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#10b981", "fillOpacity": 0.95, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 6, "stroke": true, "weight": 3}
+            ).addTo(feature_group_6811916e4ca16e2b8a9614a79fe2a49c);
+        
+    
+            circle_marker_8909e323612c5bd742caa9ce9e78b926.bindTooltip(
+                `<div>
+                     Freatímetro FR-REAL-02 (Realicó): Napa a 1.90 m
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_97fb7add6e5ae9b27c9b9c6e933174f4 = L.circleMarker(
+                [-34.821, -64.374],
+                {"bubblingMouseEvents": true, "color": "#10b981", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#10b981", "fillOpacity": 0.95, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 6, "stroke": true, "weight": 3}
+            ).addTo(feature_group_6811916e4ca16e2b8a9614a79fe2a49c);
+        
+    
+            circle_marker_97fb7add6e5ae9b27c9b9c6e933174f4.bindTooltip(
+                `<div>
+                     Freatímetro FR-HUIN-03 (Huinca Renancó): Napa a 1.40 m
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_788670bb123c210afc1f0585d641e143 = L.circleMarker(
+                [-35.318, -63.605],
+                {"bubblingMouseEvents": true, "color": "#f59e0b", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#f59e0b", "fillOpacity": 0.95, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 6, "stroke": true, "weight": 3}
+            ).addTo(feature_group_6811916e4ca16e2b8a9614a79fe2a49c);
+        
+    
+            circle_marker_788670bb123c210afc1f0585d641e143.bindTooltip(
+                `<div>
+                     Freatímetro FR-ALVE-04 (Intendente Alvear): Napa a 1.15 m
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            feature_group_6811916e4ca16e2b8a9614a79fe2a49c.addTo(map_d383ed83e1d76df443c02dbba3165214);
+        
+    
+            var layer_control_57ddaef05e5955755aafaccd5ec89d59_layers = {
+                base_layers : {
+                    "Cartograf\u00eda Base Clara (Esri Canvas)" : tile_layer_e82de00e16ffe60675113d0bbbeffd19,
+                },
+                overlays :  {
+                    "Cuerpos de Agua (INA/SNIH)" : feature_group_ab2833301581045a4fb1472ea2940476,
+                    "Estaciones Meteorol\u00f3gicas" : feature_group_4ff67c202aadf9e5019811ca042631f0,
+                    "Freat\u00edmetros (Red Hist\u00f3rica)" : feature_group_6811916e4ca16e2b8a9614a79fe2a49c,
+                },
+            };
+            let layer_control_57ddaef05e5955755aafaccd5ec89d59 = L.control.layers(
+                layer_control_57ddaef05e5955755aafaccd5ec89d59_layers.base_layers,
+                layer_control_57ddaef05e5955755aafaccd5ec89d59_layers.overlays,
+                {
+  "position": "topright",
+  "collapsed": false,
+  "autoZIndex": true,
+}
+            ).addTo(map_d383ed83e1d76df443c02dbba3165214);
+
+        
+</script>
+</html>
