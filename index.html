@@ -33,7 +33,7 @@
     header h1 { font-size: 1.15rem; font-weight: 700; display: flex; align-items: center; gap: 8px; }
     header .status-tag { font-size: 0.75rem; background: #0369a1; padding: 4px 8px; border-radius: 4px; }
 
-    /* Pestañas */
+    /* Pestañas de Navegación */
     .nav-tabs {
       display: flex;
       background: #e2e8f0;
@@ -63,6 +63,7 @@
     .tab-content { display: none; padding: 20px; }
     .tab-content.active { display: block; }
 
+    /* Sección Principal y Tarjetas */
     .section-title {
       font-size: 1.3rem;
       font-weight: 700;
@@ -75,7 +76,7 @@
 
     .grid-kpis {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
       gap: 16px;
       margin-bottom: 24px;
     }
@@ -87,7 +88,7 @@
       box-shadow: 0 2px 4px rgba(0,0,0,0.04);
     }
 
-    /* Semáforos de Alerta Open-Meteo */
+    /* Niveles de Alerta Meteorológica */
     .alerta-box {
       border-radius: 6px;
       padding: 12px;
@@ -101,10 +102,10 @@
     .alerta-naranja { background: #ffedd5; border-left: 5px solid #ea580c; color: #7c2d12; }
     .alerta-rojo { background: #fee2e2; border-left: 5px solid #dc2626; color: #7f1d1d; }
 
-    /* Visor */
+    /* Layout del Visor */
     .visor-layout {
       display: grid;
-      grid-template-columns: 340px 1fr;
+      grid-template-columns: 320px 1fr;
       gap: 16px;
       height: calc(100vh - 170px);
     }
@@ -130,6 +131,7 @@
       border: 1px solid var(--border);
     }
 
+    /* Formularios de Carga */
     .file-upload-block {
       background: #f8fafc;
       border: 1px dashed var(--secondary);
@@ -141,11 +143,16 @@
       font-size: 0.85rem;
       display: block;
       margin-bottom: 6px;
+      color: #1e293b;
     }
-    .file-upload-block input[type="file"] { width: 100%; font-size: 0.8rem; }
+    .file-upload-block input[type="file"] {
+      width: 100%;
+      font-size: 0.8rem;
+    }
 
+    /* Tabla de Freatímetros e Historial */
     .table-container {
-      max-height: 220px;
+      max-height: 200px;
       overflow-y: auto;
       font-size: 0.8rem;
       border: 1px solid var(--border);
@@ -156,72 +163,89 @@
     th, td { padding: 6px 8px; border-bottom: 1px solid #e2e8f0; text-align: left; }
     th { background: #f1f5f9; font-weight: 700; position: sticky; top: 0; }
 
+    /* Matriz de Cruce Multicriterio */
     .matriz-cruce {
       background: #eff6ff;
       border: 1px solid #bfdbfe;
       border-radius: 6px;
-      padding: 12px;
+      padding: 10px;
       font-size: 0.8rem;
     }
-    .matriz-cruce h4 { font-size: 0.85rem; color: #1e3a8a; margin-bottom: 6px; }
+    .matriz-cruce h4 { font-size: 0.85rem; color: #1e3a8a; margin-bottom: 5px; }
 
-    /* Módulo SMN Oficial */
-    .smn-box {
+    /* Embebido SMN */
+    .smn-container {
       background: white;
       border-radius: 8px;
       border: 1px solid var(--border);
-      padding: 20px;
+      overflow: hidden;
       box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    .smn-header {
+      background: #1e3a8a;
+      color: white;
+      padding: 12px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .smn-iframe {
+      width: 100%;
+      height: 720px;
+      border: none;
     }
   </style>
 
-  <!-- Leaflet y librerías cliente -->
+  <!-- Leaflet JS y complementos -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <!-- Plugin Omnivore para KML en Leaflet -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-omnivore/0.3.4/leaflet-omnivore.min.js"></script>
+  <!-- SheetJS para parseo de Excel en cliente -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>window.DATOS_SAT_INICIALES = {"fecha": "2026-10-09 11:06", "meteo": [{"id": "REM_88", "nombre": "AgroZAL", "departamento": "San Luis", "provincia": "San Luis", "lat": -33.6450639, "lon": -65.3794056, "temp_c": 11.6, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "red": "REM San Luis", "fecha_actualizacion": "2026-10-09 11:05"}, {"id": "REM_1", "nombre": "Alto Pelado", "departamento": "San Luis", "provincia": "San Luis", "lat": -33.83756, "lon": -66.13864, "temp_c": 6.4, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "red": "REM San Luis", "fecha_actualizacion": "2026-10-09 10:39"}, {"id": "REM_5", "nombre": "Batavia", "departamento": "San Luis", "provincia": "San Luis", "lat": -34.77845, "lon": -65.68851, "temp_c": 8.4, "humedad_pct": 0.0, "lluvia_24h_mm": 3.1, "red": "REM San Luis", "fecha_actualizacion": "2026-10-09 10:39"}, {"id": "REM_7", "nombre": "Buena Esperanza", "departamento": "San Luis", "provincia": "San Luis", "lat": -34.75682, "lon": -65.25261, "temp_c": 9.2, "humedad_pct": 0.0, "lluvia_24h_mm": 0.5, "red": "REM San Luis", "fecha_actualizacion": "2026-10-09 10:39"}, {"id": "REM_49", "nombre": "Coronel Alzogaray", "departamento": "San Luis", "provincia": "San Luis", "lat": -33.46051, "lon": -65.42903, "temp_c": 10.6, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "red": "REM San Luis", "fecha_actualizacion": "2026-10-08 19:12"}, {"id": "REM_85", "nombre": "Donovan", "departamento": "San Luis", "provincia": "San Luis", "lat": -33.337614, "lon": -66.232069, "temp_c": 10.0, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "red": "REM San Luis", "fecha_actualizacion": "2026-10-09 11:04"}, {"id": "REM_47", "nombre": "El Trapiche", "departamento": "San Luis", "provincia": "San Luis", "lat": -33.102925, "lon": -66.05738056, "temp_c": 10.0, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "red": "REM San Luis", "fecha_actualizacion": "2026-10-09 10:39"}, {"id": "REM_55", "nombre": "Estancia Grande", "departamento": "San Luis", "provincia": "San Luis", "lat": -33.19227, "lon": -66.13736, "temp_c": 9.1, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "red": "REM San Luis", "fecha_actualizacion": "2026-10-09 11:05"}, {"id": "REM_12", "nombre": "Fraga", "departamento": "San Luis", "provincia": "San Luis", "lat": -33.50133, "lon": -65.79225, "temp_c": 11.0, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "red": "REM San Luis", "fecha_actualizacion": "2026-10-09 11:05"}, {"id": "REM_13", "nombre": "Justo Daract", "departamento": "San Luis", "provincia": "San Luis", "lat": -33.85085, "lon": -65.17382, "temp_c": 10.5, "humedad_pct": 0.0, "lluvia_24h_mm": 0.1, "red": "REM San Luis", "fecha_actualizacion": "2026-10-09 11:05"}, {"id": "REM_14", "nombre": "La Angelina", "departamento": "San Luis", "provincia": "San Luis", "lat": -34.36133, "lon": -65.32747, "temp_c": 9.7, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "red": "REM San Luis", "fecha_actualizacion": "2026-10-09 11:05"}, {"id": "REM_16", "nombre": "La Cumbre", "departamento": "San Luis", "provincia": "San Luis", "lat": -33.34238, "lon": -66.12125, "temp_c": 8.6, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "red": "REM San Luis", "fecha_actualizacion": "2026-10-09 11:05"}, {"id": "REM_17", "nombre": "La Esquina", "departamento": "San Luis", "provincia": "San Luis", "lat": -33.14587, "lon": -65.37258, "temp_c": 8.8, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "red": "REM San Luis", "fecha_actualizacion": "2026-10-09 11:05"}, {"id": "REM_87", "nombre": "La Florida - Dique", "departamento": "San Luis", "provincia": "San Luis", "lat": -33.1142, "lon": -66.0041, "temp_c": 9.9, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "red": "REM San Luis", "fecha_actualizacion": "2026-10-09 10:39"}, {"id": "REM_19", "nombre": "La Punilla", "departamento": "San Luis", "provincia": "San Luis", "lat": -33.14373, "lon": -65.0837, "temp_c": 8.4, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "red": "REM San Luis", "fecha_actualizacion": "2026-10-09 10:39"}, {"id": "REM_21", "nombre": "La Toma", "departamento": "San Luis", "provincia": "San Luis", "lat": -33.05243, "lon": -65.61933, "temp_c": 15.4, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "red": "REM San Luis", "fecha_actualizacion": "2026-10-09 11:05"}, {"id": "REM_56", "nombre": "Las Chacras", "departamento": "San Luis", "provincia": "San Luis", "lat": -33.26172, "lon": -66.24302, "temp_c": 11.4, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "red": "REM San Luis", "fecha_actualizacion": "2026-10-09 10:39"}, {"id": "REM_30", "nombre": "Nueva Galia", "departamento": "San Luis", "provincia": "San Luis", "lat": -35.11305, "lon": -65.25683, "temp_c": 9.1, "humedad_pct": 0.0, "lluvia_24h_mm": 1.0, "red": "REM San Luis", "fecha_actualizacion": "2026-10-09 11:05"}, {"id": "REM_51", "nombre": "Potrero de los Funes", "departamento": "San Luis", "provincia": "San Luis", "lat": -33.23122, "lon": -66.22822, "temp_c": 9.3, "humedad_pct": 0.0, "lluvia_24h_mm": 1.6, "red": "REM San Luis", "fecha_actualizacion": "2026-10-09 11:05"}, {"id": "REM_52", "nombre": "Soven", "departamento": "San Luis", "provincia": "San Luis", "lat": -34.17522, "lon": -65.33552, "temp_c": 9.6, "humedad_pct": 0.0, "lluvia_24h_mm": 0.1, "red": "REM San Luis", "fecha_actualizacion": "2026-10-09 11:05"}, {"id": "REM_38", "nombre": "Unión", "departamento": "San Luis", "provincia": "San Luis", "lat": -35.1546, "lon": -65.94489, "temp_c": 9.5, "humedad_pct": 0.0, "lluvia_24h_mm": 0.3, "red": "REM San Luis", "fecha_actualizacion": "2026-10-09 11:05"}, {"id": "REM_42", "nombre": "Villa Mercedes", "departamento": "San Luis", "provincia": "San Luis", "lat": -33.678586, "lon": -65.504645, "temp_c": 10.6, "humedad_pct": 0.0, "lluvia_24h_mm": 0.1, "red": "REM San Luis", "fecha_actualizacion": "2026-10-09 11:05"}, {"id": "REM_60", "nombre": "Villa Reynolds", "departamento": "San Luis", "provincia": "San Luis", "lat": -33.725452, "lon": -65.385817, "temp_c": 10.1, "humedad_pct": 0.0, "lluvia_24h_mm": 0.1, "red": "REM San Luis", "fecha_actualizacion": "2026-10-09 10:36"}, {"id": "REM_1755", "nombre": "Virorco", "departamento": "San Luis", "provincia": "San Luis", "lat": -33.1094444444444, "lon": -66.1091666666667, "temp_c": 14.7, "humedad_pct": 0.0, "lluvia_24h_mm": 2.3, "red": "REM San Luis", "fecha_actualizacion": "2025-10-24 05:00"}, {"id": "APA_ARATA", "nombre": "Arata (APA)", "departamento": "Trenel", "provincia": "La Pampa", "lat": -35.617, "lon": -64.356, "temp_c": 19.2, "humedad_pct": 55.0, "lluvia_24h_mm": 0.0, "red": "APA La Pampa", "fecha_actualizacion": "2026-10-09 11:06"}, {"id": "APA_QUEMU", "nombre": "Quemú Quemú (APA)", "departamento": "Quemú Quemú", "provincia": "La Pampa", "lat": -36.056, "lon": -63.551, "temp_c": 16.3, "humedad_pct": 55.0, "lluvia_24h_mm": 0.0, "red": "APA La Pampa", "fecha_actualizacion": "2026-10-09 11:06"}, {"id": "APA_TELEN", "nombre": "Telén (APA)", "departamento": "Loventué", "provincia": "La Pampa", "lat": -36.262, "lon": -65.511, "temp_c": 16.3, "humedad_pct": 55.0, "lluvia_24h_mm": 0.0, "red": "APA La Pampa", "fecha_actualizacion": "2026-10-09 11:06"}, {"id": "APA_GRALACHA", "nombre": "General Acha (APA)", "departamento": "Utracán", "provincia": "La Pampa", "lat": -37.378, "lon": -64.604, "temp_c": 15.0, "humedad_pct": 55.0, "lluvia_24h_mm": 0.0, "red": "APA La Pampa", "fecha_actualizacion": "2026-10-09 11:06"}, {"id": "OMX_CBA_1", "nombre": "General Levalle", "departamento": "Roque Sáenz Peña", "provincia": "Córdoba", "lat": -34.0, "lon": -63.9163, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Omixom Cba", "red": "Omixom Córdoba"}, {"id": "OMX_CBA_2", "nombre": "Río Bamba", "departamento": "Roque Sáenz Peña", "provincia": "Córdoba", "lat": -34.0537, "lon": -63.7332, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Omixom Cba", "red": "Omixom Córdoba"}, {"id": "OMX_CBA_3", "nombre": "Jovita", "departamento": "General Roca", "provincia": "Córdoba", "lat": -34.5194, "lon": -63.9683, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Omixom Cba", "red": "Omixom Córdoba"}, {"id": "OMX_CBA_4", "nombre": "Villa Valeria", "departamento": "General Roca", "provincia": "Córdoba", "lat": -34.3427, "lon": -64.929, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Omixom Cba", "red": "Omixom Córdoba"}, {"id": "OMX_CBA_5", "nombre": "Nicolás Bruzzone", "departamento": "General Roca", "provincia": "Córdoba", "lat": -34.4391, "lon": -64.3424, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Omixom Cba", "red": "Omixom Córdoba"}, {"id": "OMX_CBA_6", "nombre": "Melo", "departamento": "Roque Sáenz Peña", "provincia": "Córdoba", "lat": -34.3452, "lon": -63.4377, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Omixom Cba", "red": "Omixom Córdoba"}, {"id": "OMX_CBA_7", "nombre": "Huanchillas", "departamento": "Juárez Celman", "provincia": "Córdoba", "lat": -33.6665, "lon": -63.6395, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Omixom Cba", "red": "Omixom Córdoba"}, {"id": "OMX_CBA_8", "nombre": "Hipólito Bouchard", "departamento": "General Roca", "provincia": "Córdoba", "lat": -34.706, "lon": -63.503, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Omixom Cba", "red": "Omixom Córdoba"}, {"id": "OMX_CBA_9", "nombre": "General Roca", "departamento": "General Roca", "provincia": "Córdoba", "lat": -33.9948, "lon": -65.0754, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Omixom Cba", "red": "Omixom Córdoba"}, {"id": "OMX_CBA_10", "nombre": "Serrano", "departamento": "Roque Sáenz Peña", "provincia": "Córdoba", "lat": -34.4629, "lon": -63.5309, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Omixom Cba", "red": "Omixom Córdoba"}, {"id": "OMX_CBA_11", "nombre": "Coronel Moldes", "departamento": "Río Cuarto", "provincia": "Córdoba", "lat": -33.6481, "lon": -64.595, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Omixom Cba", "red": "Omixom Córdoba"}, {"id": "OMX_CBA_12", "nombre": "Viamonte", "departamento": "Unión", "provincia": "Córdoba", "lat": -33.7429, "lon": -63.0996, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Omixom Cba", "red": "Omixom Córdoba"}, {"id": "OMX_CBA_13", "nombre": "Chaján", "departamento": "Río Cuarto", "provincia": "Córdoba", "lat": -33.5508, "lon": -65.0059, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Omixom Cba", "red": "Omixom Córdoba"}, {"id": "OMX_CBA_14", "nombre": "Villa Rossi", "departamento": "General Roca", "provincia": "Córdoba", "lat": -34.2949, "lon": -63.2654, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Omixom Cba", "red": "Omixom Córdoba"}, {"id": "OMX_CBA_15", "nombre": "Presa El Chañar", "departamento": "Río Cuarto", "provincia": "Córdoba", "lat": -33.9608, "lon": -65.0551, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Omixom Cba", "red": "Omixom Córdoba"}, {"id": "OMX_CBA_16", "nombre": "Huinca Renancó", "departamento": "General Roca", "provincia": "Córdoba", "lat": -34.8208, "lon": -64.3738, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Omixom Cba", "red": "Omixom Córdoba"}, {"id": "OMX_CBA_17", "nombre": "Vicuña Mackenna", "departamento": "Río Cuarto", "provincia": "Córdoba", "lat": -33.9754, "lon": -64.3642, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Omixom Cba", "red": "Omixom Córdoba"}, {"id": "OMX_LP_1", "nombre": "MPLP 16 - El Tala", "departamento": "Realicó", "provincia": "La Pampa", "lat": -35.3119, "lon": -64.7144, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Omixom LP", "red": "Omixom La Pampa"}, {"id": "OMX_LP_2", "nombre": "MPLP 41 - Realicó", "departamento": "Realicó", "provincia": "La Pampa", "lat": -35.0576, "lon": -64.2129, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Omixom LP", "red": "Omixom La Pampa"}, {"id": "OMX_LP_3", "nombre": "Trilí", "departamento": "Quemú Quemú", "provincia": "La Pampa", "lat": -35.9036, "lon": -63.6429, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Omixom LP", "red": "Omixom La Pampa"}, {"id": "OMX_LP_4", "nombre": "Ingeniero Luiggi", "departamento": "Realicó", "provincia": "La Pampa", "lat": -35.4714, "lon": -64.6024, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Omixom LP", "red": "Omixom La Pampa"}, {"id": "OMX_LP_5", "nombre": "Conhelo", "departamento": "Conhelo", "provincia": "La Pampa", "lat": -35.9895, "lon": -64.5954, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Omixom LP", "red": "Omixom La Pampa"}, {"id": "OMX_LP_6", "nombre": "Arata", "departamento": "Trenel", "provincia": "La Pampa", "lat": -35.6391, "lon": -64.3564, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Omixom LP", "red": "Omixom La Pampa"}, {"id": "OMX_LP_7", "nombre": "Pichi Huinca", "departamento": "Rancul", "provincia": "La Pampa", "lat": -35.6482, "lon": -64.7699, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Omixom LP", "red": "Omixom La Pampa"}, {"id": "OMX_LP_8", "nombre": "Rancul", "departamento": "Rancul", "provincia": "La Pampa", "lat": -35.0883, "lon": -64.5082, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Omixom LP", "red": "Omixom La Pampa"}, {"id": "OMX_LP_9", "nombre": "Coronel Hilario Lagos", "departamento": "Chapaleufú", "provincia": "La Pampa", "lat": -35.0344, "lon": -63.9111, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Omixom LP", "red": "Omixom La Pampa"}, {"id": "OMX_LP_10", "nombre": "Colonia Barón", "departamento": "Quemú Quemú", "provincia": "La Pampa", "lat": -36.1508, "lon": -63.855, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Omixom LP", "red": "Omixom La Pampa"}, {"id": "OMX_LP_11", "nombre": "Intendente Alvear", "departamento": "Chapaleufú", "provincia": "La Pampa", "lat": -35.3182, "lon": -63.6054, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Omixom LP", "red": "Omixom La Pampa"}, {"id": "OMX_LP_12", "nombre": "Alta Italia", "departamento": "Realicó", "provincia": "La Pampa", "lat": -35.3317, "lon": -64.1191, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Omixom LP", "red": "Omixom La Pampa"}, {"id": "OMX_LP_13", "nombre": "Winifreda", "departamento": "Conhelo", "provincia": "La Pampa", "lat": -36.2229, "lon": -64.2487, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Omixom LP", "red": "Omixom La Pampa"}, {"id": "OMX_LP_14", "nombre": "General Pico", "departamento": "Maracó", "provincia": "La Pampa", "lat": -35.6969, "lon": -63.6207, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Omixom LP", "red": "Omixom La Pampa"}, {"id": "OMX_LP_15", "nombre": "Eduardo Castex", "departamento": "Conhelo", "provincia": "La Pampa", "lat": -35.916, "lon": -64.2956, "temp_c": NaN, "humedad_pct": 0.0, "lluvia_24h_mm": 0.0, "lluvia_mes_mm": 0.0, "viento_kmh": 0.0, "viento_dir": "N/A", "presion_hpa": 1013.2, "fecha_actualizacion": "Omixom LP", "red": "Omixom La Pampa"}], "hidro": [{"nombre": "Quinto - Malvin Reich", "rio": "Río Quinto (Cuenca Alta)", "distrito": "San Luis", "lat": -33.438333, "lon": -65.883056, "nivel_actual": 0.95, "cota_alerta": 2.5, "estado": "Normal", "fecha": "2026-10-09 11:06"}, {"nombre": "Trapiche - Hosteria El Trapiche", "rio": "Río Trapiche (Afluente)", "distrito": "San Luis", "lat": -33.105833, "lon": -66.063333, "nivel_actual": 0.32, "cota_alerta": 1.8, "estado": "Normal", "fecha": "2026-10-09 11:06"}, {"nombre": "Quinto - Dique Villa Mercedes", "rio": "Río Quinto", "distrito": "San Luis", "lat": -33.653889, "lon": -65.533611, "nivel_actual": 1.08, "cota_alerta": 2.8, "estado": "Normal", "fecha": "2026-10-09 11:06"}, {"nombre": "Quinto - Av Circunvalación", "rio": "Río Quinto", "distrito": "San Luis", "lat": -33.739167, "lon": -65.376944, "nivel_actual": 0.16, "cota_alerta": 1.6, "estado": "Normal", "fecha": "2026-10-09 11:06"}, {"nombre": "Quinto - Justo Daract", "rio": "Río Quinto", "distrito": "San Luis", "lat": -33.918611, "lon": -65.151667, "nivel_actual": 1.79, "cota_alerta": 2.9, "estado": "Normal", "fecha": "2026-10-09 11:06"}, {"nombre": "Aº El Aji - RN Nº35 y RN Nº7", "rio": "Afluente Río Quinto", "distrito": "Córdoba / LP", "lat": -33.931111, "lon": -64.396389, "nivel_actual": 0.66, "cota_alerta": 1.9, "estado": "Normal", "fecha": "2026-10-09 11:06"}, {"nombre": "Quinto - R.N. 35", "rio": "Río Quinto", "distrito": "Córdoba / LP", "lat": -34.216389, "lon": -64.386111, "nivel_actual": 1.22, "cota_alerta": 2.6, "estado": "Normal", "fecha": "2026-10-09 11:06"}, {"nombre": "Quinto - Canal Devoto RP 4", "rio": "Río Quinto / Canal Devoto", "distrito": "Córdoba / LP", "lat": -33.933056, "lon": -63.449167, "nivel_actual": 1.69, "cota_alerta": 2.8, "estado": "Normal", "fecha": "2026-10-09 11:06"}, {"nombre": "Laguna La Margarita", "rio": "Cuenca Río Quinto", "distrito": "Córdoba / LP", "lat": -34.653333, "lon": -63.723056, "nivel_actual": 1.43, "cota_alerta": 2.4, "estado": "Normal", "fecha": "2026-10-09 11:06"}, {"nombre": "Quinto - RP Nº26", "rio": "Río Quinto", "distrito": "Córdoba / LP", "lat": -34.762778, "lon": -63.645, "nivel_actual": 0.78, "cota_alerta": 2.2, "estado": "Normal", "fecha": "2026-10-09 11:06"}]};</script>
 </head>
 <body>
 
   <header>
     <h1><i class="fa-solid fa-water"></i> SAT Cuenca Río Quinto (Río V) - La Pampa / Córdoba / San Luis</h1>
-    <span class="status-tag" id="header-fecha"><i class="fa-solid fa-satellite-dish"></i> Monitoreo Operativo</span>
+    <span class="status-tag"><i class="fa-solid fa-satellite-dish"></i> Monitoreo Operativo</span>
   </header>
 
-  <!-- Navegación -->
+  <!-- Barra de Solapas -->
   <nav class="nav-tabs">
-    <button class="nav-tab-btn active" onclick="cambiarSolapa('tab-principal', event)">
+    <button class="nav-tab-btn active" onclick="cambiarSolapa('tab-principal')">
       <i class="fa-solid fa-gauge-high"></i> Panel Principal
     </button>
-    <button class="nav-tab-btn" onclick="cambiarSolapa('tab-visor', event)">
+    <button class="nav-tab-btn" onclick="cambiarSolapa('tab-visor')">
       <i class="fa-solid fa-map-location-dot"></i> Visor Hidrometeorológico y Freático
     </button>
-    <button class="nav-tab-btn" onclick="cambiarSolapa('tab-smn', event)">
+    <button class="nav-tab-btn" onclick="cambiarSolapa('tab-smn')">
       <i class="fa-solid fa-triangle-exclamation"></i> Alertas Oficiales SMN
     </button>
   </nav>
 
   <!-- SOLAPA 1: PRINCIPAL -->
   <main id="tab-principal" class="tab-content active">
-    <!-- TEXTO ACTUALIZADO REQUERIDO -->
+    <!-- TÍTULO ACTUALIZADO -->
     <h2 class="section-title">
       <i class="fa-solid fa-cloud-sun-rain" style="color: #0284c7;"></i> Monitoreo meteorológico en tiempo real
     </h2>
 
     <div class="grid-kpis">
-      <!-- Tarjeta Alerta Open-Meteo Graduada -->
+      <!-- Módulo Alerta Open-Meteo Graduada -->
       <div class="card">
-        <h3><i class="fa-solid fa-cloud-bolt"></i> Alertas y Pronóstico Open-Meteo</h3>
-        <p style="font-size:0.82rem; color:#64748b; margin-top:4px;">
-          Clasificación gradual según acumulación de precipitación en 24h y viento:
+        <h3><i class="fa-solid fa-cloud-bolt"></i> Pronóstico y Alertas Open-Meteo (Cuenca Río V)</h3>
+        <p style="font-size:0.85rem; color:#64748b; margin-top:4px;">
+          Clasificación por umbrales de severidad multicriterio (Lluvia acumulada 24h y viento):
         </p>
         <div id="contenedor-alerta-openmeteo">
-          <p style="font-size: 0.85rem; color:#64748b; margin-top: 10px;">Consultando Open-Meteo...</p>
+          <p style="font-size: 0.85rem; color:#64748b; margin-top: 8px;">Consultando API en vivo...</p>
         </div>
       </div>
 
-      <!-- Nudos de control -->
+      <!-- Resumen Cuenca Hidrológica -->
       <div class="card">
-        <h3><i class="fa-solid fa-wave-square"></i> Nudos Hidrométricos (INA / SNIH)</h3>
+        <h3><i class="fa-solid fa-wave-square"></i> Nudos de Control Hidrológico (INA / SNIH)</h3>
         <ul style="list-style: none; margin-top: 10px; font-size: 0.85rem; line-height: 1.8;">
           <li><i class="fa-solid fa-circle" style="color:#10b981; font-size:10px;"></i> <b>Laguna La Margarita:</b> 1.43 m (Retención Ordinaria)</li>
           <li><i class="fa-solid fa-circle" style="color:#10b981; font-size:10px;"></i> <b>Río Quinto - R.N. 35:</b> 1.22 m (Normal)</li>
@@ -230,54 +254,53 @@
         </ul>
       </div>
 
-      <!-- Resumen Freático -->
+      <!-- Resumen Freático General -->
       <div class="card">
-        <h3><i class="fa-solid fa-bore-hole"></i> Red Freatimétrica Regional</h3>
-        <div id="resumen-freatico-kpi" style="margin-top: 10px; font-size: 0.85rem;">
-          <p><b>Puntos activos:</b> 4 estaciones base cargadas.</p>
-          <p><b>Profundidad freática promedio:</b> 1.52 m</p>
-          <p style="color:#16a34a; font-weight:600;">Estado regional: Capacidad de infiltración regular a buena.</p>
+        <h3><i class="fa-solid fa-bore-hole"></i> Estado de la Napa Freática en Cuenca Baja</h3>
+        <div id="resumen-freatico-kpi" style="margin-top: 10px;">
+          <p style="font-size: 0.85rem; color:#64748b;">Suba una planilla en el visor para computar niveles freáticos históricos.</p>
         </div>
       </div>
     </div>
   </main>
 
-  <!-- SOLAPA 2: VISOR SIG -->
+  <!-- SOLAPA 2: VISOR SIG CON CAPAS KML Y EXCEL -->
   <div id="tab-visor" class="tab-content">
     <div class="visor-layout">
+      <!-- Panel de Controles Laterales -->
       <aside class="visor-sidebar">
         <div>
-          <h3 style="font-size: 1rem;"><i class="fa-solid fa-layer-group"></i> Cruce de Capas</h3>
-          <p style="font-size: 0.78rem; color: #64748b;">Subida de KML y Excel para cruce de umbrales.</p>
+          <h3 style="font-size: 1rem; color: #0f172a;"><i class="fa-solid fa-layer-group"></i> Capas de Información</h3>
+          <p style="font-size: 0.78rem; color: #64748b; margin-top: 2px;">Cruce hidrometeorológico, edáfico y freático.</p>
         </div>
 
-        <!-- Carga KML Humedad INTA -->
+        <!-- 1. Carga de KML de Humedad del Suelo (INTA) -->
         <div class="file-upload-block">
-          <label><i class="fa-solid fa-seedling" style="color:#16a34a;"></i> Capa KML Humedad del Suelo (INTA):</label>
+          <label><i class="fa-solid fa-seedling" style="color:#16a34a;"></i> Capa KML Humedad de Suelo (INTA):</label>
           <input type="file" id="inputKmlInta" accept=".kml" onchange="cargarKMLHumedad(event)" />
           <div id="info-kml" style="font-size: 0.75rem; color: #475569; margin-top: 4px;"></div>
         </div>
 
-        <!-- Carga Excel Freatímetros -->
+        <!-- 2. Carga de Freatímetros en Excel -->
         <div class="file-upload-block">
-          <label><i class="fa-solid fa-file-excel" style="color:#0284c7;"></i> Subir Freatímetros (Excel):</label>
+          <label><i class="fa-solid fa-arrow-down-up-across-line" style="color:#0284c7;"></i> Subir Puntos Freatímetros (Excel):</label>
           <input type="file" id="inputExcelFreatica" accept=".xlsx, .xls, .csv" onchange="cargarExcelFreatimetros(event)" />
-          <p style="font-size: 0.7rem; color: #64748b; margin-top: 4px;">Permite almacenar continuidad histórica y cruzar niveles.</p>
+          <p style="font-size: 0.7rem; color: #64748b; margin-top: 4px;">Columnas: <code>ID, Localidad, Lat, Lon, Fecha, Profundidad_m, Umbral_m</code></p>
         </div>
 
-        <!-- Matriz de Cruce Multicriterio -->
+        <!-- Matriz de Cruce de Riesgo -->
         <div class="matriz-cruce">
           <h4><i class="fa-solid fa-shield-halved"></i> Matriz de Cruce de Alerta</h4>
-          <div id="resultado-matriz-cruce">
-            Esperando datos para cruzar napa, pronóstico y suelo...
+          <div id="resultado-matriz-cruce" style="font-size: 0.75rem; color: #334155;">
+            Cargue datos freáticos para calcular el cruce frente al pronóstico y humedad actual.
           </div>
         </div>
 
-        <!-- Tabla Histórica -->
+        <!-- Registro Histórico en Memoria -->
         <div>
-          <h4 style="font-size: 0.82rem;"><i class="fa-solid fa-clock-rotate-left"></i> Registros de Freatímetros</h4>
+          <h4 style="font-size: 0.82rem; color: #0f172a;"><i class="fa-solid fa-clock-rotate-left"></i> Serie Histórica Freática</h4>
           <div class="table-container">
-            <table>
+            <table id="tabla-freatimetros">
               <thead>
                 <tr>
                   <th>Punto</th>
@@ -287,242 +310,348 @@
                 </tr>
               </thead>
               <tbody id="cuerpo-tabla-freatimetros">
-                <tr><td>Gral. Pico</td><td>Hoy</td><td>1.65</td><td><span style="color:#10b981; font-weight:bold;">Normal</span></td></tr>
-                <tr><td>Realicó</td><td>Hoy</td><td>1.90</td><td><span style="color:#10b981; font-weight:bold;">Normal</span></td></tr>
-                <tr><td>Huinca Renancó</td><td>Hoy</td><td>1.40</td><td><span style="color:#10b981; font-weight:bold;">Normal</span></td></tr>
-                <tr><td>Int. Alvear</td><td>Hoy</td><td>1.15</td><td><span style="color:#f59e0b; font-weight:bold;">Alerta</span></td></tr>
+                <tr><td colspan="4" style="text-align:center; color:#94a3b8;">Sin datos cargados</td></tr>
               </tbody>
             </table>
           </div>
         </div>
       </aside>
 
+      <!-- Contenedor del Mapa Leaflet -->
       <div id="map"></div>
     </div>
   </div>
 
-  <!-- SOLAPA 3: ALERTAS SMN EMBEBIDAS / INTEGRADAS -->
+  <!-- SOLAPA 3: ALERTAS SMN EMBEBIDAS -->
   <div id="tab-smn" class="tab-content">
-    <div class="smn-box">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; flex-wrap: wrap; gap: 10px;">
+    <div class="smn-container">
+      <div class="smn-header">
         <div>
-          <h2 style="font-size: 1.15rem; color:#1e3a8a;"><i class="fa-solid fa-triangle-exclamation" style="color:#eab308;"></i> Servicio Meteorológico Nacional - SAT Oficial</h2>
-          <p style="font-size:0.85rem; color:#64748b;">Sistema de Alerta Temprana Oficial para la República Argentina</p>
+          <h2 style="font-size: 1.1rem; display: flex; align-items: center; gap: 8px;">
+            <i class="fa-solid fa-triangle-exclamation" style="color: #facc15;"></i>
+            Sistema de Alerta Temprana Oficial - Servicio Meteorológico Nacional
+          </h2>
+          <span style="font-size: 0.8rem; opacity: 0.9;">Información en tiempo real para La Pampa, Córdoba y San Luis</span>
         </div>
-        <a href="https://www.smn.gob.ar/alertas" target="_blank" rel="noopener noreferrer" style="background:#1e3a8a; color:white; padding:8px 16px; border-radius:6px; text-decoration:none; font-weight:600; font-size:0.85rem;">
-          Ir directamente a smn.gob.ar/alertas <i class="fa-solid fa-arrow-up-right-from-square"></i>
+        <a href="https://www.smn.gob.ar/alertas" target="_blank" rel="noopener noreferrer" style="color: white; background: rgba(255,255,255,0.2); padding: 6px 12px; border-radius: 4px; text-decoration: none; font-size: 0.8rem; font-weight: 600;">
+          Abrir en sitio oficial <i class="fa-solid fa-arrow-up-right-from-square"></i>
         </a>
       </div>
-
-      <div style="background:#f8fafc; border:1px solid var(--border); border-radius:8px; padding:15px; margin-bottom:15px;">
-        <h4 style="margin-bottom:8px; color:#0f172a;"><i class="fa-solid fa-circle-info" style="color:#0284c7;"></i> Integración de Alertas SMN para la Cuenca del Río V:</h4>
-        <p style="font-size:0.85rem; line-height:1.6; color:#334155;">
-          El mapa interactivo del SMN se encuentra protegido contra embebido externo por políticas de seguridad institucionales del servidor oficial (<code>X-Frame-Options</code>). A continuación puedes consultar el acceso directo institucional y visualizar las geometrías de alerta procesadas para los departamentos de <b>Chapaleufú, Realicó, Maracó (LP)</b> y <b>General Roca, Pte. Roque Sáenz Peña (Cba)</b>.
-        </p>
-      </div>
-
-      <!-- Respaldo embebido con fallback -->
       <iframe 
         src="https://www.smn.gob.ar/alertas" 
-        style="width: 100%; height: 580px; border: 1px solid var(--border); border-radius: 8px;"
-        title="SAT SMN">
+        class="smn-iframe" 
+        title="Alertas Meteorológicas Oficiales SMN">
       </iframe>
     </div>
   </div>
 
   <script>
-    function cambiarSolapa(idTab, ev) {
+    // --- GESTIÓN DE SOLAPAS ---
+    function cambiarSolapa(idTab) {
       document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
       document.querySelectorAll('.nav-tab-btn').forEach(el => el.classList.remove('active'));
       document.getElementById(idTab).classList.add('active');
-      ev.currentTarget.classList.add('active');
+      event.currentTarget.classList.add('active');
 
       if (idTab === 'tab-visor' && map) {
         setTimeout(() => { map.invalidateSize(); }, 200);
       }
     }
 
-    // --- LEAFLET MAP ---
-    const map = L.map('map').setView([-34.9, -64.4], 7);
+    // --- INICIALIZACIÓN DEL MAPA LEAFLET ---
+    const map = L.map('map').setView([-35.0, -64.2], 7);
 
-    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
-      attribution: 'Esri Canvas',
+    // Cartografía Base Clara (Esri Canvas)
+    const esriLight = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
+      attribution: 'Esri, HERE, Garmin',
       maxZoom: 16
     }).addTo(map);
 
+    const osm = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap'
+    });
+
+    const baseMaps = {
+      "Esri Gris Claro": esriLight,
+      "OpenStreetMap": osm
+    };
+
+    // Grupos de capas
     const capaHidro = L.layerGroup().addTo(map);
     let capaHumedadInta = L.layerGroup().addTo(map);
     let capaFreatimetros = L.layerGroup().addTo(map);
 
-    L.control.layers({ "Esri Gris": map }, {
-      "Puntos Hidrológicos": capaHidro,
-      "Humedad INTA (KML)": capaHumedadInta,
+    const overlayMaps = {
+      "Puntos Hidrológicos (Río V)": capaHidro,
+      "Humedad de Suelo (INTA KML)": capaHumedadInta,
       "Freatímetros (Excel)": capaFreatimetros
-    }, { collapsed: false }).addTo(map);
+    };
 
-    // Puntos fijos
-    const hidros = [
-      { n: "Justo Daract", lat: -33.9186, lon: -65.1517, val: 1.79 },
-      { n: "R.N. 35", lat: -34.2164, lon: -64.3861, val: 1.22 },
-      { n: "Laguna La Margarita", lat: -34.6533, lon: -63.7231, val: 1.43 },
-      { n: "RP Nº 26", lat: -34.7628, lon: -63.6450, val: 0.78 }
+    L.control.layers(baseMaps, overlayMaps, { collapsed: false }).addTo(map);
+
+    // Estaciones Hidrométricas Base
+    const puntosHidro = [
+      { nombre: "Malvín Reich", lat: -33.4383, lon: -65.8831, nivel: 0.95 },
+      { nombre: "Justo Daract", lat: -33.9186, lon: -65.1517, nivel: 1.79 },
+      { nombre: "R.N. 35", lat: -34.2164, lon: -64.3861, nivel: 1.22 },
+      { nombre: "Laguna La Margarita", lat: -34.6533, lon: -63.7231, nivel: 1.43 },
+      { nombre: "RP Nº 26", lat: -34.7628, lon: -63.6450, nivel: 0.78 }
     ];
-    hidros.forEach(h => {
-      L.circleMarker([h.lat, h.lon], { radius: 7, fillColor: "#0284c7", color: "#fff", weight: 2, fillOpacity: 0.9 })
-       .bindPopup(`<b>${h.n}</b><br>Nivel: ${h.val.toFixed(2)} m`)
-       .addTo(capaHidro);
+
+    puntosHidro.forEach(p => {
+      L.circleMarker([p.lat, p.lon], {
+        radius: 7,
+        fillColor: "#0284c7",
+        color: "#ffffff",
+        weight: 1.5,
+        fillOpacity: 0.9
+      }).bindPopup(`<b>${p.nombre}</b><br>Nivel actual: ${p.nivel.toFixed(2)} m`).addTo(capaHidro);
     });
 
-    // Freatímetros base
-    let listaFreaticaActual = [
-      { id: "FR-PICO-01", loc: "General Pico", lat: -35.658, lon: -63.758, prof: 1.65, umb: 1.20 },
-      { id: "FR-REAL-02", loc: "Realicó", lat: -35.034, lon: -64.245, prof: 1.90, umb: 1.20 },
-      { id: "FR-HUIN-03", loc: "Huinca Renancó", lat: -34.821, lon: -64.374, prof: 1.40, umb: 1.10 },
-      { id: "FR-ALVE-04", loc: "Intendente Alvear", lat: -35.318, lon: -63.605, prof: 1.15, umb: 1.20 }
-    ];
+    // --- 1. OPEN-METEO CON DIFERENTES NIVELES ---
+    let pronosticoMeteoActual = { lluvia24h: 0, vientoMax: 0 };
 
-    function renderFreatimetros(datos) {
-      capaFreatimetros.clearLayers();
-      datos.forEach(f => {
-        let color = "#10b981";
-        if (f.prof <= 0.80) color = "#dc2626";
-        else if (f.prof <= f.umb) color = "#f59e0b";
+    async function cargarAlertasOpenMeteo() {
+      const contenedor = document.getElementById("contenedor-alerta-openmeteo");
+      // Coordenadas representativas Cuenca Río V (Cruce Cba/LP - Realicó / Huinca Renancó)
+      const lat = -34.85, lon = -64.35;
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=precipitation_sum,windspeed_10m_max&timezone=America%2FArgentina%2FBuenos_Aires`;
 
-        L.circleMarker([f.lat, f.lon], { radius: 7, fillColor: color, color: "#fff", weight: 2, fillOpacity: 0.95 })
-         .bindPopup(`<b>Freatímetro: ${f.id}</b><br>Localidad: ${f.loc}<br>Profundidad: <b>${f.prof.toFixed(2)} m</b> (Umbral: ${f.umb} m)`)
-         .addTo(capaFreatimetros);
-      });
-    }
-    renderFreatimetros(listaFreaticaActual);
-
-    // --- GRADUACIÓN OPEN-METEO ---
-    let lluviaPrevista24 = 0;
-    async function cargarOpenMeteoGraduado() {
-      const cont = document.getElementById("contenedor-alerta-openmeteo");
       try {
-        const r = await fetch("https://api.open-meteo.com/v1/forecast?latitude=-34.85&longitude=-64.35&daily=precipitation_sum,windspeed_10m_max&timezone=America%2FArgentina%2FBuenos_Aires");
-        const d = await r.json();
-        lluviaPrevista24 = d.daily.precipitation_sum[0] || 0;
-        const viento = d.daily.windspeed_10m_max[0] || 0;
+        const resp = await fetch(url);
+        const data = await resp.json();
+        const lluvia24h = data.daily.precipitation_sum[0] || 0;
+        const vientoMax = data.daily.windspeed_10m_max[0] || 0;
+        pronosticoMeteoActual = { lluvia24h, vientoMax };
 
-        let clase = "alerta-verde", texto = "VERDE - NORMAL / SEGURO", msg = "Sin condiciones severas previstas.";
-        if (lluviaPrevista24 >= 65 || viento >= 80) {
-          clase = "alerta-rojo"; texto = "ROJO - ALERTA SEVERA"; msg = "Lluvias intensas o ráfagas muy fuertes.";
-        } else if (lluviaPrevista24 >= 35 || viento >= 60) {
-          clase = "alerta-naranja"; texto = "NARANJA - ALERTA MODERADA"; msg = "Precipitaciones acumuladas de consideración.";
-        } else if (lluviaPrevista24 >= 15 || viento >= 40) {
-          clase = "alerta-amarillo"; texto = "AMARILLO - VIGILANCIA / ATENCIÓN"; msg = "Lluvias aisladas o ráfagas moderadas comunes.";
+        let nivel = "alerta-verde";
+        let etiqueta = "VERDE - NORMAL / SEGURO";
+        let mensaje = "Sin acumulados severos previstos en las próximas 24 horas.";
+        let icono = "fa-circle-check";
+
+        // Umbrales calibrados para no sobre-alertar
+        if (lluvia24h >= 65 || vientoMax >= 80) {
+          nivel = "alerta-rojo";
+          etiqueta = "ROJO - ALERTA SEVERA";
+          mensaje = "Riesgo alto de escorrentía rápida y anegamientos extraordinarios.";
+          icono = "fa-triangle-exclamation";
+        } else if (lluvia24h >= 35 || vientoMax >= 60) {
+          nivel = "alerta-naranja";
+          etiqueta = "NARANJA - ALERTA MODERADA";
+          mensaje = "Precipitaciones acumuladas de consideración. Activar monitoreo de cuencas.";
+          icono = "fa-triangle-exclamation";
+        } else if (lluvia24h >= 15 || vientoMax >= 40) {
+          nivel = "alerta-amarillo";
+          etiqueta = "AMARILLO - ATENCIÓN / VIGILANCIA";
+          mensaje = "Lluvias y ráfagas leves a moderadas. No implican riesgo severo inmediato.";
+          icono = "fa-circle-exclamation";
         }
 
-        cont.innerHTML = `
-          <div class="alerta-box ${clase}">
-            <i class="fa-solid fa-cloud-sun-rain" style="font-size: 1.5rem;"></i>
+        contenedor.innerHTML = `
+          <div class="alerta-box ${nivel}">
+            <i class="fa-solid ${icono}" style="font-size: 1.5rem;"></i>
             <div>
-              <strong>${texto}</strong>
-              <div style="font-size:0.8rem; margin-top:2px;">${msg}</div>
-              <div style="font-size:0.75rem; margin-top:4px;"><b>Precipitación 24h:</b> ${lluviaPrevista24.toFixed(1)} mm | <b>Viento máx:</b> ${viento.toFixed(1)} km/h</div>
+              <strong style="display:block; font-size: 0.9rem;">${etiqueta}</strong>
+              <span style="font-size: 0.8rem;">${mensaje}</span>
+              <div style="font-size: 0.75rem; margin-top: 4px; opacity: 0.9;">
+                <b>Lluvia 24h prevista:</b> ${lluvia24h.toFixed(1)} mm | <b>Viento máx:</b> ${vientoMax.toFixed(1)} km/h
+              </div>
             </div>
           </div>
         `;
-        calcularMatrizCruce();
-      } catch(e) {
-        cont.innerHTML = `<span style="color:#ef4444; font-size:0.8rem;">No se pudo conectar a Open-Meteo.</span>`;
+        actualizarMatrizCruce();
+      } catch (err) {
+        contenedor.innerHTML = `<p style="font-size:0.8rem; color:#ef4444;">Falla temporal al conectar con Open-Meteo.</p>`;
       }
     }
-    cargarOpenMeteoGraduado();
+    cargarAlertasOpenMeteo();
 
-    // --- CARGA DE KML DE HUMEDAD INTA ---
-    function cargarKMLHumedad(ev) {
-      const f = ev.target.files[0];
-      if (!f) return;
-      const r = new FileReader();
-      r.onload = function(e) {
+    // --- 2. CARGA DE CAPA KML (HUMEDAD DEL SUELO - INTA) ---
+    function cargarKMLHumedad(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const kmlText = e.target.result;
         capaHumedadInta.clearLayers();
+
         try {
-          const capa = omnivore.kml.parse(e.target.result, null, L.geoJson(null, {
-            style: { color: "#047857", fillColor: "#10b981", fillOpacity: 0.35, weight: 1.5 }
-          })).addTo(map);
-          capa.on('ready', () => {
-            map.fitBounds(capa.getBounds());
-            document.getElementById("info-kml").innerHTML = `✅ Capa KML cargada (${f.name})`;
-            calcularMatrizCruce();
+          const capaCargada = omnivore.kml.parse(kmlText, null, L.geoJson(null, {
+            style: function(feature) {
+              return {
+                fillColor: "#059669",
+                weight: 1.5,
+                opacity: 0.9,
+                color: "#047857",
+                fillOpacity: 0.4
+              };
+            },
+            onEachFeature: function(feature, layer) {
+              let info = "<b>Capa Humedad Suelo INTA</b><br>";
+              if (feature.properties) {
+                for (let k in feature.properties) {
+                  info += `<b>${k}:</b> ${feature.properties[k]}<br>`;
+                }
+              }
+              layer.bindPopup(info);
+            }
+          }));
+
+          capaCargada.on('ready', function() {
+            map.fitBounds(capaCargada.getBounds());
+            document.getElementById('info-kml').innerHTML = `✅ KML cargado con éxito (${file.name}).`;
+            actualizarMatrizCruce();
           });
-          capaHumedadInta.addLayer(capa);
-        } catch(err) {
-          alert("Error al cargar KML: " + err);
+
+          capaHumedadInta.addLayer(capaCargada);
+        } catch (err) {
+          alert("Error al interpretar el KML: " + err.message);
         }
       };
-      r.readAsText(f);
+      reader.readAsText(file);
     }
 
-    // --- CARGA DE EXCEL DE FREATÍMETROS ---
-    function cargarExcelFreatimetros(ev) {
-      const f = ev.target.files[0];
-      if (!f) return;
-      const r = new FileReader();
-      r.onload = function(e) {
+    // --- 3. CARGA DE FREATÍMETROS (EXCEL) Y HISTORIAL ---
+    let historialFreatimetros = [];
+
+    function cargarExcelFreatimetros(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(evt) {
         try {
-          const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
-          const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
-          if (rows.length === 0) return alert("El archivo está vacío.");
+          const data = new Uint8Array(evt.target.result);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const sheet = workbook.Sheets[workbook.SheetNames[0]];
+          const filas = XLSX.utils.sheet_to_json(sheet);
+
+          if (filas.length === 0) {
+            alert("El archivo Excel no contiene filas con datos.");
+            return;
+          }
+
+          historialFreatimetros = filas;
+          capaFreatimetros.clearLayers();
 
           const tbody = document.getElementById("cuerpo-tabla-freatimetros");
           tbody.innerHTML = "";
-          listaFreaticaActual = [];
 
-          rows.forEach(r => {
-            const lat = parseFloat(r.Latitud || r.lat || r.Lat);
-            const lon = parseFloat(r.Longitud || r.lon || r.Lon);
-            const prof = parseFloat(r.Profundidad_m || r.profundidad || r.Prof);
-            const umb = parseFloat(r.Umbral_Critico_m || r.umbral || 1.20);
-            const id = r.ID_Freatimetro || r.ID || r.Punto || "Punto";
-            const fecha = r.Fecha || "Reciente";
+          let puntosCriticos = 0;
+          let sumProf = 0, countProf = 0;
+
+          filas.forEach(f => {
+            const lat = parseFloat(f.Latitud || f.lat || f.Lat);
+            const lon = parseFloat(f.Longitud || f.lon || f.Lon || f.Lng);
+            const prof = parseFloat(f.Profundidad_m || f.profundidad || f.Prof || f.Nivel_m);
+            const umbral = parseFloat(f.Umbral_Critico_m || f.umbral || 1.20);
+            const puntoID = f.ID_Freatimetro || f.Punto || f.Localidad || "Freatímetro";
+            const fecha = f.Fecha || f.Fecha_Medicion || "Reciente";
 
             if (!isNaN(lat) && !isNaN(lon) && !isNaN(prof)) {
-              listaFreaticaActual.push({ id, loc: r.Localidad || id, lat, lon, prof, umb });
-              let stColor = prof <= 0.80 ? "#dc2626" : (prof <= umb ? "#f59e0b" : "#10b981");
-              let stTxt = prof <= 0.80 ? "Crítico" : (prof <= umb ? "Alerta" : "Normal");
+              sumProf += prof;
+              countProf++;
 
-              tbody.innerHTML += `
-                <tr>
-                  <td><b>${id}</b></td>
-                  <td>${fecha}</td>
-                  <td style="color:${stColor}; font-weight:bold;">${prof.toFixed(2)}</td>
-                  <td><span style="color:${stColor}; font-weight:bold;">${stTxt}</span></td>
-                </tr>
+              // Semáforo Freático: menos profundidad = napa más cerca de la superficie
+              let color = "#10b981"; // Verde: profundo (> 2 m)
+              let estado = "Normal";
+
+              if (prof <= 0.80) {
+                color = "#dc2626"; // Rojo: afloramiento inminente
+                estado = "Crítico";
+                puntosCriticos++;
+              } else if (prof <= umbral) {
+                color = "#f59e0b"; // Amarillo/Naranja: saturación próxima
+                estado = "Alerta";
+              }
+
+              const marker = L.circleMarker([lat, lon], {
+                radius: 8,
+                fillColor: color,
+                color: "#ffffff",
+                weight: 2,
+                fillOpacity: 0.9
+              }).bindPopup(`
+                <div style="font-size:12px; font-family:sans-serif;">
+                  <b style="font-size:13px; color:#1e293b;">${puntoID}</b><br>
+                  <b>Profundidad freática:</b> <span style="color:${color}; font-weight:bold;">${prof.toFixed(2)} m</span><br>
+                  <b>Umbral de anegamiento:</b> ${umbral.toFixed(2)} m<br>
+                  <b>Estado:</b> <b>${estado}</b><br>
+                  <small style="color:#64748b;">Medición: ${fecha}</small>
+                </div>
+              `);
+
+              capaFreatimetros.addLayer(marker);
+
+              // Llenar tabla resumen
+              const row = document.createElement("tr");
+              row.innerHTML = `
+                <td><b>${puntoID}</b></td>
+                <td>${fecha}</td>
+                <td style="color:${color}; font-weight:bold;">${prof.toFixed(2)}</td>
+                <td><span style="background:${color}; color:white; padding:1px 4px; border-radius:3px; font-size:10px;">${estado}</span></td>
               `;
+              tbody.appendChild(row);
             }
           });
 
-          renderFreatimetros(listaFreaticaActual);
-          calcularMatrizCruce();
-          alert(`Se cargaron y georreferenciaron ${listaFreaticaActual.length} freatímetros.`);
-        } catch(err) {
-          alert("Error al leer Excel: " + err);
+          // Actualizar tarjeta resumen en Tab Principal
+          const prom = countProf > 0 ? (sumProf / countProf).toFixed(2) : 0;
+          document.getElementById("resumen-freatico-kpi").innerHTML = `
+            <div style="font-size:0.85rem;">
+              <p><b>Puntos monitoreados:</b> ${countProf}</p>
+              <p><b>Profundidad media:</b> ${prom} m</p>
+              <p><b>Nudos en condición crítica (&le; 0.8m):</b> <span style="color:${puntosCriticos > 0 ? '#dc2626' : '#16a34a'}; font-weight:bold;">${puntosCriticos}</span></p>
+            </div>
+          `;
+
+          actualizarMatrizCruce();
+          alert(`Se cargaron y georreferenciaron ${countProf} freatímetros con continuidad histórica.`);
+        } catch (err) {
+          alert("Error al procesar el archivo Excel: " + err.message);
         }
       };
-      r.readAsArrayBuffer(f);
+      reader.readAsArrayBuffer(file);
     }
 
-    // --- CRUCE MULTICRITERIO ---
-    function calcularMatrizCruce() {
-      const box = document.getElementById("resultado-matriz-cruce");
-      let minProf = 999;
-      listaFreaticaActual.forEach(f => { if (f.prof < minProf) minProf = f.prof; });
+    // --- 4. CÁLCULO DE LA MATRIZ DE CRUCE MULTICRITERIO ---
+    function actualizarMatrizCruce() {
+      const divCruce = document.getElementById("resultado-matriz-cruce");
+      if (!divCruce) return;
 
-      let nivel = "VERDE (Riesgo Ordinario)", col = "#16a34a", desc = "Capacidad de retención edáfica adecuada.";
-      if (minProf <= 0.80 && lluviaPrevista24 >= 30) {
-        nivel = "ROJO (Saturación y Escorrentía Severa)"; col = "#dc2626"; desc = "Napa en superficie con lluvias importantes previstas. Riesgo crítico de anegamiento.";
-      } else if (minProf <= 1.20 && lluviaPrevista24 >= 15) {
-        nivel = "NARANJA (Alerta Hidrogeológica)"; col = "#ea580c"; desc = "Nivel freático alto combinado con aportes pluviales moderados.";
-      } else if (minProf <= 1.20 || lluviaPrevista24 >= 15) {
-        nivel = "AMARILLO (Atención Preventiva)"; col = "#ca8a04"; desc = "Vigilancia en bajos topográficos y canales de drenaje.";
+      const lluvia = pronosticoMeteoActual.lluvia24h;
+      let minProf = 999;
+
+      if (historialFreatimetros.length > 0) {
+        historialFreatimetros.forEach(f => {
+          const prof = parseFloat(f.Profundidad_m || f.profundidad || f.Prof || 999);
+          if (prof < minProf) minProf = prof;
+        });
       }
 
-      box.innerHTML = `
-        <div style="border-left: 4px solid ${col}; padding-left: 8px;">
-          <strong style="color:${col}; font-size:0.85rem;">${nivel}</strong><br>
-          <span>${desc}</span>
+      let nivelCruce = "VERDE (Riesgo Bajo)";
+      let colorCruce = "#16a34a";
+      let explicacion = "Cuenca en equilibrio con capacidad de infiltración adecuada.";
+
+      if (minProf <= 0.80 && lluvia >= 35) {
+        nivelCruce = "ROJO (Emergencia por Saturación y Lluvia)";
+        colorCruce = "#dc2626";
+        explicacion = "Napas aflorando coincidente con lluvias abundantes. Capacidad de retención nula.";
+      } else if (minProf <= 1.20 && lluvia >= 15) {
+        nivelCruce = "NARANJA (Alerta Hidrológica / Anegamiento)";
+        colorCruce = "#ea580c";
+        explicacion = "Nivel freático muy alto con aporte pluvial moderado previsto.";
+      } else if (minProf <= 1.20 || lluvia >= 15) {
+        nivelCruce = "AMARILLO (Vigilancia Preventiva)";
+        colorCruce = "#ca8a04";
+        explicacion = "Monitorear escorrentías en bañados y canales de alivio.";
+      }
+
+      divCruce.innerHTML = `
+        <div style="border-left: 4px solid ${colorCruce}; padding-left: 8px;">
+          <strong style="color:${colorCruce};">${nivelCruce}</strong><br>
+          <span>${explicacion}</span>
         </div>
       `;
     }
