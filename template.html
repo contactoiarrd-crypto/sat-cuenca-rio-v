@@ -33,7 +33,6 @@
     header h1 { font-size: 1.15rem; font-weight: 700; display: flex; align-items: center; gap: 8px; }
     header .status-tag { font-size: 0.75rem; background: #0369a1; padding: 4px 8px; border-radius: 4px; }
 
-    /* Pestañas de Navegación */
     .nav-tabs {
       display: flex;
       background: #e2e8f0;
@@ -63,7 +62,6 @@
     .tab-content { display: none; padding: 20px; }
     .tab-content.active { display: block; }
 
-    /* Sección Principal y Tarjetas */
     .section-title {
       font-size: 1.3rem;
       font-weight: 700;
@@ -76,7 +74,7 @@
 
     .grid-kpis {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
       gap: 16px;
       margin-bottom: 24px;
     }
@@ -88,7 +86,7 @@
       box-shadow: 0 2px 4px rgba(0,0,0,0.04);
     }
 
-    /* Niveles de Alerta Meteorológica */
+    /* Alertas Open-Meteo Graduadas */
     .alerta-box {
       border-radius: 6px;
       padding: 12px;
@@ -102,14 +100,13 @@
     .alerta-naranja { background: #ffedd5; border-left: 5px solid #ea580c; color: #7c2d12; }
     .alerta-rojo { background: #fee2e2; border-left: 5px solid #dc2626; color: #7f1d1d; }
 
-    /* Layout del Visor */
     .visor-layout {
       display: grid;
-      grid-template-columns: 320px 1fr;
+      grid-template-columns: 360px 1fr;
       gap: 16px;
       height: calc(100vh - 170px);
     }
-    @media (max-width: 900px) {
+    @media (max-width: 950px) {
       .visor-layout { grid-template-columns: 1fr; height: auto; }
       #map { height: 500px; }
     }
@@ -131,7 +128,6 @@
       border: 1px solid var(--border);
     }
 
-    /* Formularios de Carga */
     .file-upload-block {
       background: #f8fafc;
       border: 1px dashed var(--secondary);
@@ -143,14 +139,9 @@
       font-size: 0.85rem;
       display: block;
       margin-bottom: 6px;
-      color: #1e293b;
     }
-    .file-upload-block input[type="file"] {
-      width: 100%;
-      font-size: 0.8rem;
-    }
+    .file-upload-block input[type="file"] { width: 100%; font-size: 0.8rem; }
 
-    /* Tabla de Freatímetros e Historial */
     .table-container {
       max-height: 200px;
       overflow-y: auto;
@@ -163,89 +154,76 @@
     th, td { padding: 6px 8px; border-bottom: 1px solid #e2e8f0; text-align: left; }
     th { background: #f1f5f9; font-weight: 700; position: sticky; top: 0; }
 
-    /* Matriz de Cruce Multicriterio */
     .matriz-cruce {
       background: #eff6ff;
       border: 1px solid #bfdbfe;
       border-radius: 6px;
-      padding: 10px;
+      padding: 12px;
       font-size: 0.8rem;
     }
-    .matriz-cruce h4 { font-size: 0.85rem; color: #1e3a8a; margin-bottom: 5px; }
+    .matriz-cruce h4 { font-size: 0.85rem; color: #1e3a8a; margin-bottom: 6px; }
 
-    /* Embebido SMN */
-    .smn-container {
-      background: white;
-      border-radius: 8px;
-      border: 1px solid var(--border);
-      overflow: hidden;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    /* Leyenda */
+    .legend-box {
+      font-size: 0.78rem;
+      color: #334155;
+      line-height: 1.6;
     }
-    .smn-header {
-      background: #1e3a8a;
-      color: white;
-      padding: 12px 16px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    .smn-iframe {
-      width: 100%;
-      height: 720px;
-      border: none;
+    .legend-dot {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      margin-right: 5px;
     }
   </style>
 
-  <!-- Leaflet JS y complementos -->
+  <!-- Leaflet y parsers -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <!-- Plugin Omnivore para KML en Leaflet -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-omnivore/0.3.4/leaflet-omnivore.min.js"></script>
-  <!-- SheetJS para parseo de Excel en cliente -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <!-- DATOS_SAT_INJECT -->
 </head>
 <body>
 
   <header>
     <h1><i class="fa-solid fa-water"></i> SAT Cuenca Río Quinto (Río V) - La Pampa / Córdoba / San Luis</h1>
-    <span class="status-tag"><i class="fa-solid fa-satellite-dish"></i> Monitoreo Operativo</span>
+    <span class="status-tag" id="header-fecha"><i class="fa-solid fa-satellite-dish"></i> {{FECHA_ACTUALIZACION}}</span>
   </header>
 
-  <!-- Barra de Solapas -->
+  <!-- Pestañas -->
   <nav class="nav-tabs">
-    <button class="nav-tab-btn active" onclick="cambiarSolapa('tab-principal')">
+    <button class="nav-tab-btn active" onclick="cambiarSolapa('tab-principal', event)">
       <i class="fa-solid fa-gauge-high"></i> Panel Principal
     </button>
-    <button class="nav-tab-btn" onclick="cambiarSolapa('tab-visor')">
+    <button class="nav-tab-btn" onclick="cambiarSolapa('tab-visor', event)">
       <i class="fa-solid fa-map-location-dot"></i> Visor Hidrometeorológico y Freático
     </button>
-    <button class="nav-tab-btn" onclick="cambiarSolapa('tab-smn')">
+    <button class="nav-tab-btn" onclick="cambiarSolapa('tab-smn', event)">
       <i class="fa-solid fa-triangle-exclamation"></i> Alertas Oficiales SMN
     </button>
   </nav>
 
   <!-- SOLAPA 1: PRINCIPAL -->
   <main id="tab-principal" class="tab-content active">
-    <!-- TÍTULO ACTUALIZADO -->
+    <!-- TEXTO ACTUALIZADO -->
     <h2 class="section-title">
       <i class="fa-solid fa-cloud-sun-rain" style="color: #0284c7;"></i> Monitoreo meteorológico en tiempo real
     </h2>
 
     <div class="grid-kpis">
-      <!-- Módulo Alerta Open-Meteo Graduada -->
       <div class="card">
-        <h3><i class="fa-solid fa-cloud-bolt"></i> Pronóstico y Alertas Open-Meteo (Cuenca Río V)</h3>
-        <p style="font-size:0.85rem; color:#64748b; margin-top:4px;">
-          Clasificación por umbrales de severidad multicriterio (Lluvia acumulada 24h y viento):
+        <h3><i class="fa-solid fa-cloud-bolt"></i> Pronóstico y Alertas Open-Meteo</h3>
+        <p style="font-size:0.82rem; color:#64748b; margin-top:4px;">
+          Clasificación graduada por acumulados previstos (24h) y ráfagas:
         </p>
         <div id="contenedor-alerta-openmeteo">
-          <p style="font-size: 0.85rem; color:#64748b; margin-top: 8px;">Consultando API en vivo...</p>
+          <p style="font-size: 0.85rem; color:#64748b; margin-top: 10px;">Consultando Open-Meteo...</p>
         </div>
       </div>
 
-      <!-- Resumen Cuenca Hidrológica -->
       <div class="card">
-        <h3><i class="fa-solid fa-wave-square"></i> Nudos de Control Hidrológico (INA / SNIH)</h3>
-        <ul style="list-style: none; margin-top: 10px; font-size: 0.85rem; line-height: 1.8;">
+        <h3><i class="fa-solid fa-wave-square"></i> Nudos Hidrométricos (INA / SNIH)</h3>
+        <ul id="lista-kpi-hidro" style="list-style: none; margin-top: 10px; font-size: 0.85rem; line-height: 1.8;">
           <li><i class="fa-solid fa-circle" style="color:#10b981; font-size:10px;"></i> <b>Laguna La Margarita:</b> 1.43 m (Retención Ordinaria)</li>
           <li><i class="fa-solid fa-circle" style="color:#10b981; font-size:10px;"></i> <b>Río Quinto - R.N. 35:</b> 1.22 m (Normal)</li>
           <li><i class="fa-solid fa-circle" style="color:#10b981; font-size:10px;"></i> <b>Río Quinto - Justo Daract:</b> 1.79 m (Normal)</li>
@@ -253,406 +231,426 @@
         </ul>
       </div>
 
-      <!-- Resumen Freático General -->
       <div class="card">
-        <h3><i class="fa-solid fa-bore-hole"></i> Estado de la Napa Freática en Cuenca Baja</h3>
-        <div id="resumen-freatico-kpi" style="margin-top: 10px;">
-          <p style="font-size: 0.85rem; color:#64748b;">Suba una planilla en el visor para computar niveles freáticos históricos.</p>
+        <h3><i class="fa-solid fa-bore-hole"></i> Monitoreo Freático</h3>
+        <div id="resumen-freatico-kpi" style="margin-top: 10px; font-size: 0.85rem; color:#64748b;">
+          Cargue la planilla Excel de la red freatimétrica en el visor para calcular continuidad histórica.
         </div>
       </div>
     </div>
   </main>
 
-  <!-- SOLAPA 2: VISOR SIG CON CAPAS KML Y EXCEL -->
+  <!-- SOLAPA 2: VISOR SIG -->
   <div id="tab-visor" class="tab-content">
     <div class="visor-layout">
-      <!-- Panel de Controles Laterales -->
       <aside class="visor-sidebar">
         <div>
-          <h3 style="font-size: 1rem; color: #0f172a;"><i class="fa-solid fa-layer-group"></i> Capas de Información</h3>
-          <p style="font-size: 0.78rem; color: #64748b; margin-top: 2px;">Cruce hidrometeorológico, edáfico y freático.</p>
+          <h3 style="font-size: 1rem;"><i class="fa-solid fa-layer-group"></i> Gestión de Capas</h3>
+          <p style="font-size: 0.78rem; color: #64748b;">Cruce hidrometeorológico, humedad de suelo y freática.</p>
         </div>
 
-        <!-- 1. Carga de KML de Humedad del Suelo (INTA) -->
+        <!-- Carga KML Humedad INTA -->
         <div class="file-upload-block">
-          <label><i class="fa-solid fa-seedling" style="color:#16a34a;"></i> Capa KML Humedad de Suelo (INTA):</label>
-          <input type="file" id="inputKmlInta" accept=".kml" onchange="cargarKMLHumedad(event)" />
+          <label><i class="fa-solid fa-seedling" style="color:#16a34a;"></i> Subir KML Humedad de Suelo (INTA):</label>
+          <input type="file" id="inputKmlInta" accept=".kml" onchange="cargarKMLHumedadUniversal(event)" />
           <div id="info-kml" style="font-size: 0.75rem; color: #475569; margin-top: 4px;"></div>
         </div>
 
-        <!-- 2. Carga de Freatímetros en Excel -->
+        <!-- Carga Excel Freatímetros -->
         <div class="file-upload-block">
-          <label><i class="fa-solid fa-arrow-down-up-across-line" style="color:#0284c7;"></i> Subir Puntos Freatímetros (Excel):</label>
+          <label><i class="fa-solid fa-file-excel" style="color:#0284c7;"></i> Subir Freatímetros (Excel):</label>
           <input type="file" id="inputExcelFreatica" accept=".xlsx, .xls, .csv" onchange="cargarExcelFreatimetros(event)" />
-          <p style="font-size: 0.7rem; color: #64748b; margin-top: 4px;">Columnas: <code>ID, Localidad, Lat, Lon, Fecha, Profundidad_m, Umbral_m</code></p>
+          <p style="font-size: 0.7rem; color: #64748b; margin-top: 4px;">Detecta columnas de coordenadas, profundidad y fecha.</p>
         </div>
 
-        <!-- Matriz de Cruce de Riesgo -->
+        <!-- Matriz de Cruce -->
         <div class="matriz-cruce">
-          <h4><i class="fa-solid fa-shield-halved"></i> Matriz de Cruce de Alerta</h4>
-          <div id="resultado-matriz-cruce" style="font-size: 0.75rem; color: #334155;">
-            Cargue datos freáticos para calcular el cruce frente al pronóstico y humedad actual.
+          <h4><i class="fa-solid fa-shield-halved"></i> Cruce Multicriterio de Alerta</h4>
+          <div id="resultado-matriz-cruce">
+            Esperando datos freáticos para cruzar con aviso meteorológico y suelo.
           </div>
         </div>
 
-        <!-- Registro Histórico en Memoria -->
+        <!-- Tabla Histórica Freatimétrica -->
         <div>
-          <h4 style="font-size: 0.82rem; color: #0f172a;"><i class="fa-solid fa-clock-rotate-left"></i> Serie Histórica Freática</h4>
+          <h4 style="font-size: 0.82rem;"><i class="fa-solid fa-clock-rotate-left"></i> Red Freatimétrica (Datos Cargados)</h4>
           <div class="table-container">
-            <table id="tabla-freatimetros">
+            <table>
               <thead>
                 <tr>
-                  <th>Punto</th>
+                  <th>ID / Sitio</th>
                   <th>Fecha</th>
                   <th>Prof (m)</th>
                   <th>Estado</th>
                 </tr>
               </thead>
               <tbody id="cuerpo-tabla-freatimetros">
-                <tr><td colspan="4" style="text-align:center; color:#94a3b8;">Sin datos cargados</td></tr>
+                <tr><td colspan="4" style="text-align:center; color:#94a3b8;">Sin datos. Suba un archivo Excel.</td></tr>
               </tbody>
             </table>
           </div>
         </div>
+
+        <!-- Leyenda -->
+        <div class="legend-box">
+          <b>Redes Integradas en el Mapa:</b><br>
+          <span class="legend-dot" style="background:#d97706;"></span> REM San Luis (Cuenca Alta)<br>
+          <span class="legend-dot" style="background:#7c3aed;"></span> Omixom Córdoba (Cuenca Media)<br>
+          <span class="legend-dot" style="background:#0d9488;"></span> Omixom La Pampa (Cuenca Baja)<br>
+          <span class="legend-dot" style="background:#0284c7;"></span> APA La Pampa (Red Oficial)<br>
+          <span class="legend-dot" style="background:#2563eb;"></span> INA/SNIH (Niveles de Río Quinto)<br>
+          <span class="legend-dot" style="background:#10b981;"></span> Freatímetros (Subidos por usuario)
+        </div>
       </aside>
 
-      <!-- Contenedor del Mapa Leaflet -->
       <div id="map"></div>
     </div>
   </div>
 
-  <!-- SOLAPA 3: ALERTAS SMN EMBEBIDAS -->
+  <!-- SOLAPA 3: ALERTAS SMN (VISUALIZACIÓN GEORREFERENCIADA) -->
   <div id="tab-smn" class="tab-content">
-    <div class="smn-container">
-      <div class="smn-header">
+    <div class="card" style="margin-bottom: 20px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
         <div>
-          <h2 style="font-size: 1.1rem; display: flex; align-items: center; gap: 8px;">
-            <i class="fa-solid fa-triangle-exclamation" style="color: #facc15;"></i>
-            Sistema de Alerta Temprana Oficial - Servicio Meteorológico Nacional
-          </h2>
-          <span style="font-size: 0.8rem; opacity: 0.9;">Información en tiempo real para La Pampa, Córdoba y San Luis</span>
+          <h2 style="font-size: 1.15rem; color:#1e3a8a;"><i class="fa-solid fa-triangle-exclamation" style="color:#eab308;"></i> SAT Oficial - Servicio Meteorológico Nacional</h2>
+          <p style="font-size:0.85rem; color:#64748b;">Monitoreo territorial y advertencias para San Luis, Córdoba y La Pampa.</p>
         </div>
-        <a href="https://www.smn.gob.ar/alertas" target="_blank" rel="noopener noreferrer" style="color: white; background: rgba(255,255,255,0.2); padding: 6px 12px; border-radius: 4px; text-decoration: none; font-size: 0.8rem; font-weight: 600;">
-          Abrir en sitio oficial <i class="fa-solid fa-arrow-up-right-from-square"></i>
+        <a href="https://www.smn.gob.ar/alertas" target="_blank" rel="noopener noreferrer" style="background:#1e3a8a; color:white; padding:8px 16px; border-radius:6px; text-decoration:none; font-weight:600; font-size:0.85rem;">
+          Ir al Sitio Oficial de Alertas SMN (smn.gob.ar/alertas) <i class="fa-solid fa-arrow-up-right-from-square"></i>
         </a>
       </div>
-      <iframe 
-        src="https://www.smn.gob.ar/alertas" 
-        class="smn-iframe" 
-        title="Alertas Meteorológicas Oficiales SMN">
-      </iframe>
+    </div>
+
+    <!-- Mapa SMN directo -->
+    <div class="card">
+      <h3><i class="fa-solid fa-map"></i> Mapa de Zonas de Alerta SMN (Cuenca Río V)</h3>
+      <div id="map-smn" style="width:100%; height:520px; border-radius:8px; border:1px solid var(--border); margin-top:12px;"></div>
     </div>
   </div>
 
   <script>
     // --- GESTIÓN DE SOLAPAS ---
-    function cambiarSolapa(idTab) {
+    let mapSmnIniciado = false;
+    function cambiarSolapa(idTab, ev) {
       document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
       document.querySelectorAll('.nav-tab-btn').forEach(el => el.classList.remove('active'));
       document.getElementById(idTab).classList.add('active');
-      event.currentTarget.classList.add('active');
+      ev.currentTarget.classList.add('active');
 
       if (idTab === 'tab-visor' && map) {
         setTimeout(() => { map.invalidateSize(); }, 200);
       }
+      if (idTab === 'tab-smn' && !mapSmnIniciado) {
+        iniciarMapaSmn();
+        mapSmnIniciado = true;
+      }
     }
 
-    // --- INICIALIZACIÓN DEL MAPA LEAFLET ---
-    const map = L.map('map').setView([-35.0, -64.2], 7);
-
-    // Cartografía Base Clara (Esri Canvas)
-    const esriLight = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
-      attribution: 'Esri, HERE, Garmin',
+    // --- MAPA PRINCIPAL ---
+    const map = L.map('map').setView([-34.8, -64.6], 7);
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
+      attribution: 'Esri Canvas',
       maxZoom: 16
     }).addTo(map);
 
-    const osm = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap'
-    });
-
-    const baseMaps = {
-      "Esri Gris Claro": esriLight,
-      "OpenStreetMap": osm
-    };
-
     // Grupos de capas
-    const capaHidro = L.layerGroup().addTo(map);
-    let capaHumedadInta = L.layerGroup().addTo(map);
-    let capaFreatimetros = L.layerGroup().addTo(map);
+    const fgHidro = L.layerGroup().addTo(map);
+    const fgRemSL = L.layerGroup().addTo(map);
+    const fgOmxCba = L.layerGroup().addTo(map);
+    const fgOmxLP = L.layerGroup().addTo(map);
+    const fgApaLP = L.layerGroup().addTo(map);
+    let fgHumedadInta = L.layerGroup().addTo(map);
+    let fgFreatimetros = L.layerGroup().addTo(map);
 
-    const overlayMaps = {
-      "Puntos Hidrológicos (Río V)": capaHidro,
-      "Humedad de Suelo (INTA KML)": capaHumedadInta,
-      "Freatímetros (Excel)": capaFreatimetros
+    L.control.layers({ "Base Esri": map }, {
+      "Cuerpos de Agua (INA/SNIH)": fgHidro,
+      "REM San Luis (Cuenca Alta)": fgRemSL,
+      "Omixom Córdoba (Cuenca Media)": fgOmxCba,
+      "Omixom La Pampa (Cuenca Baja)": fgOmxLP,
+      "APA La Pampa (Red Oficial)": fgApaLP,
+      "Humedad Suelo INTA (KML)": fgHumedadInta,
+      "Freatímetros (Excel)": fgFreatimetros
+    }, { collapsed: false }).addTo(map);
+
+    // Cargar estaciones iniciales desde el Python
+    const datos = window.DATOS_SAT_INICIALES || {
+      hidro: [
+        { nombre: "Malvin Reich", lat: -33.4383, lon: -65.8831, nivel_actual: 0.95 },
+        { nombre: "Justo Daract", lat: -33.9186, lon: -65.1517, nivel_actual: 1.79 },
+        { nombre: "R.N. 35", lat: -34.2164, lon: -64.3861, nivel_actual: 1.22 },
+        { nombre: "Laguna La Margarita", lat: -34.6533, lon: -63.7231, nivel_actual: 1.43 },
+        { nombre: "RP Nº 26", lat: -34.7628, lon: -63.6450, nivel_actual: 0.78 }
+      ],
+      meteo: []
     };
 
-    L.control.layers(baseMaps, overlayMaps, { collapsed: false }).addTo(map);
-
-    // Estaciones Hidrométricas Base
-    const puntosHidro = [
-      { nombre: "Malvín Reich", lat: -33.4383, lon: -65.8831, nivel: 0.95 },
-      { nombre: "Justo Daract", lat: -33.9186, lon: -65.1517, nivel: 1.79 },
-      { nombre: "R.N. 35", lat: -34.2164, lon: -64.3861, nivel: 1.22 },
-      { nombre: "Laguna La Margarita", lat: -34.6533, lon: -63.7231, nivel: 1.43 },
-      { nombre: "RP Nº 26", lat: -34.7628, lon: -63.6450, nivel: 0.78 }
-    ];
-
-    puntosHidro.forEach(p => {
-      L.circleMarker([p.lat, p.lon], {
-        radius: 7,
-        fillColor: "#0284c7",
-        color: "#ffffff",
-        weight: 1.5,
-        fillOpacity: 0.9
-      }).bindPopup(`<b>${p.nombre}</b><br>Nivel actual: ${p.nivel.toFixed(2)} m`).addTo(capaHidro);
+    // Render Hidro
+    datos.hidro.forEach(h => {
+      L.circleMarker([h.lat, h.lon], { radius: 7, fillColor: "#2563eb", color: "#fff", weight: 2, fillOpacity: 0.9 })
+       .bindPopup(`<b>${h.nombre}</b><br>Nivel actual: <b>${h.nivel_actual.toFixed(2)} m</b>`)
+       .addTo(fgHidro);
     });
 
-    // --- 1. OPEN-METEO CON DIFERENTES NIVELES ---
-    let pronosticoMeteoActual = { lluvia24h: 0, vientoMax: 0 };
+    // Render Meteorológico completo por red
+    datos.meteo.forEach(m => {
+      let targetGroup = fgOmxCba;
+      let col = "#7c3aed";
 
-    async function cargarAlertasOpenMeteo() {
-      const contenedor = document.getElementById("contenedor-alerta-openmeteo");
-      // Coordenadas representativas Cuenca Río V (Cruce Cba/LP - Realicó / Huinca Renancó)
-      const lat = -34.85, lon = -64.35;
-      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=precipitation_sum,windspeed_10m_max&timezone=America%2FArgentina%2FBuenos_Aires`;
+      if (m.red.indexOf("San Luis") !== -1) {
+        targetGroup = fgRemSL; col = "#d97706";
+      } else if (m.red.indexOf("APA") !== -1) {
+        targetGroup = fgApaLP; col = "#0284c7";
+      } else if (m.red.indexOf("La Pampa") !== -1) {
+        targetGroup = fgOmxLP; col = "#0d9488";
+      }
 
+      L.circleMarker([m.lat, m.lon], { radius: 5.5, fillColor: col, color: "#fff", weight: 1.5, fillOpacity: 0.85 })
+       .bindPopup(`<b>${m.nombre}</b><br>Red: ${m.red}<br>Lluvia 24h: <b>${m.lluvia_24h_mm || 0} mm</b><br>Temp: ${m.temp_c ? m.temp_c + ' °C' : 'S/D'}`)
+       .addTo(targetGroup);
+    });
+
+    // --- 1. OPEN-METEO GRADUADO ---
+    let lluvia24hOpenMeteo = 0;
+    async function cargarOpenMeteo() {
+      const cont = document.getElementById("contenedor-alerta-openmeteo");
       try {
-        const resp = await fetch(url);
-        const data = await resp.json();
-        const lluvia24h = data.daily.precipitation_sum[0] || 0;
-        const vientoMax = data.daily.windspeed_10m_max[0] || 0;
-        pronosticoMeteoActual = { lluvia24h, vientoMax };
+        const r = await fetch("https://api.open-meteo.com/v1/forecast?latitude=-34.85&longitude=-64.35&daily=precipitation_sum,windspeed_10m_max&timezone=America%2FArgentina%2FBuenos_Aires");
+        const d = await r.json();
+        lluvia24hOpenMeteo = d.daily.precipitation_sum[0] || 0;
+        const viento = d.daily.windspeed_10m_max[0] || 0;
 
-        let nivel = "alerta-verde";
-        let etiqueta = "VERDE - NORMAL / SEGURO";
-        let mensaje = "Sin acumulados severos previstos en las próximas 24 horas.";
-        let icono = "fa-circle-check";
-
-        // Umbrales calibrados para no sobre-alertar
-        if (lluvia24h >= 65 || vientoMax >= 80) {
-          nivel = "alerta-rojo";
-          etiqueta = "ROJO - ALERTA SEVERA";
-          mensaje = "Riesgo alto de escorrentía rápida y anegamientos extraordinarios.";
-          icono = "fa-triangle-exclamation";
-        } else if (lluvia24h >= 35 || vientoMax >= 60) {
-          nivel = "alerta-naranja";
-          etiqueta = "NARANJA - ALERTA MODERADA";
-          mensaje = "Precipitaciones acumuladas de consideración. Activar monitoreo de cuencas.";
-          icono = "fa-triangle-exclamation";
-        } else if (lluvia24h >= 15 || vientoMax >= 40) {
-          nivel = "alerta-amarillo";
-          etiqueta = "AMARILLO - ATENCIÓN / VIGILANCIA";
-          mensaje = "Lluvias y ráfagas leves a moderadas. No implican riesgo severo inmediato.";
-          icono = "fa-circle-exclamation";
+        let clase = "alerta-verde", texto = "VERDE - NORMAL / SEGURO", msg = "Sin condiciones de riesgo meteorológico.";
+        if (lluvia24hOpenMeteo >= 65 || viento >= 80) {
+          clase = "alerta-rojo"; texto = "ROJO - ALERTA SEVERA"; msg = "Precipitaciones extremas o vientos severos.";
+        } else if (lluvia24hOpenMeteo >= 35 || viento >= 60) {
+          clase = "alerta-naranja"; texto = "NARANJA - ALERTA MODERADA"; msg = "Precipitaciones abundantes de consideración.";
+        } else if (lluvia24hOpenMeteo >= 15 || viento >= 40) {
+          clase = "alerta-amarillo"; texto = "AMARILLO - ATENCIÓN / VIGILANCIA"; msg = "Lluvias aisladas o ráfagas moderadas.";
         }
 
-        contenedor.innerHTML = `
-          <div class="alerta-box ${nivel}">
-            <i class="fa-solid ${icono}" style="font-size: 1.5rem;"></i>
+        cont.innerHTML = `
+          <div class="alerta-box ${clase}">
+            <i class="fa-solid fa-cloud-sun-rain" style="font-size: 1.5rem;"></i>
             <div>
-              <strong style="display:block; font-size: 0.9rem;">${etiqueta}</strong>
-              <span style="font-size: 0.8rem;">${mensaje}</span>
-              <div style="font-size: 0.75rem; margin-top: 4px; opacity: 0.9;">
-                <b>Lluvia 24h prevista:</b> ${lluvia24h.toFixed(1)} mm | <b>Viento máx:</b> ${vientoMax.toFixed(1)} km/h
-              </div>
+              <strong>${texto}</strong>
+              <div style="font-size:0.8rem; margin-top:2px;">${msg}</div>
+              <div style="font-size:0.75rem; margin-top:4px;"><b>Lluvia 24h:</b> ${lluvia24hOpenMeteo.toFixed(1)} mm | <b>Ráfagas máx:</b> ${viento.toFixed(1)} km/h</div>
             </div>
           </div>
         `;
-        actualizarMatrizCruce();
-      } catch (err) {
-        contenedor.innerHTML = `<p style="font-size:0.8rem; color:#ef4444;">Falla temporal al conectar con Open-Meteo.</p>`;
+        calcularCruce();
+      } catch (e) {
+        cont.innerHTML = `<span style="font-size:0.8rem; color:#ef4444;">Falla temporal al conectar con Open-Meteo.</span>`;
       }
     }
-    cargarAlertasOpenMeteo();
+    cargarOpenMeteo();
 
-    // --- 2. CARGA DE CAPA KML (HUMEDAD DEL SUELO - INTA) ---
-    function cargarKMLHumedad(event) {
+    // --- 2. CARGA ROBUSTA DE KML DE HUMEDAD (INTA) ---
+    function cargarKMLHumedadUniversal(event) {
       const file = event.target.files[0];
       if (!file) return;
 
       const reader = new FileReader();
       reader.onload = function(e) {
         const kmlText = e.target.result;
-        capaHumedadInta.clearLayers();
+        fgHumedadInta.clearLayers();
 
         try {
-          const capaCargada = omnivore.kml.parse(kmlText, null, L.geoJson(null, {
-            style: function(feature) {
-              return {
-                fillColor: "#059669",
-                weight: 1.5,
-                opacity: 0.9,
-                color: "#047857",
-                fillOpacity: 0.4
-              };
-            },
-            onEachFeature: function(feature, layer) {
-              let info = "<b>Capa Humedad Suelo INTA</b><br>";
-              if (feature.properties) {
-                for (let k in feature.properties) {
-                  info += `<b>${k}:</b> ${feature.properties[k]}<br>`;
+          const parser = new DOMParser();
+          const xmlDoc = parser.parseFromString(kmlText, "text/xml");
+          const placemarks = xmlDoc.getElementsByTagName("Placemark");
+          let bounds = L.latLngBounds();
+          let count = 0;
+
+          for (let i = 0; i < placemarks.length; i++) {
+            const pm = placemarks[i];
+            const name = pm.getElementsByTagName("name")[0]?.textContent || "Zona INTA";
+            const desc = pm.getElementsByTagName("description")[0]?.textContent || "";
+
+            // Parsear coordenadas de polígonos
+            const coordTags = pm.getElementsByTagName("coordinates");
+            if (coordTags.length > 0) {
+              const rawCoords = coordTags[0].textContent.trim().split(/\s+/);
+              const latlngs = [];
+              rawCoords.forEach(str => {
+                const parts = str.split(",");
+                if (parts.length >= 2) {
+                  const lon = parseFloat(parts[0]);
+                  const lat = parseFloat(parts[1]);
+                  if (!isNaN(lat) && !isNaN(lon)) {
+                    latlngs.push([lat, lon]);
+                    bounds.extend([lat, lon]);
+                  }
                 }
+              });
+
+              if (latlngs.length > 2) {
+                const poly = L.polygon(latlngs, {
+                  color: "#047857",
+                  fillColor: "#10b981",
+                  fillOpacity: 0.45,
+                  weight: 1.5
+                }).bindPopup(`<b>${name}</b><br>${desc}`);
+                fgHumedadInta.addLayer(poly);
+                count++;
+              } else if (latlngs.length === 1) {
+                const marker = L.circleMarker(latlngs[0], {
+                  radius: 6,
+                  color: "#047857",
+                  fillColor: "#10b981",
+                  fillOpacity: 0.8
+                }).bindPopup(`<b>${name}</b><br>${desc}`);
+                fgHumedadInta.addLayer(marker);
+                count++;
               }
-              layer.bindPopup(info);
             }
-          }));
+          }
 
-          capaCargada.on('ready', function() {
-            map.fitBounds(capaCargada.getBounds());
-            document.getElementById('info-kml').innerHTML = `✅ KML cargado con éxito (${file.name}).`;
-            actualizarMatrizCruce();
-          });
-
-          capaHumedadInta.addLayer(capaCargada);
+          if (count > 0 && bounds.isValid()) {
+            map.fitBounds(bounds);
+            document.getElementById("info-kml").innerHTML = `✅ Capa KML de INTA cargada con éxito (${count} elementos).`;
+            calcularCruce();
+          } else {
+            document.getElementById("info-kml").innerHTML = `⚠️ No se detectaron geometrías vectoriales estándar en el KML.`;
+          }
         } catch (err) {
-          alert("Error al interpretar el KML: " + err.message);
+          alert("Error al leer el archivo KML: " + err.message);
         }
       };
       reader.readAsText(file);
     }
 
-    // --- 3. CARGA DE FREATÍMETROS (EXCEL) Y HISTORIAL ---
-    let historialFreatimetros = [];
-
-    function cargarExcelFreatimetros(e) {
-      const file = e.target.files[0];
+    // --- 3. CARGA DE FREATÍMETROS REALES (EXCEL) ---
+    let listaFreaticaCargada = [];
+    function cargarExcelFreatimetros(ev) {
+      const file = ev.target.files[0];
       if (!file) return;
 
       const reader = new FileReader();
-      reader.onload = function(evt) {
+      reader.onload = function(e) {
         try {
-          const data = new Uint8Array(evt.target.result);
-          const workbook = XLSX.read(data, { type: 'array' });
-          const sheet = workbook.Sheets[workbook.SheetNames[0]];
-          const filas = XLSX.utils.sheet_to_json(sheet);
+          const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+          const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+          if (!rows || rows.length === 0) return alert("La planilla está vacía.");
 
-          if (filas.length === 0) {
-            alert("El archivo Excel no contiene filas con datos.");
-            return;
-          }
-
-          historialFreatimetros = filas;
-          capaFreatimetros.clearLayers();
-
+          fgFreatimetros.clearLayers();
+          listaFreaticaCargada = [];
           const tbody = document.getElementById("cuerpo-tabla-freatimetros");
           tbody.innerHTML = "";
 
-          let puntosCriticos = 0;
-          let sumProf = 0, countProf = 0;
-
-          filas.forEach(f => {
-            const lat = parseFloat(f.Latitud || f.lat || f.Lat);
-            const lon = parseFloat(f.Longitud || f.lon || f.Lon || f.Lng);
-            const prof = parseFloat(f.Profundidad_m || f.profundidad || f.Prof || f.Nivel_m);
-            const umbral = parseFloat(f.Umbral_Critico_m || f.umbral || 1.20);
-            const puntoID = f.ID_Freatimetro || f.Punto || f.Localidad || "Freatímetro";
-            const fecha = f.Fecha || f.Fecha_Medicion || "Reciente";
+          rows.forEach((r, idx) => {
+            // Detección automática y flexible de nombres de columna
+            const lat = parseFloat(r.Latitud || r.lat || r.LAT || r.Lat || r.Latitude);
+            const lon = parseFloat(r.Longitud || r.lon || r.LON || r.Lon || r.Longitude || r.Lng);
+            const prof = parseFloat(r.Profundidad_m || r.profundidad || r.Prof || r.Nivel_m || r.prof || r.Cota_freatica);
+            const umbral = parseFloat(r.Umbral_Critico_m || r.umbral || r.Umbral || 1.20);
+            const id = r.ID_Freatimetro || r.ID || r.Punto || r.Nombre || r.Localidad || `FR-${idx+1}`;
+            const fecha = r.Fecha || r.fecha || r.Fecha_Medicion || "Reciente";
 
             if (!isNaN(lat) && !isNaN(lon) && !isNaN(prof)) {
-              sumProf += prof;
-              countProf++;
+              listaFreaticaCargada.push({ id, lat, lon, prof, umbral, fecha });
 
-              // Semáforo Freático: menos profundidad = napa más cerca de la superficie
-              let color = "#10b981"; // Verde: profundo (> 2 m)
-              let estado = "Normal";
+              let col = "#10b981", estado = "Normal";
+              if (prof <= 0.80) { col = "#dc2626"; estado = "Crítico"; }
+              else if (prof <= umbral) { col = "#f59e0b"; estado = "Alerta"; }
 
-              if (prof <= 0.80) {
-                color = "#dc2626"; // Rojo: afloramiento inminente
-                estado = "Crítico";
-                puntosCriticos++;
-              } else if (prof <= umbral) {
-                color = "#f59e0b"; // Amarillo/Naranja: saturación próxima
-                estado = "Alerta";
-              }
-
-              const marker = L.circleMarker([lat, lon], {
-                radius: 8,
-                fillColor: color,
-                color: "#ffffff",
+              L.circleMarker([lat, lon], {
+                radius: 7,
+                fillColor: col,
+                color: "#fff",
                 weight: 2,
-                fillOpacity: 0.9
-              }).bindPopup(`
-                <div style="font-size:12px; font-family:sans-serif;">
-                  <b style="font-size:13px; color:#1e293b;">${puntoID}</b><br>
-                  <b>Profundidad freática:</b> <span style="color:${color}; font-weight:bold;">${prof.toFixed(2)} m</span><br>
-                  <b>Umbral de anegamiento:</b> ${umbral.toFixed(2)} m<br>
-                  <b>Estado:</b> <b>${estado}</b><br>
-                  <small style="color:#64748b;">Medición: ${fecha}</small>
-                </div>
-              `);
+                fillOpacity: 0.95
+              }).bindPopup(`<b>Freatímetro: ${id}</b><br>Profundidad napa: <b>${prof.toFixed(2)} m</b><br>Umbral: ${umbral} m<br>Fecha: ${fecha}`)
+                .addTo(fgFreatimetros);
 
-              capaFreatimetros.addLayer(marker);
-
-              // Llenar tabla resumen
-              const row = document.createElement("tr");
-              row.innerHTML = `
-                <td><b>${puntoID}</b></td>
-                <td>${fecha}</td>
-                <td style="color:${color}; font-weight:bold;">${prof.toFixed(2)}</td>
-                <td><span style="background:${color}; color:white; padding:1px 4px; border-radius:3px; font-size:10px;">${estado}</span></td>
+              tbody.innerHTML += `
+                <tr>
+                  <td><b>${id}</b></td>
+                  <td>${fecha}</td>
+                  <td style="color:${col}; font-weight:bold;">${prof.toFixed(2)}</td>
+                  <td><span style="color:${col}; font-weight:bold;">${estado}</span></td>
+                </tr>
               `;
-              tbody.appendChild(row);
             }
           });
 
-          // Actualizar tarjeta resumen en Tab Principal
-          const prom = countProf > 0 ? (sumProf / countProf).toFixed(2) : 0;
-          document.getElementById("resumen-freatico-kpi").innerHTML = `
-            <div style="font-size:0.85rem;">
-              <p><b>Puntos monitoreados:</b> ${countProf}</p>
-              <p><b>Profundidad media:</b> ${prom} m</p>
-              <p><b>Nudos en condición crítica (&le; 0.8m):</b> <span style="color:${puntosCriticos > 0 ? '#dc2626' : '#16a34a'}; font-weight:bold;">${puntosCriticos}</span></p>
-            </div>
-          `;
-
-          actualizarMatrizCruce();
-          alert(`Se cargaron y georreferenciaron ${countProf} freatímetros con continuidad histórica.`);
+          if (listaFreaticaCargada.length > 0) {
+            document.getElementById("resumen-freatico-kpi").innerHTML = `
+              <p><b>Puntos reales cargados:</b> ${listaFreaticaCargada.length}</p>
+              <p><b>Profundidad mínima:</b> ${Math.min(...listaFreaticaCargada.map(x => x.prof)).toFixed(2)} m</p>
+            `;
+            calcularCruce();
+            alert(`Se cargaron y georreferenciaron ${listaFreaticaCargada.length} freatímetros correctamente.`);
+          } else {
+            alert("No se reconocieron columnas de coordenadas (Latitud/Longitud) y Profundidad.");
+          }
         } catch (err) {
-          alert("Error al procesar el archivo Excel: " + err.message);
+          alert("Error al procesar el Excel: " + err.message);
         }
       };
       reader.readAsArrayBuffer(file);
     }
 
-    // --- 4. CÁLCULO DE LA MATRIZ DE CRUCE MULTICRITERIO ---
-    function actualizarMatrizCruce() {
-      const divCruce = document.getElementById("resultado-matriz-cruce");
-      if (!divCruce) return;
-
-      const lluvia = pronosticoMeteoActual.lluvia24h;
-      let minProf = 999;
-
-      if (historialFreatimetros.length > 0) {
-        historialFreatimetros.forEach(f => {
-          const prof = parseFloat(f.Profundidad_m || f.profundidad || f.Prof || 999);
-          if (prof < minProf) minProf = prof;
-        });
+    // --- 4. CRUCE MULTICRITERIO ---
+    function calcularCruce() {
+      const box = document.getElementById("resultado-matriz-cruce");
+      if (listaFreaticaCargada.length === 0) {
+        box.innerHTML = "Cargue freatímetros en Excel para cruzar con lluvia y suelo.";
+        return;
       }
 
-      let nivelCruce = "VERDE (Riesgo Bajo)";
-      let colorCruce = "#16a34a";
-      let explicacion = "Cuenca en equilibrio con capacidad de infiltración adecuada.";
+      const minProf = Math.min(...listaFreaticaCargada.map(x => x.prof));
+      let nivel = "VERDE (Riesgo Bajo)", col = "#16a34a", desc = "Capacidad de infiltración adecuada.";
 
-      if (minProf <= 0.80 && lluvia >= 35) {
-        nivelCruce = "ROJO (Emergencia por Saturación y Lluvia)";
-        colorCruce = "#dc2626";
-        explicacion = "Napas aflorando coincidente con lluvias abundantes. Capacidad de retención nula.";
-      } else if (minProf <= 1.20 && lluvia >= 15) {
-        nivelCruce = "NARANJA (Alerta Hidrológica / Anegamiento)";
-        colorCruce = "#ea580c";
-        explicacion = "Nivel freático muy alto con aporte pluvial moderado previsto.";
-      } else if (minProf <= 1.20 || lluvia >= 15) {
-        nivelCruce = "AMARILLO (Vigilancia Preventiva)";
-        colorCruce = "#ca8a04";
-        explicacion = "Monitorear escorrentías en bañados y canales de alivio.";
+      if (minProf <= 0.80 && lluvia24hOpenMeteo >= 30) {
+        nivel = "ROJO (Saturación y Escorrentía Crítica)"; col = "#dc2626";
+        desc = "Nivel freático casi superficial coincidente con precipitaciones copiosas previas o esperadas.";
+      } else if (minProf <= 1.20 && lluvia24hOpenMeteo >= 15) {
+        nivel = "NARANJA (Alerta Hidrogeológica)"; col = "#ea580c";
+        desc = "Napa en cota de alerta con lluvias moderadas previstas.";
+      } else if (minProf <= 1.20 || lluvia24hOpenMeteo >= 15) {
+        nivel = "AMARILLO (Vigilancia Preventiva)"; col = "#ca8a04";
+        desc = "Monitorear escurrimientos hacia depresiones naturales y bajos.";
       }
 
-      divCruce.innerHTML = `
-        <div style="border-left: 4px solid ${colorCruce}; padding-left: 8px;">
-          <strong style="color:${colorCruce};">${nivelCruce}</strong><br>
-          <span>${explicacion}</span>
+      box.innerHTML = `
+        <div style="border-left: 4px solid ${col}; padding-left: 8px;">
+          <strong style="color:${col}; font-size:0.85rem;">${nivel}</strong><br>
+          <span>${desc}</span>
         </div>
       `;
+    }
+
+    // --- 5. MAPA SMN CON GEOMETRÍAS LOCALES (JSON) ---
+    function iniciarMapaSmn() {
+      const mapSmn = L.map('map-smn').setView([-34.8, -64.6], 7);
+      L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
+        attribution: 'Esri',
+        maxZoom: 16
+      }).addTo(mapSmn);
+
+      // Cargar geometrías sat smn desde el repositorio
+      fetch("geometrias_sat_smn.json")
+        .then(r => r.json())
+        .then(geoData => {
+          L.geoJson(geoData, {
+            style: function(feature) {
+              return {
+                color: "#ca8a04",
+                fillColor: "#fef08a",
+                fillOpacity: 0.35,
+                weight: 2
+              };
+            },
+            onEachFeature: function(feature, layer) {
+              let p = feature.properties || {};
+              layer.bindPopup(`<b>Zona SAT SMN:</b> ${p.Nombre || p.name || 'Área de Cobertura'}<br>Provincia: ${p.Provincia || 'Región Central'}`);
+            }
+          }).addTo(mapSmn);
+        })
+        .catch(err => {
+          console.warn("No se pudo cargar geometrias_sat_smn.json:", err);
+        });
     }
   </script>
 </body>
