@@ -1,10 +1,10 @@
 ﻿Estación Hidrológica,Río,Nivel Actual (m),Nivel Anterior (m),Variación,Cota Alerta (m),Cota Evac (m),Estado,Meteo Cercana,Lluvia 24h (mm),Ventana Onda LP
-Aº El Aji - RN Nº35 y RN Nº7,Afluente Río Quinto,0.69,0.69,▬ +0.00 m,1.9,2.4,Normal / Seguro,Vicuña Mackenna,0.0,7-10 d
-Laguna La Margarita,Cuenca Río Quinto,1.39,1.39,▬ +0.00 m,2.4,3.0,Normal / Seguro,Hipólito Bouchard,0.0,7-10 d
+Aº El Aji - RN Nº35 y RN Nº7,Afluente Río Quinto,0.68,0.69,▬ -0.01 m,1.9,2.4,Normal / Seguro,Vicuña Mackenna,0.0,7-10 d
+Laguna La Margarita,Cuenca Río Quinto,1.4,1.39,▬ +0.01 m,2.4,3.0,Normal / Seguro,Hipólito Bouchard,0.0,7-10 d
 Quinto - Av Circunvalación,Río Quinto,0.22,0.22,▬ +0.00 m,2.5,3.2,Normal / Seguro,Villa Reynolds,0.0,7-10 d
 Quinto - Canal Devoto RP 4,Río Quinto / Canal Devoto,1.02,1.02,▬ +0.00 m,2.8,3.4,Normal / Seguro,Río Bamba,0.0,7-10 d
 Quinto - Dique Villa Mercedes,Río Quinto,1.07,1.07,▬ +0.00 m,2.8,3.5,Normal / Seguro,Villa Mercedes,0.0,7-10 d
-Quinto - Justo Daract,Río Quinto,1.86,1.86,▬ +0.00 m,2.9,3.6,Normal / Seguro,Justo Daract,0.2,7-10 d
-Quinto - R.N. 35,Río Quinto,1.2,1.19,▬ +0.01 m,2.6,3.2,Normal / Seguro,Nicolás Bruzzone,0.0,7-10 d
-Quinto - RP Nº26,Río Quinto,0.75,0.78,▼ -0.03 m,2.2,2.8,Normal / Seguro,Hipólito Bouchard,0.0,7-10 d
-Trapiche - Hosteria El Trapiche,Río Trapiche (Afluente),0.35,0.35,▬ +0.00 m,1.8,2.3,Normal / Seguro,El Trapiche,0.0,7-10 d
+Quinto - Justo Daract,Río Quinto,1.85,1.86,▬ -0.01 m,2.9,3.6,Normal / Seguro,Justo Daract,0.0,7-10 d
+Quinto - R.N. 35,Río Quinto,1.2,1.2,▬ +0.00 m,2.6,3.2,Normal / Seguro,Nicolás Bruzzone,0.0,7-10 d
+Quinto - RP Nº26,Río Quinto,0.76,0.75,▬ +0.01 m,2.2,2.8,Normal / Seguro,Hipólito Bouchard,0.0,7-10 d
+Trapiche - Hosteria El Trapiche,Río Trapiche (Afluente),0.36,0.35,▬ +0.01 m,1.8,2.3,Normal / Seguro,El Trapiche,0.0,7-10 d
