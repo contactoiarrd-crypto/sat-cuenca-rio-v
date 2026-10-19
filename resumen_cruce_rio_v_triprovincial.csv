@@ -1,10 +1,10 @@
 ﻿Estación Hidrológica,Río,Nivel Actual (m),Nivel Anterior (m),Variación,Cota Alerta (m),Cota Evac (m),Estado,Meteo Cercana,Lluvia 24h (mm),Ventana Onda LP
-Aº El Aji - RN Nº35 y RN Nº7,Afluente Río Quinto,0.65,0.65,▬ +0.00 m,1.9,2.4,Normal / Seguro,Vicuña Mackenna,0.0,7-10 d
-Laguna La Margarita,Cuenca Río Quinto,1.39,1.39,▬ +0.00 m,2.4,3.0,Normal / Seguro,Hipólito Bouchard,0.0,7-10 d
-Quinto - Av Circunvalación,Río Quinto,0.16,0.16,▬ +0.00 m,2.5,3.2,Normal / Seguro,Villa Reynolds,0.0,7-10 d
-Quinto - Canal Devoto RP 4,Río Quinto / Canal Devoto,1.04,1.04,▬ +0.00 m,2.8,3.4,Normal / Seguro,Río Bamba,0.0,7-10 d
+Aº El Aji - RN Nº35 y RN Nº7,Afluente Río Quinto,0.64,0.65,▬ -0.01 m,1.9,2.4,Normal / Seguro,Vicuña Mackenna,0.0,7-10 d
+Laguna La Margarita,Cuenca Río Quinto,1.41,1.41,▬ +0.00 m,2.4,3.0,Normal / Seguro,Hipólito Bouchard,0.0,7-10 d
+Quinto - Av Circunvalación,Río Quinto,0.15,0.16,▬ -0.01 m,2.5,3.2,Normal / Seguro,Villa Reynolds,0.0,7-10 d
+Quinto - Canal Devoto RP 4,Río Quinto / Canal Devoto,1.0,1.0,▬ +0.00 m,2.8,3.4,Normal / Seguro,Río Bamba,0.0,7-10 d
 Quinto - Dique Villa Mercedes,Río Quinto,1.1,1.1,▬ +0.00 m,2.8,3.5,Normal / Seguro,Villa Mercedes,0.0,7-10 d
-Quinto - Justo Daract,Río Quinto,1.8,1.81,▬ -0.01 m,2.9,3.6,Normal / Seguro,Justo Daract,0.0,7-10 d
-Quinto - R.N. 35,Río Quinto,1.21,1.21,▬ +0.00 m,2.6,3.2,Normal / Seguro,Nicolás Bruzzone,0.0,7-10 d
-Quinto - RP Nº26,Río Quinto,0.72,0.72,▬ +0.00 m,2.2,2.8,Normal / Seguro,Hipólito Bouchard,0.0,7-10 d
+Quinto - Justo Daract,Río Quinto,1.81,1.81,▬ +0.00 m,2.9,3.6,Normal / Seguro,Justo Daract,0.0,7-10 d
+Quinto - R.N. 35,Río Quinto,1.2,1.21,▬ -0.01 m,2.6,3.2,Normal / Seguro,Nicolás Bruzzone,0.0,7-10 d
+Quinto - RP Nº26,Río Quinto,0.73,0.71,▲ +0.02 m,2.2,2.8,Normal / Seguro,Hipólito Bouchard,0.0,7-10 d
 Trapiche - Hosteria El Trapiche,Río Trapiche (Afluente),0.36,0.36,▬ +0.00 m,1.8,2.3,Normal / Seguro,El Trapiche,0.0,7-10 d
