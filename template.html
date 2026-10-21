@@ -37,7 +37,6 @@
         .legend-item { display: flex; align-items: center; margin-bottom: 3px; }
         .legend-color { width: 12px; height: 12px; border-radius: 50%; margin-right: 8px; flex-shrink: 0; }
 
-        /* Estilos del widget multirriesgo analítico */
         .widget-analitico {
             background: #f8fafc;
             border: 1px solid #e2e8f0;
@@ -143,7 +142,7 @@
 
             <!-- PANEL DERECHO DE ALERTAS E INDICADORES -->
             <div class="card">
-                <h2>Indicadores Analíticos  y Alertas SMN</h2>
+                <h2>Indicadores Analíticos y Alertas SMN</h2>
                 
                 <!-- WIDGET MULTIRRIESGO DE INDICADORES (OPEN-METEO) -->
                 <div class="widget-analitico">
@@ -178,19 +177,18 @@
 
                 <h3 style="font-size: 13.5px; color: #475569; margin: 12px 0 8px 0; text-transform: uppercase;">Avisos Oficiales del SMN:</h3>
                 __ALERTAS_SMN__
-            <div style="width: 100%; height: 400px; border-radius: 6px; overflow: hidden; border: 1px solid #ccc; margin-top: 10px;">
-                <iframe 
-                    src="https://www.smn.gob.ar/alertas" 
-                    title="Alertas Meteorológicas SMN" 
-                    width="100%" 
-                    height="100%" 
-                    style="border: none;" 
-                    loading="lazy">
-                </iframe>
+
+                <div style="margin-top: 15px; padding: 14px; background: #f8fafc; border-radius: 6px; border: 1px solid #cbd5e1; text-align: center;">
+                    <p style="font-size: 12.5px; color: #475569; margin-bottom: 10px;">
+                        Para consultar el mapa interactivo oficial completo de alertas y avisos a muy corto plazo (ACP):
+                    </p>
+                    <a href="https://www.smn.gob.ar/alertas" target="_blank" rel="noopener noreferrer" class="btn" style="background:#0284c7; padding: 8px 16px; font-size: 12px; margin: 0;">
+                        🌐 Abrir Portal Oficial de Alertas SMN ↗
+                    </a>
+                </div>
             </div>
         </div>
     </div>
-</div>
 
     <div id="tab-mapa" class="tab-content" style="padding: 10px 20px;">
         <!-- Barra de carga interactiva de Freatímetros -->
@@ -205,7 +203,7 @@
                 <button id="btnLimpiarFreat" onclick="limpiarFreatimetros()" style="display:none; background:#ef4444; color:white; border:none; padding:5px 10px; border-radius:4px; font-size:11.5px; cursor:pointer;">Limpiar capa</button>
             </div>
             <div style="font-size: 11.5px; color: #475569;">
-                <em>Columnas reconocidas: <code>Nombre/Pozo</code>, <code>Latitud/Lat</code>, <code>Longitud/Lon</code>, <code>Profundidad/Nivel/Cota</code></em>
+                <em>Permanecerán en el mapa hasta que cargues un archivo nuevo. Columnas: <code>Nombre/Pozo</code>, <code>Latitud</code>, <code>Longitud</code>, <code>Profundidad/Napa</code></em>
             </div>
         </div>
 
@@ -239,6 +237,11 @@
         <div class="card">
             <h2>Alertas Meteorológicas Oficiales del SMN</h2>
             __ALERTAS_SMN__
+            <div style="margin-top: 20px; text-align: right;">
+                <a href="https://www.smn.gob.ar/alertas" target="_blank" rel="noopener noreferrer" class="btn">
+                    Ver mapa de alertas en SMN.gob.ar ↗
+                </a>
+            </div>
         </div>
     </div>
 
@@ -310,11 +313,87 @@
     <script>
         var map = null;
         var fgRayos = L.featureGroup();
-
         var fgFreatimetros = L.featureGroup();
+        var freatimetrosGuardados = [];
+
+        // 1. Cargar freatímetros de ejecución previa si vienen precargados desde el servidor
+        try {
+            var freatServidor = __JSON_FREATIMETROS__;
+            if (Array.isArray(freatServidor) && freatServidor.length > 0) {
+                freatimetrosGuardados = freatServidor;
+            }
+        } catch(e) {}
+
+        // 2. Si no hay precargados desde el servidor, leer de localStorage del navegador
+        if (freatimetrosGuardados.length === 0) {
+            try {
+                var local = localStorage.getItem("sat_freatimetros_data");
+                if (local) {
+                    freatimetrosGuardados = JSON.parse(local);
+                }
+            } catch(e) {}
+        }
+
+        function renderizarFreatimetros(lista) {
+            fgFreatimetros.clearLayers();
+            if (!lista || lista.length === 0) return;
+
+            lista.forEach(function(row) {
+                var lat = parseFloat(row.lat);
+                var lon = parseFloat(row.lon);
+                var prof = (row.prof !== null && row.prof !== undefined && row.prof !== "") ? parseFloat(row.prof) : null;
+                var nombre = row.nombre || "Freatímetro";
+                var fecha = row.fecha || "N/D";
+
+                if (!isNaN(lat) && !isNaN(lon)) {
+                    var markerColor = "#0284c7";
+                    var estadoNapa = "Sin dato de profundidad";
+                    if (prof !== null && !isNaN(prof)) {
+                        if (prof <= 1.0) {
+                            markerColor = "#7c3aed";
+                            estadoNapa = "⚠️ Napa muy somera / Riesgo anegamiento (≤ 1.0 m)";
+                        } else if (prof <= 2.0) {
+                            markerColor = "#0284c7";
+                            estadoNapa = "Napa media (1.0 - 2.0 m)";
+                        } else {
+                            markerColor = "#10b981";
+                            estadoNapa = "Napa profunda (> 2.0 m)";
+                        }
+                    }
+
+                    var popupContent = `
+                        <div style="font-size:12px; line-height:1.45;">
+                            <strong style="color:#1e3a8a; font-size:13px;">📍 ${nombre}</strong><br>
+                            <strong>Capa:</strong> Red de Freatímetros<br>
+                            ${prof !== null && !isNaN(prof) ? `<strong>Profundidad:</strong> <b>${prof.toFixed(2)} m</b><br>` : ""}
+                            <strong>Estado:</strong> ${estadoNapa}<br>
+                            <small style="color:#64748b;">Última medición: ${fecha}</small>
+                        </div>
+                    `;
+
+                    L.circleMarker([lat, lon], {
+                        radius: 7,
+                        color: "#ffffff",
+                        fillColor: markerColor,
+                        fillOpacity: 0.9,
+                        weight: 2
+                    }).bindPopup(popupContent).addTo(fgFreatimetros);
+                }
+            });
+
+            var statusLabel = document.getElementById("freatimetrosStatus");
+            var btnLimpiar = document.getElementById("btnLimpiarFreat");
+            if (statusLabel) {
+                statusLabel.innerText = `✅ ${lista.length} freatímetro(s) activos`;
+                statusLabel.style.color = "#10b981";
+            }
+            if (btnLimpiar) btnLimpiar.style.display = "inline-block";
+        }
 
         function limpiarFreatimetros() {
             fgFreatimetros.clearLayers();
+            try { localStorage.removeItem("sat_freatimetros_data"); } catch(e){}
+            freatimetrosGuardados = [];
             document.getElementById("inputFreatimetros").value = "";
             document.getElementById("freatimetrosStatus").innerText = "Capa limpiada.";
             document.getElementById("freatimetrosStatus").style.color = "#64748b";
@@ -347,8 +426,7 @@
                         return;
                     }
 
-                    fgFreatimetros.clearLayers();
-                    let cargados = 0;
+                    let normalizados = [];
 
                     jsonRows.forEach(row => {
                         const keys = Object.keys(row);
@@ -364,56 +442,27 @@
                         const lon = parseFloat(String(row[lonKey]).replace(",", "."));
                         const prof = profKey ? parseFloat(String(row[profKey]).replace(",", ".")) : null;
                         const nombre = row[nomKey] || "Freatímetro";
-                        const fecha = fechaKey && row[fechaKey] ? row[fechaKey] : "N/D";
+                        const fecha = fechaKey && row[fechaKey] ? String(row[fechaKey]) : new Date().toLocaleDateString();
 
                         if (!isNaN(lat) && !isNaN(lon)) {
-                            let markerColor = "#0284c7";
-                            let estadoNapa = "Sin dato de profundidad";
-                            if (prof !== null && !isNaN(prof)) {
-                                if (prof <= 1.0) {
-                                    markerColor = "#7c3aed";
-                                    estadoNapa = "⚠️ Napa muy somera / Riesgo anegamiento (≤ 1.0 m)";
-                                } else if (prof <= 2.0) {
-                                    markerColor = "#0284c7";
-                                    estadoNapa = "Napa media (1.0 - 2.0 m)";
-                                } else {
-                                    markerColor = "#10b981";
-                                    estadoNapa = "Napa profunda (> 2.0 m)";
-                                }
-                            }
-
-                            const popupContent = `
-                                <div style="font-size:12px; line-height:1.45;">
-                                    <strong style="color:#1e3a8a; font-size:13px;">📍 ${nombre}</strong><br>
-                                    <strong>Tipo:</strong> Freatímetro<br>
-                                    ${prof !== null && !isNaN(prof) ? `<strong>Profundidad:</strong> <b>${prof.toFixed(2)} m</b><br>` : ""}
-                                    <strong>Estado:</strong> ${estadoNapa}<br>
-                                    <small style="color:#64748b;">Fecha: ${fecha}</small>
-                                </div>
-                            `;
-
-                            L.circleMarker([lat, lon], {
-                                radius: 7,
-                                color: "#ffffff",
-                                fillColor: markerColor,
-                                fillOpacity: 0.9,
-                                weight: 2
-                            }).bindPopup(popupContent).addTo(fgFreatimetros);
-
-                            cargados++;
+                            normalizados.push({ lat, lon, prof, nombre, fecha });
                         }
                     });
 
-                    if (cargados > 0) {
+                    if (normalizados.length > 0) {
+                        freatimetrosGuardados = normalizados;
+                        try {
+                            localStorage.setItem("sat_freatimetros_data", JSON.stringify(normalizados));
+                        } catch(e) {}
+
+                        renderizarFreatimetros(normalizados);
+
                         if (map && !map.hasLayer(fgFreatimetros)) {
                             fgFreatimetros.addTo(map);
                         }
                         if (map) {
                             map.fitBounds(fgFreatimetros.getBounds(), { padding: [40, 40] });
                         }
-                        statusLabel.innerText = `✅ ¡${cargados} freatímetro(s) cargado(s)!`;
-                        statusLabel.style.color = "#10b981";
-                        btnLimpiar.style.display = "inline-block";
                     } else {
                         statusLabel.innerText = "⚠️ No se detectaron columnas de Lat/Lon válidas.";
                         statusLabel.style.color = "#ef4444";
@@ -506,6 +555,10 @@
             fgRayos.addTo(map);
             fgFreatimetros.addTo(map);
 
+            if (freatimetrosGuardados.length > 0) {
+                renderizarFreatimetros(freatimetrosGuardados);
+            }
+
             var datosHidro = __JSON_HIDRO__;
             datosHidro.forEach(function(h) {
                 var difTxt = h.variacion ? ("<br>Variación: <b>" + h.variacion + "</b>") : "";
@@ -526,7 +579,7 @@
                     fillColor: '#fb923c',
                     fillOpacity: 0.85,
                     weight: 1.5
-                }).bindPopup("<b>" + m.nombre + "</b><br>Red: <b>REM San Luis</b><br>Temp: " + m.temp_c + " °C<br>Lluvia 24h: <b>" + m.lluvia_24h_mm + " mm</b>").addTo(fgRemSL);
+                }).bindPopup("<b>" + m.nombre + "</b><br>Red: <b>REM San Luis</b><br>Temp: " + m.temp_c + " °C<br>Lluvia 24h: <b>" + m.lluvia_24h_mm + " mm</b><br><small>Fecha: " + m.fecha_actualizacion + "</small>").addTo(fgRemSL);
             });
 
             var datosApa = __JSON_APA_LP__;
@@ -580,7 +633,7 @@
 
             var overlayMaps = {
                 "💧 Cuerpos de Agua (INA)": fgHidro,
-                "📍 Freatímetros (Excel)": fgFreatimetros,
+                "📍 Freatímetros": fgFreatimetros,
                 "⚠️ Alertas SAT SMN": fgSMN,
                 "🛰️ Satélite Infrarrojo": sateliteGOES,
                 "⚡ Rayos / Descargas en Vivo": fgRayos,
@@ -627,7 +680,6 @@
             }
         }
 
-        // Monitoreo multirriesgo: Inestabilidad, Ola de calor, Ola polar e Índice 30-30-30
         async function verificarTiempoSeveroCuenca() {
             const puntos = [
                 { nombre: "Villa Mercedes", lat: -33.67, lon: -65.46 },
@@ -663,18 +715,15 @@
                     const code = cur.weather_code;
                     const nodo = puntos[idx].nombre;
 
-                    // Cálculo del Índice 30-30-30
                     let pts = (t >= 30 ? 33.3 : (t / 30) * 20) + (v >= 30 ? 33.3 : (v / 30) * 20) + (h <= 30 ? 33.4 : ((100 - h) / 70) * 15);
                     pts = Math.min(Math.round(pts), 100);
                     if (pts > maxPuntos3030) maxPuntos3030 = pts;
 
                     resumenNodos.push(`<b>${nodo}:</b> ${t}°C | Hum: ${h}% | Viento: ${v} km/h (Ráfagas ${gust}) | Lluvia: ${prec.toFixed(1)} mm`);
 
-                    // Detección de umbrales térmicos
                     if (t >= 35) hayCalor = true;
                     if (t <= 5) hayPolar = true;
 
-                    // Detección de tormentas e inestabilidad
                     let motivo = [];
                     if (code >= 95) motivo.push("Tormenta eléctrica");
                     else if (code >= 80) motivo.push("Chaparrones");
@@ -689,7 +738,6 @@
                     }
                 });
 
-                // Verificación de descargas de rayos
                 var totalRayos = 0;
                 try { totalRayos = (__JSON_RAYOS__).length; } catch(e){}
                 if (totalRayos > 0) {
@@ -697,7 +745,6 @@
                     avisos.push(`Actividad eléctrica detectada (${totalRayos} rayos recientes)`);
                 }
 
-                // Actualizar Banners de Alerta Térmica y Severa
                 const boxSevero = document.getElementById('alertaSeveraBox');
                 const txtSevero = document.getElementById('txtSeveroMsg');
                 if (haySevero) {
@@ -710,7 +757,6 @@
                 document.getElementById('alertaCalorBox').style.display = hayCalor ? 'block' : 'none';
                 document.getElementById('alertaPolarBox').style.display = hayPolar ? 'block' : 'none';
 
-                // Actualizar Badge General
                 const badge = document.getElementById('badgeEstadoVivo');
                 if (haySevero || hayCalor || hayPolar || maxPuntos3030 >= 75) {
                     badge.style.background = '#dc2626';
@@ -723,7 +769,6 @@
                     badge.innerText = 'NORMAL';
                 }
 
-                // Renderizar barra de Índice 30-30-30
                 const barFill = document.getElementById('indexBarFill');
                 const valLabel = document.getElementById('val3030');
                 barFill.style.width = maxPuntos3030 + "%";
@@ -743,7 +788,6 @@
                     valLabel.style.color = "#dc2626";
                 }
 
-                // Renderizar datos por nodo
                 document.getElementById('detalleTiempoVivo').innerHTML = resumenNodos.join('<br>');
 
             } catch (e) {
