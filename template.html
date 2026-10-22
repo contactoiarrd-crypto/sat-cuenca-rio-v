@@ -80,9 +80,8 @@
     <div class="tabs">
         <button class="tab-btn active" onclick="openTab(event, 'tab-dashboard')">📊 Panel de Control General</button>
         <button class="tab-btn" onclick="openTab(event, 'tab-mapa')">🗺️ Visor Cartográfico</button>
-        <button class="tab-btn" onclick="openTab(event, 'tab-radsat')">📡 Radar y Rayos </button>
+        <button class="tab-btn" onclick="openTab(event, 'tab-radsat')">📡 Radar y Rayos (RadSat)</button>
         <button class="tab-btn" onclick="openTab(event, 'tab-ecmwf')">🌧️ Pronóstico ECMWF 72h y Medias</button>
-        <button class="tab-btn" onclick="openTab(event, 'tab-alertas')">⚠️ Panel de Alertas SMN (__TOTAL_ALERTAS__)</button>
         <button class="tab-btn" onclick="openTab(event, 'tab-hidro')">💧 Cuerpos de Agua y Cotas (INA)</button>
         <button class="tab-btn" onclick="openTab(event, 'tab-onda')">🌊 Traslación de Onda a La Pampa</button>
         <button class="tab-btn" onclick="openTab(event, 'tab-meteo')">🌦️ Redes Meteorológicas</button>
@@ -106,10 +105,14 @@
                 <div class="kpi-val">__TIEMPO_VIAJE__ días</div>
                 <small style="color:#64748b;">Ventana prevista: __FECHA_ARRIBO__</small>
             </div>
-            <div class="kpi-card" style="border-left-color: __KPI_ALERTAS_COLOR__;">
-                <div class="kpi-title">ALERTAS METEOROLÓGICAS (SMN)</div>
-                <div class="kpi-val">__TOTAL_ALERTAS__ activas</div>
-                <small style="color:#64748b;">En departamentos de la cuenca</small>
+            <div class="kpi-card" style="border-left-color: #0284c7;">
+                <div class="kpi-title">AVISOS OFICIALES</div>
+                <div class="kpi-val" style="font-size: 15px; margin-top: 8px;">
+                    <a href="https://www.smn.gob.ar/alertas" target="_blank" rel="noopener noreferrer" style="color: #0284c7; text-decoration: none; font-weight: bold;">
+                        Consultar SMN ↗
+                    </a>
+                </div>
+                <small style="color:#64748b;">Servicio Meteorológico Nacional</small>
             </div>
         </div>
 
@@ -135,13 +138,13 @@
                 </table>
             </div>
 
-            <!-- PANEL DERECHO DE ALERTAS E INDICADORES -->
+            <!-- PANEL DERECHO DE INDICADORES -->
             <div class="card">
-                <h2>Indicadores Analíticos y Alertas SMN</h2>
+                <h2>Monitoreo Meteorológico y Avisos</h2>
                 
                 <div class="widget-analitico">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 6px;">
-                        <strong style="color: #1e3a8a; font-size: 13px;">📊 Monitoreo Meteorológico en Tiempo Real</strong>
+                        <strong style="color: #1e3a8a; font-size: 13px;">📊 Condiciones en Tiempo Real</strong>
                         <span id="badgeEstadoVivo" style="background:#10b981; color:white; padding:2px 7px; border-radius:10px; font-size:10.5px; font-weight:bold;">NORMAL</span>
                     </div>
 
@@ -160,20 +163,11 @@
                     <div id="detalleTiempoVivo" style="color:#334155; line-height: 1.45; margin-top: 4px; font-size: 11.5px;">
                         Calculando métricas en nodos de cuenca...
                     </div>
-
-                    <div style="margin-top: 8px; padding-top: 6px; border-top: 1px dashed #cbd5e1; font-size: 10.5px; color: #64748b; font-style: italic;">
-                        ℹ️ Fuente analítica: Nodos Open-Meteo. No reemplaza los avisos oficiales emitidos por el Servicio Meteorológico Nacional (SMN).
-                    </div>
                 </div>
 
-                <h3 style="font-size: 13.5px; color: #475569; margin: 12px 0 8px 0; text-transform: uppercase;">Avisos Oficiales del SMN:</h3>
-                __ALERTAS_SMN__
-
-                <div style="margin-top: 15px; padding: 14px; background: #f8fafc; border-radius: 6px; border: 1px solid #cbd5e1; text-align: center;">
-                    <p style="font-size: 12.5px; color: #475569; margin-bottom: 8px;">
-                        Ver avisos y polígonos interactivos oficiales en el portal nacional:
-                    </p>
-                    <a href="https://www.smn.gob.ar/alertas" target="_blank" rel="noopener noreferrer" class="btn" style="background:#0284c7; padding: 7px 14px; font-size: 12px; margin: 0;">
+                <!-- ENLACE DIRECTO SMN SIN LEYENDA -->
+                <div style="margin-top: 20px; padding: 16px; background: #f8fafc; border-radius: 8px; border: 1px solid #cbd5e1; text-align: center;">
+                    <a href="https://www.smn.gob.ar/alertas" target="_blank" rel="noopener noreferrer" class="btn" style="background:#0284c7; padding: 10px 20px; font-size: 13px; margin: 0; display: inline-flex; align-items: center; gap: 8px;">
                         🌐 Abrir Portal Oficial de Alertas SMN ↗
                     </a>
                 </div>
@@ -201,25 +195,25 @@
         <div id="map-container"></div>
     </div>
 
-      <!-- TAB 3: RADAR METEOROLÓGICO Y RAYOS EN VIVO EMBEBIDO -->
-<div id="tab-radsat" class="tab-content" style="padding: 10px 20px;">
-    <div style="background: white; border-radius: 8px; border: 1px solid #cbd5e1; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
-        <div style="background: #0f172a; color: white; padding: 10px 16px; display: flex; justify-content: space-between; align-items: center;">
-            <strong style="font-size: 13px;">📡 Radar Meteorológico Doppler y Descargas Eléctricas en Vivo</strong>
-            <span style="font-size: 11px; color: #94a3b8;">Cuenca Río V &bull; Cobertura Nacional SINARAME / SMN</span>
-        </div>
-        <div style="width: 100%; height: calc(100vh - 220px); min-height: 620px;">
-            <iframe 
-                width="100%" 
-                height="100%" 
-                src="https://embed.windy.com/embed2.html?lat=-34.50&lon=-64.50&detailLat=-34.50&detailLon=-64.50&width=100%25&height=100%25&zoom=7&level=surface&overlay=radar&product=radar&menu=&message=true&marker=&calendar=now&pressure=&type=map&location=coordinates&detail=&metricWind=km%2Fh&metricTemp=%C2%B0C&radarRange=-1" 
-                frameborder="0"
-                style="border: none;">
-            </iframe>
+    <!-- TAB 3: RADSAT COMPLETO EMBEBIDO -->
+    <div id="tab-radsat" class="tab-content" style="padding: 10px 20px;">
+        <div style="background: white; border-radius: 8px; border: 1px solid #cbd5e1; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+            <div style="background: #0f172a; color: white; padding: 10px 16px; display: flex; justify-content: space-between; align-items: center;">
+                <strong style="font-size: 13px;">📡 Radar Meteorológico Doppler y Descargas Eléctricas en Vivo</strong>
+                <span style="font-size: 11px; color: #94a3b8;">Cuenca Río V &bull; Cobertura Nacional SINARAME / SMN</span>
+            </div>
+            <div style="width: 100%; height: calc(100vh - 220px); min-height: 620px;">
+                <iframe 
+                    width="100%" 
+                    height="100%" 
+                    src="https://embed.windy.com/embed2.html?lat=-34.50&lon=-64.50&detailLat=-34.50&detailLon=-64.50&width=100%25&height=100%25&zoom=7&level=surface&overlay=radar&product=radar&menu=&message=true&marker=&calendar=now&pressure=&type=map&location=coordinates&detail=&metricWind=km%2Fh&metricTemp=%C2%B0C&radarRange=-1" 
+                    frameborder="0"
+                    style="border: none;">
+                </iframe>
+            </div>
         </div>
     </div>
-</div>
-    
+
     <!-- TAB 4: ECMWF -->
     <div id="tab-ecmwf" class="tab-content">
         <div class="card">
@@ -244,15 +238,7 @@
         </div>
     </div>
 
-    <!-- TAB 5: ALERTAS SMN -->
-    <div id="tab-alertas" class="tab-content">
-        <div class="card">
-            <h2>Alertas Meteorológicas Oficiales del SMN</h2>
-            __ALERTAS_SMN__
-        </div>
-    </div>
-
-    <!-- TAB 6: CUERPOS DE AGUA -->
+    <!-- TAB 5: CUERPOS DE AGUA -->
     <div id="tab-hidro" class="tab-content">
         <div class="card">
             <h2>Niveles Hidrométricos en Nacientes y Cuenca Media (INA)</h2>
@@ -276,7 +262,7 @@
         </div>
     </div>
 
-    <!-- TAB 7: TRASLACIÓN DE ONDA -->
+    <!-- TAB 6: TRASLACIÓN DE ONDA -->
     <div id="tab-onda" class="tab-content">
         <div class="card">
             <h2>Modelo de Amortiguación y Tránsito de Crecida</h2>
@@ -297,7 +283,7 @@
         </div>
     </div>
 
-    <!-- TAB 8: REDES METEO -->
+    <!-- TAB 7: REDES METEO -->
     <div id="tab-meteo" class="tab-content">
         <div class="card">
             <h2>Redes Meteorológicas Integradas (San Luis, Córdoba, La Pampa)</h2>
@@ -322,11 +308,10 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
         var map = null;
-        var fgRayos = L.featureGroup();
         var fgFreatimetros = L.featureGroup();
         var freatimetrosGuardados = [];
 
-        // Inicialización de Freatímetros (Servidor -> LocalStorage)
+        // Inicialización de Freatímetros
         try {
             var freatServidor = __JSON_FREATIMETROS__;
             if (Array.isArray(freatServidor) && freatServidor.length > 0) {
@@ -482,35 +467,6 @@
             reader.readAsArrayBuffer(file);
         }
 
-        // CAPA OFICIAL NASA GIBS / GOES-EAST (Banda 13 Infrarrojo de Tormentas - 100% Abierto y Funcional)
-        var hoyStr = new Date().toISOString().split('T')[0];
-        var sateliteTormentas = L.tileLayer('https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/GOES-East_ABI_Band13_Clean_Infrared/default/' + hoyStr + '/GoogleMapsCompatible_Level8/{z}/{y}/{x}.png', {
-            maxZoom: 8,
-            opacity: 0.65,
-            zIndex: 110,
-            attribution: 'Topes de Tormenta GOES-16 (NASA GIBS / NOAA)'
-        });
-
-        function dibujarRayos() {
-            fgRayos.clearLayers();
-            try {
-                var rayos = __JSON_RAYOS__;
-                if (Array.isArray(rayos)) {
-                    rayos.forEach(function(r) {
-                        L.circleMarker([r.lat, r.lon], {
-                            radius: 5,
-                            color: '#b45309',
-                            fillColor: '#facc15',
-                            fillOpacity: 0.95,
-                            weight: 1.5
-                        }).bindPopup("⚡ Descarga Atmosférica (" + r.hora + " hs)").addTo(fgRayos);
-                    });
-                }
-            } catch (e) {
-                console.warn("Sin datos de rayos:", e);
-            }
-        }
-
         function initMap() {
             if (map !== null) {
                 map.invalidateSize();
@@ -538,15 +494,12 @@
                 layers: [osmVial]
             });
 
-            var fgSMN = L.featureGroup().addTo(map);
             var fgHidro = L.featureGroup().addTo(map);
             var fgRemSL = L.featureGroup().addTo(map);
             var fgApaLP = L.featureGroup().addTo(map);
             var fgOmxCba = L.featureGroup().addTo(map);
             var fgOmxLP = L.featureGroup().addTo(map);
 
-            sateliteTormentas.addTo(map);
-            fgRayos.addTo(map);
             fgFreatimetros.addTo(map);
 
             var datosHidro = __JSON_HIDRO__;
@@ -605,16 +558,6 @@
                 }).bindPopup("<b>" + m.nombre + "</b><br>Red: <b>Omixom La Pampa</b><br>Lluvia 24h: " + m.lluvia_24h_mm + " mm").addTo(fgOmxLP);
             });
 
-            var poligonos = __JSON_POLIGONOS__;
-            poligonos.forEach(function(p) {
-                L.polygon(p.coords, {
-                    color: p.color,
-                    fillColor: p.color,
-                    fillOpacity: 0.28,
-                    weight: 2
-                }).bindPopup("<b>ALERTA " + p.nivel + "</b><br>" + p.zona + "<br>" + p.evento).addTo(fgSMN);
-            });
-
             var baseMaps = {
                 "🗺️ Rutas y Vialidad (OpenStreetMap)": osmVial,
                 "⛰️ Topográfico (Esri)": esriTopo,
@@ -622,11 +565,8 @@
             };
 
             var overlayMaps = {
-                "🌩️ Topes de Tormenta GOES-16": sateliteTormentas,
                 "💧 Cuerpos de Agua (INA)": fgHidro,
                 "📍 Freatímetros (Excel)": fgFreatimetros,
-                "⚠️ Alertas SAT SMN": fgSMN,
-                "⚡ Rayos / Descargas": fgRayos,
                 "⛰️ REM San Luis": fgRemSL,
                 "💧 APA La Pampa": fgApaLP,
                 "🌾 Omixom Córdoba": fgOmxCba,
@@ -652,7 +592,6 @@
             };
             legend.addTo(map);
 
-            dibujarRayos();
             renderizarFreatimetros(freatimetrosGuardados);
         }
 
@@ -726,13 +665,6 @@
                         avisos.push(`${nodo}: ${motivo.join(' y ')}`);
                     }
                 });
-
-                var totalRayos = 0;
-                try { totalRayos = (__JSON_RAYOS__).length; } catch(e){}
-                if (totalRayos > 0) {
-                    haySevero = true;
-                    avisos.push(`Actividad eléctrica detectada (${totalRayos} rayos recientes)`);
-                }
 
                 const boxSevero = document.getElementById('alertaSeveraBox');
                 const txtSevero = document.getElementById('txtSeveroMsg');
