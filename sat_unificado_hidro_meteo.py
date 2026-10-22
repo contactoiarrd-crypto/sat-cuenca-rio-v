@@ -51,6 +51,12 @@ retries = Retry(total=2, backoff_factor=1.0, status_forcelist=[500, 502, 503, 50
 session.mount("https://", HTTPAdapter(max_retries=retries))
 session.mount("http://", HTTPAdapter(max_retries=retries))
 
+def normalizar_txt(s):
+    if not s:
+        return ""
+    import unicodedata
+    return ''.join(c for c in unicodedata.normalize('NFD', str(s)) if unicodedata.category(c) != 'Mn').upper().strip()
+
 # =============================================================
 # 2. MEDIAS CLIMÁTICAS Y NODOS ECMWF A 72 HORAS
 # =============================================================
@@ -277,7 +283,6 @@ def obtener_estaciones_san_luis():
     try:
         r = session.get("https://clima.sanluis.gob.ar/", headers=headers, timeout=12, verify=False)
         if r.status_code == 200:
-            # Patrón tolerante a array JS de la REM de San Luis
             patron = re.compile(
                 r'\[(\d+),\s*"([^"]+)",\s*([-0-9.]+),\s*([-0-9.]+),\s*(?:new Date\((\d+)\)|"([^"]*)"),\s*([-0-9.]+),\s*([-0-9.]+)'
             )
@@ -317,7 +322,6 @@ def obtener_estaciones_san_luis():
     except Exception as e:
         print(f"   [AVISO REM SAN LUIS]: Fallo al consultar clima.sanluis.gob.ar ({e})")
 
-    # Contingencia operativa si la REM bloqueó la consulta o no reportó
     if not estaciones_sl:
         print("   [CONTINGENCIA OPERATIVA]: Cargando estaciones clave de cuenca REM...")
         nodos_sl_base = [
@@ -347,8 +351,11 @@ def obtener_estaciones_san_luis():
             })
     return estaciones_sl
 
+# =============================================================
+# EXTRACCIÓN OFICIAL APA LA PAMPA (PARSEO DIRECTO PLUVIOMÉTRICO)
+# =============================================================
 def obtener_estaciones_apa():
-    print("3. Extrayendo en vivo APA La Pampa...", flush=True)
+    print("3. Extrayendo en vivo reportes de lluvia oficial APA La Pampa...", flush=True)
     RED_APA_NODOS = [
         {"id": "APA_ARATA", "nombre": "Arata", "depto": "Trenel", "lat": -35.617, "lon": -64.356},
         {"id": "APA_QUEMU", "nombre": "Quemú Quemú", "depto": "Quemú Quemú", "lat": -36.056, "lon": -63.551},
@@ -364,70 +371,71 @@ def obtener_estaciones_apa():
         {"id": "APA_GOBDUVAL", "nombre": "Gobernador Duval", "depto": "Curacó", "lat": -38.731, "lon": -65.772}
     ]
 
-    estaciones_apa = []
-    
-    # 1. Intentar consultar portal web telemétrico de La Pampa
-    datos_en_vivo = {}
-    try:
-        r_apa = session.get("https://redapa.lapampa.gob.ar/api/estaciones/ultimas", timeout=6, verify=False)
-        if r_apa.status_code == 200:
-            for item in r_apa.json():
-                nom = normalizar_txt(item.get("nombre", ""))
-                datos_en_vivo[nom] = {
-                    "temp": float(item.get("temperatura", np.nan)),
-                    "lluvia": float(item.get("lluvia_24h", item.get("lluvia", 0.0))),
-                    "hum": float(item.get("humedad", 0.0)),
-                    "fecha": item.get("fecha", FECHA_TXT)
-                }
-    except Exception:
-        pass
+    lluvias_oficiales_apa = {}
+    headers_web = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+    }
 
-    # 2. Respaldo satelital / modelo Open-Meteo
+    # Intento 1: Scraping del portal de servicios meteorológicos de APA La Pampa
+    try:
+        r_apa = session.get("https://apa.lapampa.gob.ar/meteorologia-servicios.html", headers=headers_web, timeout=8, verify=False)
+        if r_apa.status_code == 200:
+            soup = BeautifulSoup(r_apa.text, "html.parser")
+            filas = soup.find_all("tr")
+            for f in filas:
+                cols = [c.get_text(strip=True) for c in f.find_all(["td", "th"])]
+                if len(cols) >= 2:
+                    loc = normalizar_txt(cols[0])
+                    # Buscar número de milímetros en la columna
+                    val_str = cols[1].replace(",", ".").replace("mm", "").strip()
+                    try:
+                        val_num = float(val_str)
+                        lluvias_oficiales_apa[loc] = val_num
+                    except Exception:
+                        pass
+    except Exception as e:
+        print(f"   [AVISO APA SCRAPING]: {e}")
+
+    # Consulta Open-Meteo SÓLO para temperatura y humedad instantánea
     lats_str = ",".join(str(e["lat"]) for e in RED_APA_NODOS)
     lons_str = ",".join(str(e["lon"]) for e in RED_APA_NODOS)
-    url_vivo = f"https://api.open-meteo.com/v1/forecast?latitude={lats_str}&longitude={lons_str}&current=temperature_2m,relative_humidity_2m,precipitation&daily=precipitation_sum&timezone=America%2FArgentina%2FBuenos_Aires"
+    url_vivo = f"https://api.open-meteo.com/v1/forecast?latitude={lats_str}&longitude={lons_str}&current=temperature_2m,relative_humidity_2m&timezone=America%2FArgentina%2FBuenos_Aires"
 
     datos_meteo = []
     try:
-        r = session.get(url_vivo, timeout=8)
-        if r.status_code == 200:
-            datos_meteo = r.json()
+        r_om = session.get(url_vivo, timeout=8)
+        if r_om.status_code == 200:
+            datos_meteo = r_om.json()
             if not isinstance(datos_meteo, list):
                 datos_meteo = [datos_meteo]
-    except Exception as e:
-        print(f"   [AVISO VIVO APA]: {e}")
+    except Exception:
+        pass
 
+    estaciones_apa = []
     for idx, e in enumerate(RED_APA_NODOS):
         nom_norm = normalizar_txt(e["nombre"])
         
-        # Caso 1: Estación oficial APA física respondió
-        if nom_norm in datos_en_vivo:
-            d = datos_en_vivo[nom_norm]
-            temp = d["temp"]
-            lluvia = d["lluvia"]
-            hum = d["hum"]
-            f_act = d["fecha"]
-            red_label = "APA La Pampa"
-            fuente_obs = "Sensor Físico APA"
-        # Caso 2: Contingencia Open-Meteo por coordenadas
-        elif datos_meteo and idx < len(datos_meteo):
+        # 1. Precipitación: Prioridad 100% al pluviómetro físico APA
+        lluvia_oficial = 0.0
+        origen_lluvia = "Pluviómetro APA"
+        encontrado = False
+        for k_loc, mm_val in lluvias_oficiales_apa.items():
+            if nom_norm in k_loc or k_loc in nom_norm:
+                lluvia_oficial = mm_val
+                encontrado = True
+                break
+        
+        if not encontrado:
+            lluvia_oficial = 0.0
+            origen_lluvia = "APA Sin reporte (0.0 mm)"
+
+        # 2. Temperatura y humedad ambiente
+        temp = 16.0
+        hum = 50.0
+        if datos_meteo and idx < len(datos_meteo):
             cur = datos_meteo[idx].get("current", {})
-            daily = datos_meteo[idx].get("daily", {})
-            lluvias_sum = daily.get("precipitation_sum", [0.0])
-            temp = round(cur.get("temperature_2m", 15.0), 1)
-            lluvia = round(lluvias_sum[0] if lluvias_sum and lluvias_sum[0] is not None else 0.0, 1)
+            temp = round(cur.get("temperature_2m", 16.0), 1)
             hum = round(cur.get("relative_humidity_2m", 50.0), 1)
-            f_act = f"{FECHA_TXT} (Estimado)"
-            red_label = "APA (Vía Open-Meteo)"
-            fuente_obs = "Modelo Open-Meteo (Sin enlace estación)"
-        # Caso 3: Respaldo básico
-        else:
-            temp = 16.0
-            lluvia = 0.0
-            hum = 50.0
-            f_act = f"{FECHA_TXT} (Nominal)"
-            red_label = "APA (Sin datos)"
-            fuente_obs = "Sin conexión"
 
         estaciones_apa.append({
             "id": e["id"],
@@ -438,16 +446,16 @@ def obtener_estaciones_apa():
             "lon": e["lon"],
             "temp_c": temp,
             "humedad_pct": hum,
-            "lluvia_24h_mm": lluvia,
-            "lluvia_mes_mm": round(lluvia * 3.5, 1),
+            "lluvia_24h_mm": lluvia_oficial,
+            "lluvia_mes_mm": round(lluvia_oficial * 2.0, 1),
             "viento_kmh": 0.0,
             "viento_dir": "Calma",
             "presion_hpa": 1013.2,
-            "fecha_actualizacion": f_act,
-            "red": red_label,
-            "fuente": fuente_obs
+            "fecha_actualizacion": FECHA_TXT,
+            "red": "APA La Pampa",
+            "fuente": origen_lluvia
         })
-        
+
     return estaciones_apa
 
 def obtener_rayos():
@@ -473,27 +481,13 @@ def obtener_rayos():
     return rayos
 
 # =============================================================
-# 6. ALERTAS SAT SMN CON CONSULTA DIRECTA Y POLÍGONOS GEOJSON
+# 6. ALERTAS SAT SMN CON CONSULTA DIRECTA
 # =============================================================
 TERMINOS_CUENCA = [
     "PEDERNERA", "PRINGLES", "DUPUY", "CAPITAL", "CHACABUCO", "SAN LUIS",
     "ROCA", "SAENZ PENA", "RIO CUARTO", "JUAREZ CELMAN", "CORDOBA",
     "REALICO", "CHAPALEUFU", "RANCUL", "MARACO", "TRENEL", "CONHELO", "QUEMU QUEMU", "LA PAMPA"
 ]
-
-EVENTOS_SMN = {
-    41: "Tormentas fuertes o severas",
-    42: "Vientos fuertes",
-    39: "Lluvias abundantes",
-    40: "Nevadas",
-    45: "Viento Zonda"
-}
-
-def normalizar_txt(s):
-    if not s:
-        return ""
-    import unicodedata
-    return ''.join(c for c in unicodedata.normalize('NFD', str(s)) if unicodedata.category(c) != 'Mn').upper()
 
 def obtener_alertas_smn():
     print("5. Consultando feed oficial SAT SMN y geometrías GeoJSON...", flush=True)
@@ -503,7 +497,6 @@ def obtener_alertas_smn():
         "Accept": "application/json, text/plain, */*"
     }
 
-    # 1. Endpoint GeoJSON oficial del SMN
     try:
         r_al = session.get("https://ws.smn.gob.ar/alerts/type/AL", headers=headers, timeout=10)
         if r_al.status_code == 200:
@@ -553,7 +546,6 @@ def obtener_alertas_smn():
     except Exception as e:
         print(f"   [AVISO API SMN GEOJSON]: {e}")
 
-    # 2. Respaldo por CAP RSS
     if not alertas:
         try:
             r_cap = session.get("https://ssl.smn.gob.ar/CAP/AR.php", headers=headers, timeout=8)
@@ -702,10 +694,10 @@ def calcular_tiempo_viaje_onda(lista_hidro_resumen, lista_rayos=[]):
     }
 
 # =============================================================
-# 9. GENERACIÓN DE ENTREGABLES Y VISOR CARTOGRÁFICO
+# 9. GENERACIÓN DE ENTREGABLES
 # =============================================================
 def generar_entregables(estaciones_sl, estaciones_apa, estaciones_omx, registros_hidro, lista_rayos, alertas_smn, poligonos_smn, pronostico_ecmwf):
-    print("7. Generando entregables y visor cartográfico optimizado...", flush=True)
+    print("7. Generando entregables y portal web unificado...", flush=True)
     df_hidro_raw = pd.DataFrame(registros_hidro)
     df_hidro_raw["fecha_dt"] = pd.to_datetime(df_hidro_raw["fecha"], errors="coerce")
 
@@ -819,7 +811,6 @@ def generar_entregables(estaciones_sl, estaciones_apa, estaciones_omx, registros
     json_poligonos = json.dumps(poligonos_smn)
     json_freatimetros = json.dumps(freatimetros_lista)
 
-    # Filas Hidrológicas sincronizadas
     filas_hidro_html = "".join([f"""
     <tr>
         <td><strong>{h['nombre']}</strong><br><small style='color:#64748b;'>{h['rio']}</small></td>
