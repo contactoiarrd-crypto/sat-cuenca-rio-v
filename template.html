@@ -37,6 +37,7 @@
         .legend-item { display: flex; align-items: center; margin-bottom: 3px; }
         .legend-color { width: 12px; height: 12px; border-radius: 50%; margin-right: 8px; flex-shrink: 0; }
 
+        /* Estilos del widget multirriesgo analítico */
         .widget-analitico {
             background: #f8fafc;
             border: 1px solid #e2e8f0;
@@ -87,6 +88,7 @@
     <div class="tabs">
         <button class="tab-btn active" onclick="openTab(event, 'tab-dashboard')">📊 Panel de Control General</button>
         <button class="tab-btn" onclick="openTab(event, 'tab-mapa')">🗺️ Visor Cartográfico</button>
+        <button class="tab-btn" onclick="openTab(event, 'tab-radsat')">📡 Radar y Rayos (RadSat)</button>
         <button class="tab-btn" onclick="openTab(event, 'tab-ecmwf')">🌧️ Pronóstico ECMWF 72h y Medias</button>
         <button class="tab-btn" onclick="openTab(event, 'tab-alertas')">⚠️ Panel de Alertas SMN (__TOTAL_ALERTAS__)</button>
         <button class="tab-btn" onclick="openTab(event, 'tab-hidro')">💧 Cuerpos de Agua y Cotas (INA)</button>
@@ -94,6 +96,7 @@
         <button class="tab-btn" onclick="openTab(event, 'tab-meteo')">🌦️ Redes Meteorológicas</button>
     </div>
 
+    <!-- TAB 1: DASHBOARD -->
     <div id="tab-dashboard" class="tab-content active">
         <div class="kpi-grid">
             <div class="kpi-card" style="border-left-color: __KPI_ESTADO_COLOR__;">
@@ -144,19 +147,16 @@
             <div class="card">
                 <h2>Indicadores Analíticos y Alertas SMN</h2>
                 
-                <!-- WIDGET MULTIRRIESGO DE INDICADORES (OPEN-METEO) -->
                 <div class="widget-analitico">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 6px;">
                         <strong style="color: #1e3a8a; font-size: 13px;">📊 Monitoreo Meteorológico en Tiempo Real</strong>
                         <span id="badgeEstadoVivo" style="background:#10b981; color:white; padding:2px 7px; border-radius:10px; font-size:10.5px; font-weight:bold;">NORMAL</span>
                     </div>
 
-                    <!-- BANNERS TÉRMICOS Y SEVEROS -->
                     <div id="alertaSeveraBox" class="alerta-indicador aviso-severo">⚠️ INESTABILIDAD: <span id="txtSeveroMsg"></span></div>
                     <div id="alertaCalorBox" class="alerta-indicador aviso-calor">🔥 ESTRÉS TÉRMICO / OLA DE CALOR: Temperaturas elevadas (≥ 35°C).</div>
                     <div id="alertaPolarBox" class="alerta-indicador aviso-polar">❄️ OLA POLAR / RIESGO DE HELADA: Temperaturas críticas (≤ 5°C).</div>
 
-                    <!-- ÍNDICE 30-30-30 -->
                     <div style="margin-top: 8px;">
                         <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11.5px;">
                             <span style="font-weight: 600; color: #475569;">Índice 30-30-30 (Riesgo Meteorológico de Incendio)</span>
@@ -165,7 +165,6 @@
                         <div class="index-bar-bg"><div id="indexBarFill"></div></div>
                     </div>
 
-                    <!-- CONDICIONES POR NODO -->
                     <div id="detalleTiempoVivo" style="color:#334155; line-height: 1.45; margin-top: 4px; font-size: 11.5px;">
                         Calculando métricas en nodos de cuenca...
                     </div>
@@ -179,10 +178,10 @@
                 __ALERTAS_SMN__
 
                 <div style="margin-top: 15px; padding: 14px; background: #f8fafc; border-radius: 6px; border: 1px solid #cbd5e1; text-align: center;">
-                    <p style="font-size: 12.5px; color: #475569; margin-bottom: 10px;">
-                        Para consultar el mapa interactivo oficial completo de alertas y avisos a muy corto plazo (ACP):
+                    <p style="font-size: 12.5px; color: #475569; margin-bottom: 8px;">
+                        Los mapas interactivos de alerta del SMN cuentan con protección de origen.
                     </p>
-                    <a href="https://www.smn.gob.ar/alertas" target="_blank" rel="noopener noreferrer" class="btn" style="background:#0284c7; padding: 8px 16px; font-size: 12px; margin: 0;">
+                    <a href="https://www.smn.gob.ar/alertas" target="_blank" rel="noopener noreferrer" class="btn" style="background:#0284c7; padding: 7px 14px; font-size: 12px; margin: 0;">
                         🌐 Abrir Portal Oficial de Alertas SMN ↗
                     </a>
                 </div>
@@ -190,26 +189,41 @@
         </div>
     </div>
 
+    <!-- TAB 2: MAPA LEAFLET -->
     <div id="tab-mapa" class="tab-content" style="padding: 10px 20px;">
-        <!-- Barra de carga interactiva de Freatímetros -->
         <div style="background: white; padding: 12px 18px; border-radius: 8px; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid #cbd5e1;">
             <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
                 <strong style="color: #1e3a8a; font-size: 13.5px;">💧 Cargar Red de Freatímetros:</strong>
                 <label for="inputFreatimetros" class="btn btn-green" style="margin: 0; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
-                    📂 Subir Excel (.xlsx / .xls / .csv)
+                    📂 Subir Planilla (.xlsx / .csv)
                 </label>
                 <input type="file" id="inputFreatimetros" accept=".xlsx, .xls, .csv" style="display: none;" onchange="procesarExcelFreatimetros(event)" />
-                <span id="freatimetrosStatus" style="font-size: 12px; color: #64748b; font-style: italic;">Sin archivo cargado</span>
+                <span id="freatimetrosStatus" style="font-size: 12px; color: #64748b; font-style: italic;">Verificando datos...</span>
                 <button id="btnLimpiarFreat" onclick="limpiarFreatimetros()" style="display:none; background:#ef4444; color:white; border:none; padding:5px 10px; border-radius:4px; font-size:11.5px; cursor:pointer;">Limpiar capa</button>
             </div>
             <div style="font-size: 11.5px; color: #475569;">
-                <em>Permanecerán en el mapa hasta que cargues un archivo nuevo. Columnas: <code>Nombre/Pozo</code>, <code>Latitud</code>, <code>Longitud</code>, <code>Profundidad/Napa</code></em>
+                <em>Los freatímetros cargados quedan guardados en el navegador de forma permanente.</em>
             </div>
         </div>
 
         <div id="map-container"></div>
     </div>
 
+    <!-- TAB 3: RADSAT (RADAR Y RAYOS EN VIVO) -->
+    <div id="tab-radsat" class="tab-content" style="padding: 10px 20px;">
+        <div class="card" style="padding: 0; overflow: hidden; height: calc(100vh - 170px); min-height: 620px; border: 1px solid #cbd5e1; border-radius: 8px;">
+            <iframe 
+                src="https://www.pronosticoextendido.net/radsat/?lat=-34.50&lon=-64.50&z=7&tiposatelite=1&ver=radar,rayos,satelite" 
+                title="RadSat Cuenca del Río V"
+                width="100%" 
+                height="100%" 
+                style="border: none;" 
+                loading="lazy">
+            </iframe>
+        </div>
+    </div>
+
+    <!-- TAB 4: ECMWF -->
     <div id="tab-ecmwf" class="tab-content">
         <div class="card">
             <h2>Modelo Numérico ECMWF IFS 0.25° — Pronóstico 72h vs Medias Climáticas Históricas</h2>
@@ -233,18 +247,15 @@
         </div>
     </div>
 
+    <!-- TAB 5: ALERTAS SMN -->
     <div id="tab-alertas" class="tab-content">
         <div class="card">
             <h2>Alertas Meteorológicas Oficiales del SMN</h2>
             __ALERTAS_SMN__
-            <div style="margin-top: 20px; text-align: right;">
-                <a href="https://www.smn.gob.ar/alertas" target="_blank" rel="noopener noreferrer" class="btn">
-                    Ver mapa de alertas en SMN.gob.ar ↗
-                </a>
-            </div>
         </div>
     </div>
 
+    <!-- TAB 6: CUERPOS DE AGUA -->
     <div id="tab-hidro" class="tab-content">
         <div class="card">
             <h2>Niveles Hidrométricos en Nacientes y Cuenca Media (INA)</h2>
@@ -268,6 +279,7 @@
         </div>
     </div>
 
+    <!-- TAB 7: TRASLACIÓN DE ONDA -->
     <div id="tab-onda" class="tab-content">
         <div class="card">
             <h2>Modelo de Amortiguación y Tránsito de Crecida</h2>
@@ -288,6 +300,7 @@
         </div>
     </div>
 
+    <!-- TAB 8: REDES METEO -->
     <div id="tab-meteo" class="tab-content">
         <div class="card">
             <h2>Redes Meteorológicas Integradas (San Luis, Córdoba, La Pampa)</h2>
@@ -316,7 +329,7 @@
         var fgFreatimetros = L.featureGroup();
         var freatimetrosGuardados = [];
 
-        // 1. Cargar freatímetros de ejecución previa si vienen precargados desde el servidor
+        // 1. Cargar freatímetros persistentes (servidor o local)
         try {
             var freatServidor = __JSON_FREATIMETROS__;
             if (Array.isArray(freatServidor) && freatServidor.length > 0) {
@@ -324,10 +337,9 @@
             }
         } catch(e) {}
 
-        // 2. Si no hay precargados desde el servidor, leer de localStorage del navegador
         if (freatimetrosGuardados.length === 0) {
             try {
-                var local = localStorage.getItem("sat_freatimetros_data");
+                var local = localStorage.getItem("sat_freatimetros_rio_v");
                 if (local) {
                     freatimetrosGuardados = JSON.parse(local);
                 }
@@ -336,7 +348,11 @@
 
         function renderizarFreatimetros(lista) {
             fgFreatimetros.clearLayers();
-            if (!lista || lista.length === 0) return;
+            if (!lista || lista.length === 0) {
+                var lbl = document.getElementById("freatimetrosStatus");
+                if (lbl) lbl.innerText = "Sin freatímetros cargados";
+                return;
+            }
 
             lista.forEach(function(row) {
                 var lat = parseFloat(row.lat);
@@ -351,7 +367,7 @@
                     if (prof !== null && !isNaN(prof)) {
                         if (prof <= 1.0) {
                             markerColor = "#7c3aed";
-                            estadoNapa = "⚠️ Napa muy somera / Riesgo anegamiento (≤ 1.0 m)";
+                            estadoNapa = "⚠️ Napa muy somera / Riesgo de anegamiento (≤ 1.0 m)";
                         } else if (prof <= 2.0) {
                             markerColor = "#0284c7";
                             estadoNapa = "Napa media (1.0 - 2.0 m)";
@@ -364,10 +380,10 @@
                     var popupContent = `
                         <div style="font-size:12px; line-height:1.45;">
                             <strong style="color:#1e3a8a; font-size:13px;">📍 ${nombre}</strong><br>
-                            <strong>Capa:</strong> Red de Freatímetros<br>
+                            <strong>Tipo:</strong> Freatímetro<br>
                             ${prof !== null && !isNaN(prof) ? `<strong>Profundidad:</strong> <b>${prof.toFixed(2)} m</b><br>` : ""}
                             <strong>Estado:</strong> ${estadoNapa}<br>
-                            <small style="color:#64748b;">Última medición: ${fecha}</small>
+                            <small style="color:#64748b;">Medición: ${fecha}</small>
                         </div>
                     `;
 
@@ -384,7 +400,7 @@
             var statusLabel = document.getElementById("freatimetrosStatus");
             var btnLimpiar = document.getElementById("btnLimpiarFreat");
             if (statusLabel) {
-                statusLabel.innerText = `✅ ${lista.length} freatímetro(s) activos`;
+                statusLabel.innerText = `✅ ${lista.length} freatímetro(s) activos (Persistentes)`;
                 statusLabel.style.color = "#10b981";
             }
             if (btnLimpiar) btnLimpiar.style.display = "inline-block";
@@ -392,10 +408,10 @@
 
         function limpiarFreatimetros() {
             fgFreatimetros.clearLayers();
-            try { localStorage.removeItem("sat_freatimetros_data"); } catch(e){}
+            localStorage.removeItem("sat_freatimetros_rio_v");
             freatimetrosGuardados = [];
             document.getElementById("inputFreatimetros").value = "";
-            document.getElementById("freatimetrosStatus").innerText = "Capa limpiada.";
+            document.getElementById("freatimetrosStatus").innerText = "Capa vacía.";
             document.getElementById("freatimetrosStatus").style.color = "#64748b";
             document.getElementById("btnLimpiarFreat").style.display = "none";
         }
@@ -403,11 +419,9 @@
         function procesarExcelFreatimetros(e) {
             const file = e.target.files[0];
             const statusLabel = document.getElementById("freatimetrosStatus");
-            const btnLimpiar = document.getElementById("btnLimpiarFreat");
-
             if (!file) return;
 
-            statusLabel.innerText = "Leyendo archivo: " + file.name + "...";
+            statusLabel.innerText = "Cargando archivo: " + file.name + "...";
             statusLabel.style.color = "#0284c7";
 
             const reader = new FileReader();
@@ -415,19 +429,16 @@
                 try {
                     const data = new Uint8Array(evt.target.result);
                     const workbook = XLSX.read(data, { type: "array" });
-
                     const firstSheetName = workbook.SheetNames[0];
                     const worksheet = workbook.Sheets[firstSheetName];
                     const jsonRows = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
 
                     if (!jsonRows || jsonRows.length === 0) {
                         statusLabel.innerText = "⚠️ La hoja está vacía.";
-                        statusLabel.style.color = "#ea580c";
                         return;
                     }
 
                     let normalizados = [];
-
                     jsonRows.forEach(row => {
                         const keys = Object.keys(row);
                         const getKey = (patterns) => keys.find(k => patterns.some(p => k.trim().toLowerCase().includes(p)));
@@ -442,7 +453,7 @@
                         const lon = parseFloat(String(row[lonKey]).replace(",", "."));
                         const prof = profKey ? parseFloat(String(row[profKey]).replace(",", ".")) : null;
                         const nombre = row[nomKey] || "Freatímetro";
-                        const fecha = fechaKey && row[fechaKey] ? String(row[fechaKey]) : new Date().toLocaleDateString();
+                        const fecha = (fechaKey && row[fechaKey]) ? String(row[fechaKey]) : new Date().toLocaleDateString();
 
                         if (!isNaN(lat) && !isNaN(lon)) {
                             normalizados.push({ lat, lon, prof, nombre, fecha });
@@ -451,24 +462,17 @@
 
                     if (normalizados.length > 0) {
                         freatimetrosGuardados = normalizados;
-                        try {
-                            localStorage.setItem("sat_freatimetros_data", JSON.stringify(normalizados));
-                        } catch(e) {}
-
+                        localStorage.setItem("sat_freatimetros_rio_v", JSON.stringify(normalizados));
                         renderizarFreatimetros(normalizados);
-
-                        if (map && !map.hasLayer(fgFreatimetros)) {
-                            fgFreatimetros.addTo(map);
-                        }
                         if (map) {
+                            if (!map.hasLayer(fgFreatimetros)) fgFreatimetros.addTo(map);
                             map.fitBounds(fgFreatimetros.getBounds(), { padding: [40, 40] });
                         }
                     } else {
-                        statusLabel.innerText = "⚠️ No se detectaron columnas de Lat/Lon válidas.";
+                        statusLabel.innerText = "❌ No se detectaron columnas de Lat/Lon válidas.";
                         statusLabel.style.color = "#ef4444";
                     }
                 } catch (err) {
-                    console.error("Error al procesar el Excel:", err);
                     statusLabel.innerText = "❌ Error al leer el archivo.";
                     statusLabel.style.color = "#ef4444";
                 }
@@ -476,27 +480,17 @@
             reader.readAsArrayBuffer(file);
         }
 
-        var sateliteGOES = L.layerGroup();
+        // 2. Capa WMS Oficial GOES-16 Realce Convectivo (Topes de Tormenta INPE/CPTEC)
+        var sateliteTormentas = L.tileLayer.wms("https://queimadas.dgi.inpe.br/queimadas/geoserver/wms", {
+            layers: 'ms:goes16_ret_ch13',
+            format: 'image/png',
+            transparent: true,
+            opacity: 0.65,
+            zIndex: 110,
+            attribution: 'Topes de Tormenta GOES-16 (INPE/CPTEC)'
+        });
 
-        function cargarSateliteEnVivo() {
-            fetch('https://api.rainviewer.com/public/weather-maps.json')
-                .then(res => res.json())
-                .then(data => {
-                    if (data && data.satellite && data.satellite.infrared && data.satellite.infrared.length > 0) {
-                        sateliteGOES.clearLayers();
-                        var ultimoSat = data.satellite.infrared[data.satellite.infrared.length - 1];
-                        var satTile = L.tileLayer(data.host + ultimoSat.path + '/256/{z}/{x}/{y}/4/1_1.png', {
-                            opacity: 0.65,
-                            zIndex: 110,
-                            maxZoom: 10,
-                            attribution: 'Satélite Infrarrojo (RainViewer)'
-                        });
-                        sateliteGOES.addLayer(satTile);
-                    }
-                })
-                .catch(err => console.warn("Error cargando satélite:", err));
-        }
-
+        // 3. Rayos en tiempo real
         function dibujarRayos() {
             fgRayos.clearLayers();
             try {
@@ -550,15 +544,12 @@
             var fgApaLP = L.featureGroup().addTo(map);
             var fgOmxCba = L.featureGroup().addTo(map);
             var fgOmxLP = L.featureGroup().addTo(map);
-            
-            sateliteGOES.addTo(map);
+
+            sateliteTormentas.addTo(map);
             fgRayos.addTo(map);
             fgFreatimetros.addTo(map);
 
-            if (freatimetrosGuardados.length > 0) {
-                renderizarFreatimetros(freatimetrosGuardados);
-            }
-
+            // Cargar datos hidrológicos
             var datosHidro = __JSON_HIDRO__;
             datosHidro.forEach(function(h) {
                 var difTxt = h.variacion ? ("<br>Variación: <b>" + h.variacion + "</b>") : "";
@@ -571,6 +562,7 @@
                 }).bindPopup("<b>" + h.nombre + "</b><br>Río: " + h.rio + "<br>Nivel Actual: <b>" + h.nivel_actual + " m</b><br>Nivel Anterior: " + h.nivel_anterior + " m" + difTxt + "<br>Alerta: " + h.cota_alerta + " m | Evac: " + h.cota_evac + " m<br>Estado: <b>" + h.estado + "</b><br><small>Obs: " + h.fecha + "</small>").addTo(fgHidro);
             });
 
+            // Cargar REM San Luis
             var datosRem = __JSON_REM_SL__;
             datosRem.forEach(function(m) {
                 L.circleMarker([m.lat, m.lon], {
@@ -579,9 +571,10 @@
                     fillColor: '#fb923c',
                     fillOpacity: 0.85,
                     weight: 1.5
-                }).bindPopup("<b>" + m.nombre + "</b><br>Red: <b>REM San Luis</b><br>Temp: " + m.temp_c + " °C<br>Lluvia 24h: <b>" + m.lluvia_24h_mm + " mm</b><br><small>Fecha: " + m.fecha_actualizacion + "</small>").addTo(fgRemSL);
+                }).bindPopup("<b>" + m.nombre + "</b><br>Red: <b>REM San Luis</b><br>Temp: " + m.temp_c + " °C<br>Lluvia 24h: <b>" + m.lluvia_24h_mm + " mm</b>").addTo(fgRemSL);
             });
 
+            // Cargar APA La Pampa
             var datosApa = __JSON_APA_LP__;
             datosApa.forEach(function(m) {
                 L.circleMarker([m.lat, m.lon], {
@@ -593,6 +586,7 @@
                 }).bindPopup("<b>" + m.nombre + "</b><br>Red: <b>APA La Pampa</b><br>Temp: " + m.temp_c + " °C<br>Lluvia 24h: <b>" + m.lluvia_24h_mm + " mm</b>").addTo(fgApaLP);
             });
 
+            // Cargar Omixom Córdoba
             var datosOmxCba = __JSON_OMX_CBA__;
             datosOmxCba.forEach(function(m) {
                 L.circleMarker([m.lat, m.lon], {
@@ -604,6 +598,7 @@
                 }).bindPopup("<b>" + m.nombre + "</b><br>Red: <b>Omixom Córdoba</b><br>Lluvia 24h: " + m.lluvia_24h_mm + " mm").addTo(fgOmxCba);
             });
 
+            // Cargar Omixom La Pampa
             var datosOmxLP = __JSON_OMX_LP__;
             datosOmxLP.forEach(function(m) {
                 L.circleMarker([m.lat, m.lon], {
@@ -615,6 +610,7 @@
                 }).bindPopup("<b>" + m.nombre + "</b><br>Red: <b>Omixom La Pampa</b><br>Lluvia 24h: " + m.lluvia_24h_mm + " mm").addTo(fgOmxLP);
             });
 
+            // Polígonos de alerta SMN
             var poligonos = __JSON_POLIGONOS__;
             poligonos.forEach(function(p) {
                 L.polygon(p.coords, {
@@ -632,11 +628,11 @@
             };
 
             var overlayMaps = {
+                "🌩️ Topes de Tormenta GOES-16": sateliteTormentas,
                 "💧 Cuerpos de Agua (INA)": fgHidro,
-                "📍 Freatímetros": fgFreatimetros,
+                "📍 Freatímetros (Excel)": fgFreatimetros,
                 "⚠️ Alertas SAT SMN": fgSMN,
-                "🛰️ Satélite Infrarrojo": sateliteGOES,
-                "⚡ Rayos / Descargas en Vivo": fgRayos,
+                "⚡ Rayos / Descargas": fgRayos,
                 "⛰️ REM San Luis": fgRemSL,
                 "💧 APA La Pampa": fgApaLP,
                 "🌾 Omixom Córdoba": fgOmxCba,
@@ -649,8 +645,8 @@
             legend.onAdd = function (map) {
                 var div = L.DomUtil.create('div', 'map-legend');
                 div.innerHTML = '<strong>Cuerpos de Agua (INA)</strong><hr style="margin:4px 0;">' +
-                    '<div class="legend-item"><div class="legend-color" style="background:#10b981;"></div> 🟢 Normal (< 75% Alerta)</div>' +
-                    '<div class="legend-item"><div class="legend-color" style="background:#f59e0b;"></div> 🟡 Precaución (≥ 75%)</div>' +
+                    '<div class="legend-item"><div class="legend-color" style="background:#10b981;"></div> 🟢 Normal</div>' +
+                    '<div class="legend-item"><div class="legend-color" style="background:#f59e0b;"></div> 🟡 Precaución</div>' +
                     '<div class="legend-item"><div class="legend-color" style="background:#ea580c;"></div> 🟠 Alerta Hidrológica</div>' +
                     '<div class="legend-item"><div class="legend-color" style="background:#ef4444;"></div> 🔴 Evacuación</div><hr style="margin:4px 0;">' +
                     '<strong>Redes Meteorológicas</strong><br>' +
@@ -663,8 +659,9 @@
             legend.addTo(map);
 
             dibujarRayos();
-            cargarSateliteEnVivo();
-            setInterval(cargarSateliteEnVivo, 600000);
+            if (freatimetrosGuardados.length > 0) {
+                renderizarFreatimetros(freatimetrosGuardados);
+            }
         }
 
         function openTab(evt, tabName) {
