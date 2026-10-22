@@ -37,7 +37,6 @@
         .legend-item { display: flex; align-items: center; margin-bottom: 3px; }
         .legend-color { width: 12px; height: 12px; border-radius: 50%; margin-right: 8px; flex-shrink: 0; }
 
-        /* Estilos del widget multirriesgo analítico */
         .widget-analitico {
             background: #f8fafc;
             border: 1px solid #e2e8f0;
@@ -57,14 +56,7 @@
         }
         .aviso-calor { background: #fff3cd; border-color: #f6ad55; color: #856404; }
         .aviso-polar { background: #e0f2fe; border-color: #0284c7; color: #075985; }
-        .aviso-severo { background: #fee2e2; border-color: #ef4444; color: #991b1b; animation: pulse-aviso 2s infinite; }
-
-        @keyframes pulse-aviso {
-            0% { opacity: 1; }
-            50% { opacity: 0.85; }
-            100% { opacity: 1; }
-        }
-
+        .aviso-severo { background: #fee2e2; border-color: #ef4444; color: #991b1b; }
         .index-bar-bg { background: #e2e8f0; height: 10px; border-radius: 5px; margin: 6px 0 10px 0; overflow: hidden; }
         #indexBarFill { background: #10b981; width: 0%; height: 100%; transition: width 0.8s ease-in-out, background-color 0.4s; }
     </style>
@@ -179,7 +171,7 @@
 
                 <div style="margin-top: 15px; padding: 14px; background: #f8fafc; border-radius: 6px; border: 1px solid #cbd5e1; text-align: center;">
                     <p style="font-size: 12.5px; color: #475569; margin-bottom: 8px;">
-                        Los mapas interactivos de alerta del SMN cuentan con protección de origen.
+                        Ver avisos y polígonos interactivos oficiales en el portal nacional:
                     </p>
                     <a href="https://www.smn.gob.ar/alertas" target="_blank" rel="noopener noreferrer" class="btn" style="background:#0284c7; padding: 7px 14px; font-size: 12px; margin: 0;">
                         🌐 Abrir Portal Oficial de Alertas SMN ↗
@@ -198,28 +190,34 @@
                     📂 Subir Planilla (.xlsx / .csv)
                 </label>
                 <input type="file" id="inputFreatimetros" accept=".xlsx, .xls, .csv" style="display: none;" onchange="procesarExcelFreatimetros(event)" />
-                <span id="freatimetrosStatus" style="font-size: 12px; color: #64748b; font-style: italic;">Verificando datos...</span>
+                <span id="freatimetrosStatus" style="font-size: 12px; color: #64748b; font-style: italic;">Sin archivo cargado</span>
                 <button id="btnLimpiarFreat" onclick="limpiarFreatimetros()" style="display:none; background:#ef4444; color:white; border:none; padding:5px 10px; border-radius:4px; font-size:11.5px; cursor:pointer;">Limpiar capa</button>
             </div>
             <div style="font-size: 11.5px; color: #475569;">
-                <em>Los freatímetros cargados quedan guardados en el navegador de forma permanente.</em>
+                <em>Los freatímetros cargados quedan guardados en este navegador hasta que cargues un archivo nuevo.</em>
             </div>
         </div>
 
         <div id="map-container"></div>
     </div>
 
-    <!-- TAB 3: RADSAT (RADAR Y RAYOS EN VIVO) -->
+    <!-- TAB 3: RADSAT COMPLETO -->
     <div id="tab-radsat" class="tab-content" style="padding: 10px 20px;">
-        <div class="card" style="padding: 0; overflow: hidden; height: calc(100vh - 170px); min-height: 620px; border: 1px solid #cbd5e1; border-radius: 8px;">
-            <iframe 
-                src="https://www.pronosticoextendido.net/radsat/?lat=-34.50&lon=-64.50&z=7&tiposatelite=1&ver=radar,rayos,satelite" 
-                title="RadSat Cuenca del Río V"
-                width="100%" 
-                height="100%" 
-                style="border: none;" 
-                loading="lazy">
-            </iframe>
+        <div class="card" style="padding: 24px; text-align: center; max-width: 800px; margin: 40px auto; border-top: 4px solid #0284c7;">
+            <h2 style="border:none; font-size: 20px; color: #1e3a8a; margin-bottom: 10px;">📡 Radar Meteorológico y Rayos en Tiempo Real (RadSat)</h2>
+            <p style="color: #475569; font-size: 14px; line-height: 1.6; margin-bottom: 24px;">
+                Debido a las políticas de seguridad de los servidores de pronóstico, el visor de radar con reflectividad en dBZ y descargas eléctricas se visualiza en su interfaz de alta resolución centrada directamente en la Cuenca del Río V.
+            </p>
+            <a href="https://www.pronosticoextendido.net/radsat/?lat=-34.50&lon=-64.50&z=7&tiposatelite=1&ver=radar,rayos,satelite" 
+               target="_blank" 
+               rel="noopener noreferrer" 
+               class="btn btn-green" 
+               style="font-size: 15px; padding: 12px 24px; text-decoration: none; display: inline-flex; align-items: center; gap: 8px;">
+                🚀 Abrir Visor RadSat Cuenca del Río V (Pantalla Completa) ↗
+            </a>
+            <div style="margin-top: 20px; font-size: 12px; color: #64748b;">
+                Cubre en tiempo real los radares del SINARAME (Anguil, Córdoba, Pergamino, Ezeiza) y descargas eléctricas.
+            </div>
         </div>
     </div>
 
@@ -329,7 +327,7 @@
         var fgFreatimetros = L.featureGroup();
         var freatimetrosGuardados = [];
 
-        // 1. Cargar freatímetros persistentes (servidor o local)
+        // Inicialización de Freatímetros (Servidor -> LocalStorage)
         try {
             var freatServidor = __JSON_FREATIMETROS__;
             if (Array.isArray(freatServidor) && freatServidor.length > 0) {
@@ -341,16 +339,25 @@
             try {
                 var local = localStorage.getItem("sat_freatimetros_rio_v");
                 if (local) {
-                    freatimetrosGuardados = JSON.parse(local);
+                    var parsed = JSON.parse(local);
+                    if (Array.isArray(parsed) && parsed.length > 0) {
+                        freatimetrosGuardados = parsed;
+                    }
                 }
             } catch(e) {}
         }
 
         function renderizarFreatimetros(lista) {
             fgFreatimetros.clearLayers();
+            var statusLabel = document.getElementById("freatimetrosStatus");
+            var btnLimpiar = document.getElementById("btnLimpiarFreat");
+
             if (!lista || lista.length === 0) {
-                var lbl = document.getElementById("freatimetrosStatus");
-                if (lbl) lbl.innerText = "Sin freatímetros cargados";
+                if (statusLabel) {
+                    statusLabel.innerText = "Sin archivo cargado";
+                    statusLabel.style.color = "#64748b";
+                }
+                if (btnLimpiar) btnLimpiar.style.display = "none";
                 return;
             }
 
@@ -397,8 +404,6 @@
                 }
             });
 
-            var statusLabel = document.getElementById("freatimetrosStatus");
-            var btnLimpiar = document.getElementById("btnLimpiarFreat");
             if (statusLabel) {
                 statusLabel.innerText = `✅ ${lista.length} freatímetro(s) activos (Persistentes)`;
                 statusLabel.style.color = "#10b981";
@@ -411,9 +416,7 @@
             localStorage.removeItem("sat_freatimetros_rio_v");
             freatimetrosGuardados = [];
             document.getElementById("inputFreatimetros").value = "";
-            document.getElementById("freatimetrosStatus").innerText = "Capa vacía.";
-            document.getElementById("freatimetrosStatus").style.color = "#64748b";
-            document.getElementById("btnLimpiarFreat").style.display = "none";
+            renderizarFreatimetros([]);
         }
 
         function procesarExcelFreatimetros(e) {
@@ -480,17 +483,15 @@
             reader.readAsArrayBuffer(file);
         }
 
-        // 2. Capa WMS Oficial GOES-16 Realce Convectivo (Topes de Tormenta INPE/CPTEC)
-        var sateliteTormentas = L.tileLayer.wms("https://queimadas.dgi.inpe.br/queimadas/geoserver/wms", {
-            layers: 'ms:goes16_ret_ch13',
-            format: 'image/png',
-            transparent: true,
+        // CAPA OFICIAL NASA GIBS / GOES-EAST (Banda 13 Infrarrojo de Tormentas - 100% Abierto y Funcional)
+        var hoyStr = new Date().toISOString().split('T')[0];
+        var sateliteTormentas = L.tileLayer('https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/GOES-East_ABI_Band13_Clean_Infrared/default/' + hoyStr + '/GoogleMapsCompatible_Level8/{z}/{y}/{x}.png', {
+            maxZoom: 8,
             opacity: 0.65,
             zIndex: 110,
-            attribution: 'Topes de Tormenta GOES-16 (INPE/CPTEC)'
+            attribution: 'Topes de Tormenta GOES-16 (NASA GIBS / NOAA)'
         });
 
-        // 3. Rayos en tiempo real
         function dibujarRayos() {
             fgRayos.clearLayers();
             try {
@@ -549,7 +550,6 @@
             fgRayos.addTo(map);
             fgFreatimetros.addTo(map);
 
-            // Cargar datos hidrológicos
             var datosHidro = __JSON_HIDRO__;
             datosHidro.forEach(function(h) {
                 var difTxt = h.variacion ? ("<br>Variación: <b>" + h.variacion + "</b>") : "";
@@ -562,7 +562,6 @@
                 }).bindPopup("<b>" + h.nombre + "</b><br>Río: " + h.rio + "<br>Nivel Actual: <b>" + h.nivel_actual + " m</b><br>Nivel Anterior: " + h.nivel_anterior + " m" + difTxt + "<br>Alerta: " + h.cota_alerta + " m | Evac: " + h.cota_evac + " m<br>Estado: <b>" + h.estado + "</b><br><small>Obs: " + h.fecha + "</small>").addTo(fgHidro);
             });
 
-            // Cargar REM San Luis
             var datosRem = __JSON_REM_SL__;
             datosRem.forEach(function(m) {
                 L.circleMarker([m.lat, m.lon], {
@@ -574,7 +573,6 @@
                 }).bindPopup("<b>" + m.nombre + "</b><br>Red: <b>REM San Luis</b><br>Temp: " + m.temp_c + " °C<br>Lluvia 24h: <b>" + m.lluvia_24h_mm + " mm</b>").addTo(fgRemSL);
             });
 
-            // Cargar APA La Pampa
             var datosApa = __JSON_APA_LP__;
             datosApa.forEach(function(m) {
                 L.circleMarker([m.lat, m.lon], {
@@ -586,7 +584,6 @@
                 }).bindPopup("<b>" + m.nombre + "</b><br>Red: <b>APA La Pampa</b><br>Temp: " + m.temp_c + " °C<br>Lluvia 24h: <b>" + m.lluvia_24h_mm + " mm</b>").addTo(fgApaLP);
             });
 
-            // Cargar Omixom Córdoba
             var datosOmxCba = __JSON_OMX_CBA__;
             datosOmxCba.forEach(function(m) {
                 L.circleMarker([m.lat, m.lon], {
@@ -598,7 +595,6 @@
                 }).bindPopup("<b>" + m.nombre + "</b><br>Red: <b>Omixom Córdoba</b><br>Lluvia 24h: " + m.lluvia_24h_mm + " mm").addTo(fgOmxCba);
             });
 
-            // Cargar Omixom La Pampa
             var datosOmxLP = __JSON_OMX_LP__;
             datosOmxLP.forEach(function(m) {
                 L.circleMarker([m.lat, m.lon], {
@@ -610,7 +606,6 @@
                 }).bindPopup("<b>" + m.nombre + "</b><br>Red: <b>Omixom La Pampa</b><br>Lluvia 24h: " + m.lluvia_24h_mm + " mm").addTo(fgOmxLP);
             });
 
-            // Polígonos de alerta SMN
             var poligonos = __JSON_POLIGONOS__;
             poligonos.forEach(function(p) {
                 L.polygon(p.coords, {
@@ -659,9 +654,7 @@
             legend.addTo(map);
 
             dibujarRayos();
-            if (freatimetrosGuardados.length > 0) {
-                renderizarFreatimetros(freatimetrosGuardados);
-            }
+            renderizarFreatimetros(freatimetrosGuardados);
         }
 
         function openTab(evt, tabName) {
