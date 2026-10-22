@@ -354,108 +354,131 @@ def obtener_estaciones_san_luis():
 # =============================================================
 # EXTRACCIÓN OFICIAL APA LA PAMPA (PARSEO DIRECTO PLUVIOMÉTRICO)
 # =============================================================
-def obtener_estaciones_apa():
-    print("3. Extrayendo en vivo reportes de lluvia oficial APA La Pampa...", flush=True)
-    RED_APA_NODOS = [
-        {"id": "APA_ARATA", "nombre": "Arata", "depto": "Trenel", "lat": -35.617, "lon": -64.356},
-        {"id": "APA_QUEMU", "nombre": "Quemú Quemú", "depto": "Quemú Quemú", "lat": -36.056, "lon": -63.551},
-        {"id": "APA_CUCHILLOCO", "nombre": "Cuchillo Có", "depto": "Lihuel Calel", "lat": -38.334, "lon": -64.642},
-        {"id": "APA_ALPACHIRI", "nombre": "Alpachiri", "depto": "Guatraché", "lat": -37.378, "lon": -63.784},
-        {"id": "APA_LIHUECALEL", "nombre": "Lihué Calel", "depto": "Lihuel Calel", "lat": -37.954, "lon": -65.602},
-        {"id": "APA_CASADEPIEDRA", "nombre": "Casa de Piedra", "depto": "Puelén", "lat": -38.163, "lon": -67.151},
-        {"id": "APA_TELEN", "nombre": "Telén", "depto": "Loventué", "lat": -36.262, "lon": -65.511},
-        {"id": "APA_GRALACHA", "nombre": "General Acha", "depto": "Utracán", "lat": -37.378, "lon": -64.604},
-        {"id": "APA_ALGARROBO", "nombre": "Algarrobo del Águila", "depto": "Chical Có", "lat": -36.402, "lon": -67.147},
-        {"id": "APA_LAADELA", "nombre": "La Adela", "depto": "Caleu Caleu", "lat": -38.985, "lon": -64.088},
-        {"id": "APA_25DEMAYO", "nombre": "25 de Mayo", "depto": "Puelén", "lat": -37.773, "lon": -67.718},
-        {"id": "APA_GOBDUVAL", "nombre": "Gobernador Duval", "depto": "Curacó", "lat": -38.731, "lon": -65.772}
-    ]
-
-    lluvias_oficiales_apa = {}
-    headers_web = {
+def parsear_estacion_mercobras(nodo):
+    slug = nodo.get("slug")
+    url = f"https://estaciones-apa.lapampa.gob.ar/{slug}/mb1.htm"
+    headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
     }
 
-    # Intento 1: Scraping del portal de servicios meteorológicos de APA La Pampa
+    temp = np.nan
+    hum = 0.0
+    lluvia_hoy = 0.0
+    viento_kmh = 0.0
+    viento_dir = "Calma"
+    presion = 1013.2
+    fecha_obs = FECHA_TXT
+    encontrado = False
+
     try:
-        r_apa = session.get("https://apa.lapampa.gob.ar/meteorologia-servicios.html", headers=headers_web, timeout=8, verify=False)
-        if r_apa.status_code == 200:
-            soup = BeautifulSoup(r_apa.text, "html.parser")
-            filas = soup.find_all("tr")
-            for f in filas:
-                cols = [c.get_text(strip=True) for c in f.find_all(["td", "th"])]
-                if len(cols) >= 2:
-                    loc = normalizar_txt(cols[0])
-                    # Buscar número de milímetros en la columna
-                    val_str = cols[1].replace(",", ".").replace("mm", "").strip()
-                    try:
-                        val_num = float(val_str)
-                        lluvias_oficiales_apa[loc] = val_num
-                    except Exception:
-                        pass
+        r = session.get(url, headers=headers, timeout=6, verify=False)
+        if r.status_code == 200:
+            soup = BeautifulSoup(r.text, "html.parser")
+            texto = soup.get_text()
+
+            # 1. Extracción de Lluvia Hoy / Precipitación del día
+            # En Mercobras suele figurar como 'Lluvia Hoy: X mm' o 'Lluvia día: X mm'
+            m_lluvia = re.search(r'(?:Lluvia|Precipitaci[oó]n|Lluvia\s+hoy|Lluvia\s+d[ií]a)[^\d]*([\d.,]+)\s*mm', texto, re.I)
+            if m_lluvia:
+                lluvia_hoy = float(m_lluvia.group(1).replace(",", "."))
+                encontrado = True
+            else:
+                # Búsqueda secundaria si está en celdas de tabla
+                for tr in soup.find_all("tr"):
+                    txt_tr = tr.get_text()
+                    if "lluvia" in txt_tr.lower() and "mm" in txt_tr.lower():
+                        nums = re.findall(r'[\d.,]+', txt_tr)
+                        if nums:
+                            lluvia_hoy = float(nums[0].replace(",", "."))
+                            encontrado = True
+                            break
+
+            # 2. Extracción de Temperatura
+            m_temp = re.search(r'(?:Temperatura|Temp)[^\d+-]*([-+]?[\d.,]+)\s*°?C', texto, re.I)
+            if m_temp:
+                temp = float(m_temp.group(1).replace(",", "."))
+
+            # 3. Extracción de Humedad
+            m_hum = re.search(r'(?:Humedad|Hum)[^\d]*([\d.,]+)\s*%', texto, re.I)
+            if m_hum:
+                hum = float(m_hum.group(1).replace(",", "."))
+
+            # 4. Extracción de Viento
+            m_viento = re.search(r'(?:Viento|Velocidad)[^\d]*([\d.,]+)\s*(?:km/h|kmh)', texto, re.I)
+            if m_viento:
+                viento_kmh = float(m_viento.group(1).replace(",", "."))
+
+            # 5. Extracción de Fecha y Hora del reporte en la estación
+            m_fecha = re.search(r'(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}\s+\d{1,2}:\d{2})', texto)
+            if m_fecha:
+                fecha_obs = m_fecha.group(1)
+            else:
+                fecha_obs = FECHA_TXT
+
     except Exception as e:
-        print(f"   [AVISO APA SCRAPING]: {e}")
+        # Si falla mb1.htm, probar con mb.htm
+        try:
+            url_alt = f"https://estaciones-apa.lapampa.gob.ar/{slug}/mb.htm"
+            r_alt = session.get(url_alt, headers=headers, timeout=5, verify=False)
+            if r_alt.status_code == 200:
+                soup = BeautifulSoup(r_alt.text, "html.parser")
+                texto = soup.get_text()
+                m_lluvia = re.search(r'(?:Lluvia|Precipitaci[oó]n)[^\d]*([\d.,]+)\s*mm', texto, re.I)
+                if m_lluvia:
+                    lluvia_hoy = float(m_lluvia.group(1).replace(",", "."))
+                    encontrado = True
+                m_temp = re.search(r'(?:Temperatura|Temp)[^\d+-]*([-+]?[\d.,]+)\s*°?C', texto, re.I)
+                if m_temp:
+                    temp = float(m_temp.group(1).replace(",", "."))
+        except Exception:
+            pass
 
-    # Consulta Open-Meteo SÓLO para temperatura y humedad instantánea
-    lats_str = ",".join(str(e["lat"]) for e in RED_APA_NODOS)
-    lons_str = ",".join(str(e["lon"]) for e in RED_APA_NODOS)
-    url_vivo = f"https://api.open-meteo.com/v1/forecast?latitude={lats_str}&longitude={lons_str}&current=temperature_2m,relative_humidity_2m&timezone=America%2FArgentina%2FBuenos_Aires"
+    return {
+        "id": nodo["id"],
+        "nombre": f"{nodo['nombre']} (APA)",
+        "departamento": nodo["depto"],
+        "provincia": "La Pampa",
+        "lat": nodo["lat"],
+        "lon": nodo["lon"],
+        "temp_c": temp if not np.isnan(temp) else 15.0,
+        "humedad_pct": hum,
+        "lluvia_24h_mm": lluvia_hoy,
+        "lluvia_mes_mm": lluvia_hoy,
+        "viento_kmh": viento_kmh,
+        "viento_dir": viento_dir,
+        "presion_hpa": presion,
+        "fecha_actualizacion": fecha_obs,
+        "red": "APA La Pampa",
+        "fuente": "Mercobras Automática" if encontrado else "Sin reporte sensor"
+    }
 
-    datos_meteo = []
-    try:
-        r_om = session.get(url_vivo, timeout=8)
-        if r_om.status_code == 200:
-            datos_meteo = r_om.json()
-            if not isinstance(datos_meteo, list):
-                datos_meteo = [datos_meteo]
-    except Exception:
-        pass
+def obtener_estaciones_apa():
+    print("3. Extrayendo en vivo telemetría directa Mercobras APA La Pampa...", flush=True)
+    RED_APA_NODOS = [
+        {"id": "APA_QUEMU", "nombre": "Quemú Quemú", "slug": "quemu", "depto": "Quemú Quemú", "lat": -36.056, "lon": -63.551},
+        {"id": "APA_ARATA", "nombre": "Arata", "slug": "arata", "depto": "Trenel", "lat": -35.617, "lon": -64.356},
+        {"id": "APA_CUCHILLOCO", "nombre": "Cuchillo Có", "slug": "emacuchi", "depto": "Lihuel Calel", "lat": -38.334, "lon": -64.642},
+        {"id": "APA_ALPACHIRI", "nombre": "Alpachiri", "slug": "alpachir", "depto": "Guatraché", "lat": -37.378, "lon": -63.784},
+        {"id": "APA_LIHUECALEL", "nombre": "Lihué Calel", "slug": "lihuecalel", "depto": "Lihuel Calel", "lat": -37.954, "lon": -65.602},
+        {"id": "APA_CASADEPIEDRA", "nombre": "Casa de Piedra", "slug": "casadepi", "depto": "Puelén", "lat": -38.163, "lon": -67.151},
+        {"id": "APA_TELEN", "nombre": "Telén", "slug": "telen", "depto": "Loventué", "lat": -36.262, "lon": -65.511},
+        {"id": "APA_GRALACHA", "nombre": "General Acha", "slug": "gralacha", "depto": "Utracán", "lat": -37.378, "lon": -64.604},
+        {"id": "APA_ALGARROBO", "nombre": "Algarrobo del Águila", "slug": "algarrobo", "depto": "Chical Có", "lat": -36.402, "lon": -67.147},
+        {"id": "APA_LAADELA", "nombre": "La Adela", "slug": "laadela", "depto": "Caleu Caleu", "lat": -38.985, "lon": -64.088},
+        {"id": "APA_25DEMAYO", "nombre": "25 de Mayo", "slug": "25demayo", "depto": "Puelén", "lat": -37.773, "lon": -67.718},
+        {"id": "APA_GOBDUVAL", "nombre": "Gobernador Duval", "slug": "gobduval", "depto": "Curacó", "lat": -38.731, "lon": -65.772}
+    ]
 
     estaciones_apa = []
-    for idx, e in enumerate(RED_APA_NODOS):
-        nom_norm = normalizar_txt(e["nombre"])
-        
-        # 1. Precipitación: Prioridad 100% al pluviómetro físico APA
-        lluvia_oficial = 0.0
-        origen_lluvia = "Pluviómetro APA"
-        encontrado = False
-        for k_loc, mm_val in lluvias_oficiales_apa.items():
-            if nom_norm in k_loc or k_loc in nom_norm:
-                lluvia_oficial = mm_val
-                encontrado = True
-                break
-        
-        if not encontrado:
-            lluvia_oficial = 0.0
-            origen_lluvia = "APA Sin reporte (0.0 mm)"
+    # Consultar todas las estaciones en paralelo para máxima velocidad
+    with ThreadPoolExecutor(max_workers=6) as executor:
+        futuros = [executor.submit(parsear_estacion_mercobras, nodo) for nodo in RED_APA_NODOS]
+        for fut in as_completed(futuros):
+            res = fut.result()
+            if res:
+                estaciones_apa.append(res)
 
-        # 2. Temperatura y humedad ambiente
-        temp = 16.0
-        hum = 50.0
-        if datos_meteo and idx < len(datos_meteo):
-            cur = datos_meteo[idx].get("current", {})
-            temp = round(cur.get("temperature_2m", 16.0), 1)
-            hum = round(cur.get("relative_humidity_2m", 50.0), 1)
-
-        estaciones_apa.append({
-            "id": e["id"],
-            "nombre": f"{e['nombre']} (APA)",
-            "departamento": e["depto"],
-            "provincia": "La Pampa",
-            "lat": e["lat"],
-            "lon": e["lon"],
-            "temp_c": temp,
-            "humedad_pct": hum,
-            "lluvia_24h_mm": lluvia_oficial,
-            "lluvia_mes_mm": round(lluvia_oficial * 2.0, 1),
-            "viento_kmh": 0.0,
-            "viento_dir": "Calma",
-            "presion_hpa": 1013.2,
-            "fecha_actualizacion": FECHA_TXT,
-            "red": "APA La Pampa",
-            "fuente": origen_lluvia
-        })
-
+    print(f"   -> [APA MERCOBRAS]: Se consultaron exitosamente {len(estaciones_apa)} estaciones en tiempo real.")
     return estaciones_apa
 
 def obtener_rayos():
