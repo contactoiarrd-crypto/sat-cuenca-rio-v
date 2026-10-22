@@ -348,23 +348,87 @@ def obtener_estaciones_san_luis():
     return estaciones_sl
 
 def obtener_estaciones_apa():
-    print("3. Extrayendo APA La Pampa...", flush=True)
-    RED_APA = [
-        {"id": "APA_ARATA", "nombre": "Arata", "slug": "arata", "depto": "Trenel", "lat": -35.617, "lon": -64.356, "temp": 19.2, "lluvia": 0.0},
-        {"id": "APA_QUEMU", "nombre": "Quemú Quemú", "slug": "quemu", "depto": "Quemú Quemú", "lat": -36.056, "lon": -63.551, "temp": 16.3, "lluvia": 0.0},
-        {"id": "APA_CUCHILLOCO", "nombre": "Cuchillo Có", "slug": "emacuchi", "depto": "Lihuel Calel", "lat": -38.334, "lon": -64.642, "temp": 12.7, "lluvia": 0.0},
-        {"id": "APA_ALPACHIRI", "nombre": "Alpachiri", "slug": "alpachir", "depto": "Guatraché", "lat": -37.378, "lon": -63.784, "temp": 13.4, "lluvia": 0.0},
-        {"id": "APA_LIHUECALEL", "nombre": "Lihué Calel", "slug": "lihuecalel", "depto": "Lihuel Calel", "lat": -37.954, "lon": -65.602, "temp": 13.2, "lluvia": 0.0},
-        {"id": "APA_CASADEPIEDRA", "nombre": "Casa de Piedra", "slug": "casadepi", "depto": "Puelén", "lat": -38.163, "lon": -67.151, "temp": 13.8, "lluvia": 0.0},
-        {"id": "APA_TELEN", "nombre": "Telén", "slug": "telen", "depto": "Loventué", "lat": -36.262, "lon": -65.511, "temp": 16.3, "lluvia": 0.0},
-        {"id": "APA_GRALACHA", "nombre": "General Acha", "slug": "gralacha", "depto": "Utracán", "lat": -37.378, "lon": -64.604, "temp": 15.0, "lluvia": 0.0},
-        {"id": "APA_ALGARROBO", "nombre": "Algarrobo del Águila", "slug": "algarrobo", "depto": "Chical Có", "lat": -36.402, "lon": -67.147, "temp": 14.2, "lluvia": 0.0},
-        {"id": "APA_LAADELA", "nombre": "La Adela", "slug": "laadela", "depto": "Caleu Caleu", "lat": -38.985, "lon": -64.088, "temp": 17.9, "lluvia": 2.4},
-        {"id": "APA_25DEMAYO", "nombre": "25 de Mayo", "slug": "25demayo", "depto": "Puelén", "lat": -37.773, "lon": -67.718, "temp": 16.5, "lluvia": 0.0},
-        {"id": "APA_GOBDUVAL", "nombre": "Gobernador Duval", "slug": "gobduval", "depto": "Curacó", "lat": -38.731, "lon": -65.772, "temp": 16.0, "lluvia": 0.0}
+    print("3. Extrayendo en vivo APA La Pampa...", flush=True)
+    RED_APA_NODOS = [
+        {"id": "APA_ARATA", "nombre": "Arata", "depto": "Trenel", "lat": -35.617, "lon": -64.356},
+        {"id": "APA_QUEMU", "nombre": "Quemú Quemú", "depto": "Quemú Quemú", "lat": -36.056, "lon": -63.551},
+        {"id": "APA_CUCHILLOCO", "nombre": "Cuchillo Có", "depto": "Lihuel Calel", "lat": -38.334, "lon": -64.642},
+        {"id": "APA_ALPACHIRI", "nombre": "Alpachiri", "depto": "Guatraché", "lat": -37.378, "lon": -63.784},
+        {"id": "APA_LIHUECALEL", "nombre": "Lihué Calel", "depto": "Lihuel Calel", "lat": -37.954, "lon": -65.602},
+        {"id": "APA_CASADEPIEDRA", "nombre": "Casa de Piedra", "depto": "Puelén", "lat": -38.163, "lon": -67.151},
+        {"id": "APA_TELEN", "nombre": "Telén", "depto": "Loventué", "lat": -36.262, "lon": -65.511},
+        {"id": "APA_GRALACHA", "nombre": "General Acha", "depto": "Utracán", "lat": -37.378, "lon": -64.604},
+        {"id": "APA_ALGARROBO", "nombre": "Algarrobo del Águila", "depto": "Chical Có", "lat": -36.402, "lon": -67.147},
+        {"id": "APA_LAADELA", "nombre": "La Adela", "depto": "Caleu Caleu", "lat": -38.985, "lon": -64.088},
+        {"id": "APA_25DEMAYO", "nombre": "25 de Mayo", "depto": "Puelén", "lat": -37.773, "lon": -67.718},
+        {"id": "APA_GOBDUVAL", "nombre": "Gobernador Duval", "depto": "Curacó", "lat": -38.731, "lon": -65.772}
     ]
+
     estaciones_apa = []
-    for e in RED_APA:
+    
+    # 1. Intentar consultar portal web telemétrico de La Pampa
+    datos_en_vivo = {}
+    try:
+        r_apa = session.get("https://redapa.lapampa.gob.ar/api/estaciones/ultimas", timeout=6, verify=False)
+        if r_apa.status_code == 200:
+            for item in r_apa.json():
+                nom = normalizar_txt(item.get("nombre", ""))
+                datos_en_vivo[nom] = {
+                    "temp": float(item.get("temperatura", np.nan)),
+                    "lluvia": float(item.get("lluvia_24h", item.get("lluvia", 0.0))),
+                    "hum": float(item.get("humedad", 0.0)),
+                    "fecha": item.get("fecha", FECHA_TXT)
+                }
+    except Exception:
+        pass
+
+    # 2. Respaldo satelital / modelo Open-Meteo
+    lats_str = ",".join(str(e["lat"]) for e in RED_APA_NODOS)
+    lons_str = ",".join(str(e["lon"]) for e in RED_APA_NODOS)
+    url_vivo = f"https://api.open-meteo.com/v1/forecast?latitude={lats_str}&longitude={lons_str}&current=temperature_2m,relative_humidity_2m,precipitation&daily=precipitation_sum&timezone=America%2FArgentina%2FBuenos_Aires"
+
+    datos_meteo = []
+    try:
+        r = session.get(url_vivo, timeout=8)
+        if r.status_code == 200:
+            datos_meteo = r.json()
+            if not isinstance(datos_meteo, list):
+                datos_meteo = [datos_meteo]
+    except Exception as e:
+        print(f"   [AVISO VIVO APA]: {e}")
+
+    for idx, e in enumerate(RED_APA_NODOS):
+        nom_norm = normalizar_txt(e["nombre"])
+        
+        # Caso 1: Estación oficial APA física respondió
+        if nom_norm in datos_en_vivo:
+            d = datos_en_vivo[nom_norm]
+            temp = d["temp"]
+            lluvia = d["lluvia"]
+            hum = d["hum"]
+            f_act = d["fecha"]
+            red_label = "APA La Pampa"
+            fuente_obs = "Sensor Físico APA"
+        # Caso 2: Contingencia Open-Meteo por coordenadas
+        elif datos_meteo and idx < len(datos_meteo):
+            cur = datos_meteo[idx].get("current", {})
+            daily = datos_meteo[idx].get("daily", {})
+            lluvias_sum = daily.get("precipitation_sum", [0.0])
+            temp = round(cur.get("temperature_2m", 15.0), 1)
+            lluvia = round(lluvias_sum[0] if lluvias_sum and lluvias_sum[0] is not None else 0.0, 1)
+            hum = round(cur.get("relative_humidity_2m", 50.0), 1)
+            f_act = f"{FECHA_TXT} (Estimado)"
+            red_label = "APA (Vía Open-Meteo)"
+            fuente_obs = "Modelo Open-Meteo (Sin enlace estación)"
+        # Caso 3: Respaldo básico
+        else:
+            temp = 16.0
+            lluvia = 0.0
+            hum = 50.0
+            f_act = f"{FECHA_TXT} (Nominal)"
+            red_label = "APA (Sin datos)"
+            fuente_obs = "Sin conexión"
+
         estaciones_apa.append({
             "id": e["id"],
             "nombre": f"{e['nombre']} (APA)",
@@ -372,16 +436,18 @@ def obtener_estaciones_apa():
             "provincia": "La Pampa",
             "lat": e["lat"],
             "lon": e["lon"],
-            "temp_c": e.get("temp", 15.0),
-            "humedad_pct": 50.0,
-            "lluvia_24h_mm": e.get("lluvia", 0.0),
-            "lluvia_mes_mm": 5.0,
+            "temp_c": temp,
+            "humedad_pct": hum,
+            "lluvia_24h_mm": lluvia,
+            "lluvia_mes_mm": round(lluvia * 3.5, 1),
             "viento_kmh": 0.0,
             "viento_dir": "Calma",
             "presion_hpa": 1013.2,
-            "fecha_actualizacion": FECHA_TXT,
-            "red": "APA La Pampa"
+            "fecha_actualizacion": f_act,
+            "red": red_label,
+            "fuente": fuente_obs
         })
+        
     return estaciones_apa
 
 def obtener_rayos():
