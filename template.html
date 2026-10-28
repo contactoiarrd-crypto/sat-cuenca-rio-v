@@ -80,7 +80,7 @@
     <div class="tabs">
         <button class="tab-btn active" onclick="openTab(event, 'tab-dashboard')">📊 Panel de Control General</button>
         <button class="tab-btn" onclick="openTab(event, 'tab-mapa')">🗺️ Visor Cartográfico</button>
-        <button class="tab-btn" onclick="openTab(event, 'tab-radsat')">📡 Radar y Rayos </button>
+        <button class="tab-btn" onclick="openTab(event, 'tab-radsat')">📡 Radar y Rayos</button>
         <button class="tab-btn" onclick="openTab(event, 'tab-ecmwf')">🌧️ Pronóstico ECMWF 72h y Medias</button>
         <button class="tab-btn" onclick="openTab(event, 'tab-hidro')">💧 Cuerpos de Agua y Cotas (INA)</button>
         <button class="tab-btn" onclick="openTab(event, 'tab-onda')">🌊 Traslación de Onda a La Pampa</button>
@@ -165,7 +165,7 @@
                     </div>
                 </div>
 
-                <!-- ENLACE DIRECTO SMN SIN LEYENDA -->
+                <!-- ENLACE DIRECTO SMN -->
                 <div style="margin-top: 20px; padding: 16px; background: #f8fafc; border-radius: 8px; border: 1px solid #cbd5e1; text-align: center;">
                     <a href="https://www.smn.gob.ar/alertas" target="_blank" rel="noopener noreferrer" class="btn" style="background:#0284c7; padding: 10px 20px; font-size: 13px; margin: 0; display: inline-flex; align-items: center; gap: 8px;">
                         🌐 Abrir Portal Oficial de Alertas SMN ↗
@@ -195,14 +195,61 @@
         <div id="map-container"></div>
     </div>
 
-    <!-- TAB 3: RADSAT COMPLETO EMBEBIDO -->
+    <!-- TAB 3: RADSAT COMPLETO CON SISTEMA DE ALERTA DE REFLECTIVIDAD -->
     <div id="tab-radsat" class="tab-content" style="padding: 10px 20px;">
+        <!-- TABLERO DE MONITOREO DE REFLECTIVIDAD Y ECO-RADAR -->
+        <div class="card" style="margin-bottom: 12px; padding: 14px 18px; border-left: 5px solid #0284c7;">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                <div>
+                    <h2 style="margin: 0; padding: 0; border: none; font-size: 15px; color: #1e3a8a; display: flex; align-items: center; gap: 8px;">
+                        📡 Tablero de Reflectividad Radar y Vigilancia de Celdas Convectivas
+                    </h2>
+                    <p style="font-size: 12px; color: #64748b; margin-top: 3px;">
+                        Monitoreo continuo en nacientes (San Luis), cuenca media (Córdoba) y descarga (La Pampa).
+                    </p>
+                </div>
+                <div id="radarBadgeStatus" style="background: #10b981; color: white; padding: 4px 12px; border-radius: 12px; font-size: 11.5px; font-weight: bold;">
+                    ECOS DÉBILES / SIN RIESGO
+                </div>
+            </div>
+
+            <!-- BANNER DE ALERTA DINÁMICO -->
+            <div id="radarAlertBanner" style="display: none; margin-top: 10px; padding: 10px 14px; border-radius: 6px; font-size: 12.5px; font-weight: 600; border-left: 5px solid;">
+                <span id="radarAlertText"></span>
+            </div>
+
+            <!-- TARJETAS DE REFLECTIVIDAD POR NODO -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; margin-top: 12px;">
+                <div class="kpi-card" id="cardRefVM" style="padding: 10px 14px; border-left-color: #10b981;">
+                    <div class="kpi-title">Villa Mercedes (Nacientes)</div>
+                    <div class="kpi-val" id="refValVM" style="font-size: 18px;">-- dBZ</div>
+                    <small id="refDetVM" style="color: #64748b;">Consultando radar...</small>
+                </div>
+                <div class="kpi-card" id="cardRefJov" style="padding: 10px 14px; border-left-color: #10b981;">
+                    <div class="kpi-title">Jovita / Levalle (Cuenca Media)</div>
+                    <div class="kpi-val" id="refValJov" style="font-size: 18px;">-- dBZ</div>
+                    <small id="refDetJov" style="color: #64748b;">Consultando radar...</small>
+                </div>
+                <div class="kpi-card" id="cardRefReal" style="padding: 10px 14px; border-left-color: #10b981;">
+                    <div class="kpi-title">Realicó / Norte Pampeano</div>
+                    <div class="kpi-val" id="refValReal" style="font-size: 18px;">-- dBZ</div>
+                    <small id="refDetReal" style="color: #64748b;">Consultando radar...</small>
+                </div>
+                <div class="kpi-card" id="cardRefRayos" style="padding: 10px 14px; border-left-color: #0284c7;">
+                    <div class="kpi-title">Actividad Eléctrica (Rayos)</div>
+                    <div class="kpi-val" id="refValRayos" style="font-size: 18px;">0 descargas</div>
+                    <small id="refDetRayos" style="color: #64748b;">En radio operativo de cuenca</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- VISOR WINDY EMBEBIDO -->
         <div style="background: white; border-radius: 8px; border: 1px solid #cbd5e1; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
             <div style="background: #0f172a; color: white; padding: 10px 16px; display: flex; justify-content: space-between; align-items: center;">
                 <strong style="font-size: 13px;">📡 Radar Meteorológico Doppler y Descargas Eléctricas en Vivo</strong>
                 <span style="font-size: 11px; color: #94a3b8;">Cuenca Río V &bull; Cobertura Nacional SINARAME / SMN</span>
             </div>
-            <div style="width: 100%; height: calc(100vh - 220px); min-height: 620px;">
+            <div style="width: 100%; height: calc(100vh - 350px); min-height: 520px;">
                 <iframe 
                     width="100%" 
                     height="100%" 
@@ -670,56 +717,4 @@
                 const txtSevero = document.getElementById('txtSeveroMsg');
                 if (haySevero) {
                     txtSevero.innerText = avisos.join(' | ');
-                    boxSevero.style.display = 'block';
-                } else {
-                    boxSevero.style.display = 'none';
-                }
-
-                document.getElementById('alertaCalorBox').style.display = hayCalor ? 'block' : 'none';
-                document.getElementById('alertaPolarBox').style.display = hayPolar ? 'block' : 'none';
-
-                const badge = document.getElementById('badgeEstadoVivo');
-                if (haySevero || hayCalor || hayPolar || maxPuntos3030 >= 75) {
-                    badge.style.background = '#dc2626';
-                    badge.innerText = 'RIESGO DETECTADO';
-                } else if (maxPuntos3030 >= 50) {
-                    badge.style.background = '#f59e0b';
-                    badge.innerText = 'PRECAUCIÓN';
-                } else {
-                    badge.style.background = '#10b981';
-                    badge.innerText = 'NORMAL';
-                }
-
-                const barFill = document.getElementById('indexBarFill');
-                const valLabel = document.getElementById('val3030');
-                barFill.style.width = maxPuntos3030 + "%";
-                valLabel.innerText = maxPuntos3030 + "%";
-
-                if (maxPuntos3030 <= 25) {
-                    barFill.style.backgroundColor = "#10b981";
-                    valLabel.style.color = "#10b981";
-                } else if (maxPuntos3030 <= 50) {
-                    barFill.style.backgroundColor = "#f1c40f";
-                    valLabel.style.color = "#d97706";
-                } else if (maxPuntos3030 <= 75) {
-                    barFill.style.backgroundColor = "#ea580c";
-                    valLabel.style.color = "#ea580c";
-                } else {
-                    barFill.style.backgroundColor = "#dc2626";
-                    valLabel.style.color = "#dc2626";
-                }
-
-                document.getElementById('detalleTiempoVivo').innerHTML = resumenNodos.join('<br>');
-
-            } catch (e) {
-                console.warn("Error en monitoreo de indicadores:", e);
-            }
-        }
-
-        window.addEventListener('DOMContentLoaded', function() {
-            verificarTiempoSeveroCuenca();
-            setInterval(verificarTiempoSeveroCuenca, 180000);
-        });
-    </script>
-</body>
-</html>
+                    boxSevero.style.display
