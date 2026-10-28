@@ -165,7 +165,6 @@
                     </div>
                 </div>
 
-                <!-- ENLACE DIRECTO SMN -->
                 <div style="margin-top: 20px; padding: 16px; background: #f8fafc; border-radius: 8px; border: 1px solid #cbd5e1; text-align: center;">
                     <a href="https://www.smn.gob.ar/alertas" target="_blank" rel="noopener noreferrer" class="btn" style="background:#0284c7; padding: 10px 20px; font-size: 13px; margin: 0; display: inline-flex; align-items: center; gap: 8px;">
                         🌐 Abrir Portal Oficial de Alertas SMN ↗
@@ -197,7 +196,6 @@
 
     <!-- TAB 3: RADSAT COMPLETO CON SISTEMA DE ALERTA DE REFLECTIVIDAD -->
     <div id="tab-radsat" class="tab-content" style="padding: 10px 20px;">
-        <!-- TABLERO DE MONITOREO DE REFLECTIVIDAD Y ECO-RADAR -->
         <div class="card" style="margin-bottom: 12px; padding: 14px 18px; border-left: 5px solid #0284c7;">
             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
                 <div>
@@ -213,12 +211,10 @@
                 </div>
             </div>
 
-            <!-- BANNER DE ALERTA DINÁMICO -->
             <div id="radarAlertBanner" style="display: none; margin-top: 10px; padding: 10px 14px; border-radius: 6px; font-size: 12.5px; font-weight: 600; border-left: 5px solid;">
                 <span id="radarAlertText"></span>
             </div>
 
-            <!-- TARJETAS DE REFLECTIVIDAD POR NODO -->
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; margin-top: 12px;">
                 <div class="kpi-card" id="cardRefVM" style="padding: 10px 14px; border-left-color: #10b981;">
                     <div class="kpi-title">Villa Mercedes (Nacientes)</div>
@@ -243,7 +239,6 @@
             </div>
         </div>
 
-        <!-- VISOR WINDY EMBEBIDO -->
         <div style="background: white; border-radius: 8px; border: 1px solid #cbd5e1; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
             <div style="background: #0f172a; color: white; padding: 10px 16px; display: flex; justify-content: space-between; align-items: center;">
                 <strong style="font-size: 13px;">📡 Radar Meteorológico Doppler y Descargas Eléctricas en Vivo</strong>
@@ -354,11 +349,26 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
+        // 1. Manejo prioritario de pestañas (siempre activo)
+        function openTab(evt, tabName) {
+            var tabContents = document.getElementsByClassName("tab-content");
+            for (var i = 0; i < tabContents.length; i++) tabContents[i].classList.remove("active");
+            var tabBtns = document.getElementsByClassName("tab-btn");
+            for (var i = 0; i < tabBtns.length; i++) tabBtns[i].classList.remove("active");
+            
+            var targetTab = document.getElementById(tabName);
+            if (targetTab) targetTab.classList.add("active");
+            if (evt && evt.currentTarget) evt.currentTarget.classList.add("active");
+
+            if (tabName === 'tab-mapa') {
+                setTimeout(initMap, 150);
+            }
+        }
+
         var map = null;
         var fgFreatimetros = L.featureGroup();
         var freatimetrosGuardados = [];
 
-        // Inicialización de Freatímetros
         try {
             var freatServidor = __JSON_FREATIMETROS__;
             if (Array.isArray(freatServidor) && freatServidor.length > 0) {
@@ -446,7 +456,8 @@
             fgFreatimetros.clearLayers();
             localStorage.removeItem("sat_freatimetros_rio_v");
             freatimetrosGuardados = [];
-            document.getElementById("inputFreatimetros").value = "";
+            var inp = document.getElementById("inputFreatimetros");
+            if (inp) inp.value = "";
             renderizarFreatimetros([]);
         }
 
@@ -549,61 +560,81 @@
 
             fgFreatimetros.addTo(map);
 
-            var datosHidro = __JSON_HIDRO__;
-            datosHidro.forEach(function(h) {
-                var difTxt = h.variacion ? ("<br>Variación: <b>" + h.variacion + "</b>") : "";
-                L.circleMarker([h.lat, h.lon], {
-                    radius: 8,
-                    color: '#ffffff',
-                    fillColor: h.color,
-                    fillOpacity: 0.95,
-                    weight: 2
-                }).bindPopup("<b>" + h.nombre + "</b><br>Río: " + h.rio + "<br>Nivel Actual: <b>" + h.nivel_actual + " m</b><br>Nivel Anterior: " + h.nivel_anterior + " m" + difTxt + "<br>Alerta: " + h.cota_alerta + " m | Evac: " + h.cota_evac + " m<br>Estado: <b>" + h.estado + "</b><br><small>Obs: " + h.fecha + "</small>").addTo(fgHidro);
-            });
+            try {
+                var datosHidro = __JSON_HIDRO__;
+                if (Array.isArray(datosHidro)) {
+                    datosHidro.forEach(function(h) {
+                        var difTxt = h.variacion ? ("<br>Variación: <b>" + h.variacion + "</b>") : "";
+                        L.circleMarker([h.lat, h.lon], {
+                            radius: 8,
+                            color: '#ffffff',
+                            fillColor: h.color,
+                            fillOpacity: 0.95,
+                            weight: 2
+                        }).bindPopup("<b>" + h.nombre + "</b><br>Río: " + h.rio + "<br>Nivel Actual: <b>" + h.nivel_actual + " m</b><br>Nivel Anterior: " + h.nivel_anterior + " m" + difTxt + "<br>Alerta: " + h.cota_alerta + " m | Evac: " + h.cota_evac + " m<br>Estado: <b>" + h.estado + "</b><br><small>Obs: " + h.fecha + "</small>").addTo(fgHidro);
+                    });
+                }
+            } catch(e) {}
 
-            var datosRem = __JSON_REM_SL__;
-            datosRem.forEach(function(m) {
-                L.circleMarker([m.lat, m.lon], {
-                    radius: 5,
-                    color: '#c2410c',
-                    fillColor: '#fb923c',
-                    fillOpacity: 0.85,
-                    weight: 1.5
-                }).bindPopup("<b>" + m.nombre + "</b><br>Red: <b>REM San Luis</b><br>Temp: " + m.temp_c + " °C<br>Lluvia 24h: <b>" + m.lluvia_24h_mm + " mm</b>").addTo(fgRemSL);
-            });
+            try {
+                var datosRem = __JSON_REM_SL__;
+                if (Array.isArray(datosRem)) {
+                    datosRem.forEach(function(m) {
+                        L.circleMarker([m.lat, m.lon], {
+                            radius: 5,
+                            color: '#c2410c',
+                            fillColor: '#fb923c',
+                            fillOpacity: 0.85,
+                            weight: 1.5
+                        }).bindPopup("<b>" + m.nombre + "</b><br>Red: <b>REM San Luis</b><br>Temp: " + m.temp_c + " °C<br>Lluvia 24h: <b>" + m.lluvia_24h_mm + " mm</b>").addTo(fgRemSL);
+                    });
+                }
+            } catch(e) {}
 
-            var datosApa = __JSON_APA_LP__;
-            datosApa.forEach(function(m) {
-                L.circleMarker([m.lat, m.lon], {
-                    radius: 5,
-                    color: '#0369a1',
-                    fillColor: '#38bdf8',
-                    fillOpacity: 0.85,
-                    weight: 1.5
-                }).bindPopup("<b>" + m.nombre + "</b><br>Red: <b>APA La Pampa</b><br>Temp: " + m.temp_c + " °C<br>Lluvia 24h: <b>" + m.lluvia_24h_mm + " mm</b>").addTo(fgApaLP);
-            });
+            try {
+                var datosApa = __JSON_APA_LP__;
+                if (Array.isArray(datosApa)) {
+                    datosApa.forEach(function(m) {
+                        L.circleMarker([m.lat, m.lon], {
+                            radius: 5,
+                            color: '#0369a1',
+                            fillColor: '#38bdf8',
+                            fillOpacity: 0.85,
+                            weight: 1.5
+                        }).bindPopup("<b>" + m.nombre + "</b><br>Red: <b>APA La Pampa</b><br>Temp: " + m.temp_c + " °C<br>Lluvia 24h: <b>" + m.lluvia_24h_mm + " mm</b>").addTo(fgApaLP);
+                    });
+                }
+            } catch(e) {}
 
-            var datosOmxCba = __JSON_OMX_CBA__;
-            datosOmxCba.forEach(function(m) {
-                L.circleMarker([m.lat, m.lon], {
-                    radius: 5,
-                    color: '#6b21a8',
-                    fillColor: '#c084fc',
-                    fillOpacity: 0.85,
-                    weight: 1.5
-                }).bindPopup("<b>" + m.nombre + "</b><br>Red: <b>Omixom Córdoba</b><br>Lluvia 24h: " + m.lluvia_24h_mm + " mm").addTo(fgOmxCba);
-            });
+            try {
+                var datosOmxCba = __JSON_OMX_CBA__;
+                if (Array.isArray(datosOmxCba)) {
+                    datosOmxCba.forEach(function(m) {
+                        L.circleMarker([m.lat, m.lon], {
+                            radius: 5,
+                            color: '#6b21a8',
+                            fillColor: '#c084fc',
+                            fillOpacity: 0.85,
+                            weight: 1.5
+                        }).bindPopup("<b>" + m.nombre + "</b><br>Red: <b>Omixom Córdoba</b><br>Lluvia 24h: " + m.lluvia_24h_mm + " mm").addTo(fgOmxCba);
+                    });
+                }
+            } catch(e) {}
 
-            var datosOmxLP = __JSON_OMX_LP__;
-            datosOmxLP.forEach(function(m) {
-                L.circleMarker([m.lat, m.lon], {
-                    radius: 5,
-                    color: '#0f766e',
-                    fillColor: '#2dd4bf',
-                    fillOpacity: 0.85,
-                    weight: 1.5
-                }).bindPopup("<b>" + m.nombre + "</b><br>Red: <b>Omixom La Pampa</b><br>Lluvia 24h: " + m.lluvia_24h_mm + " mm").addTo(fgOmxLP);
-            });
+            try {
+                var datosOmxLP = __JSON_OMX_LP__;
+                if (Array.isArray(datosOmxLP)) {
+                    datosOmxLP.forEach(function(m) {
+                        L.circleMarker([m.lat, m.lon], {
+                            radius: 5,
+                            color: '#0f766e',
+                            fillColor: '#2dd4bf',
+                            fillOpacity: 0.85,
+                            weight: 1.5
+                        }).bindPopup("<b>" + m.nombre + "</b><br>Red: <b>Omixom La Pampa</b><br>Lluvia 24h: " + m.lluvia_24h_mm + " mm").addTo(fgOmxLP);
+                    });
+                }
+            } catch(e) {}
 
             var baseMaps = {
                 "🗺️ Rutas y Vialidad (OpenStreetMap)": osmVial,
@@ -640,19 +671,6 @@
             legend.addTo(map);
 
             renderizarFreatimetros(freatimetrosGuardados);
-        }
-
-        function openTab(evt, tabName) {
-            var tabContents = document.getElementsByClassName("tab-content");
-            for (var i = 0; i < tabContents.length; i++) tabContents[i].classList.remove("active");
-            var tabBtns = document.getElementsByClassName("tab-btn");
-            for (var i = 0; i < tabBtns.length; i++) tabBtns[i].classList.remove("active");
-            document.getElementById(tabName).classList.add("active");
-            evt.currentTarget.classList.add("active");
-
-            if (tabName === 'tab-mapa') {
-                setTimeout(initMap, 150);
-            }
         }
 
         async function verificarTiempoSeveroCuenca() {
@@ -715,6 +733,178 @@
 
                 const boxSevero = document.getElementById('alertaSeveraBox');
                 const txtSevero = document.getElementById('txtSeveroMsg');
-                if (haySevero) {
+                if (haySevero && boxSevero && txtSevero) {
                     txtSevero.innerText = avisos.join(' | ');
-                    boxSevero.style.display
+                    boxSevero.style.display = 'block';
+                } else if (boxSevero) {
+                    boxSevero.style.display = 'none';
+                }
+
+                var elCalor = document.getElementById('alertaCalorBox');
+                if (elCalor) elCalor.style.display = hayCalor ? 'block' : 'none';
+                var elPolar = document.getElementById('alertaPolarBox');
+                if (elPolar) elPolar.style.display = hayPolar ? 'block' : 'none';
+
+                const badge = document.getElementById('badgeEstadoVivo');
+                if (badge) {
+                    if (haySevero || hayCalor || hayPolar || maxPuntos3030 >= 75) {
+                        badge.style.background = '#dc2626';
+                        badge.innerText = 'RIESGO DETECTADO';
+                    } else if (maxPuntos3030 >= 50) {
+                        badge.style.background = '#f59e0b';
+                        badge.innerText = 'PRECAUCIÓN';
+                    } else {
+                        badge.style.background = '#10b981';
+                        badge.innerText = 'NORMAL';
+                    }
+                }
+
+                const barFill = document.getElementById('indexBarFill');
+                const valLabel = document.getElementById('val3030');
+                if (barFill && valLabel) {
+                    barFill.style.width = maxPuntos3030 + "%";
+                    valLabel.innerText = maxPuntos3030 + "%";
+
+                    if (maxPuntos3030 <= 25) {
+                        barFill.style.backgroundColor = "#10b981";
+                        valLabel.style.color = "#10b981";
+                    } else if (maxPuntos3030 <= 50) {
+                        barFill.style.backgroundColor = "#f1c40f";
+                        valLabel.style.color = "#d97706";
+                    } else if (maxPuntos3030 <= 75) {
+                        barFill.style.backgroundColor = "#ea580c";
+                        valLabel.style.color = "#ea580c";
+                    } else {
+                        barFill.style.backgroundColor = "#dc2626";
+                        valLabel.style.color = "#dc2626";
+                    }
+                }
+
+                var detVivo = document.getElementById('detalleTiempoVivo');
+                if (detVivo) detVivo.innerHTML = resumenNodos.join('<br>');
+
+            } catch (e) {
+                console.warn("Error en monitoreo de indicadores:", e);
+            }
+        }
+
+        // =============================================================
+        // CÁLCULO Y MONITOREO DE REFLECTIVIDAD RADAR (dBZ)
+        // =============================================================
+        function calcularDbz(tasaMmHora) {
+            if (tasaMmHora <= 0.05) return 0;
+            var z = 200 * Math.pow(tasaMmHora, 1.6);
+            return Math.round(10 * Math.log10(z));
+        }
+
+        async function monitorearReflectividadCuenca() {
+            const nodosRadar = [
+                { id: "VM", nombre: "Villa Mercedes", lat: -33.67, lon: -65.46, elVal: "refValVM", elDet: "refDetVM", elCard: "cardRefVM" },
+                { id: "Jov", nombre: "Jovita / Levalle", lat: -34.52, lon: -63.97, elVal: "refValJov", elDet: "refDetJov", elCard: "cardRefJov" },
+                { id: "Real", nombre: "Realicó (La Pampa)", lat: -35.04, lon: -64.24, elVal: "refValReal", elDet: "refDetReal", elCard: "cardRefReal" }
+            ];
+
+            const lats = nodosRadar.map(n => n.lat).join(',');
+            const lons = nodosRadar.map(n => n.lon).join(',');
+            const url = `https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lons}&current=precipitation,rain,showers,weather_code&timezone=America%2FArgentina%2FBuenos_Aires`;
+
+            try {
+                const res = await fetch(url);
+                const data = await res.json();
+                const lista = Array.isArray(data) ? data : [data];
+
+                let maxDbzGeneral = 0;
+                let alertasActivas = [];
+
+                lista.forEach((d, i) => {
+                    const nodo = nodosRadar[i];
+                    const cur = d.current;
+                    if (!cur) return;
+
+                    let tasaHoraria = (cur.precipitation || 0) + (cur.showers || 0);
+                    if (cur.weather_code >= 95) tasaHoraria = Math.max(tasaHoraria, 25.0);
+                    else if (cur.weather_code >= 80) tasaHoraria = Math.max(tasaHoraria, 10.0);
+
+                    const dbz = calcularDbz(tasaHoraria);
+                    if (dbz > maxDbzGeneral) maxDbzGeneral = dbz;
+
+                    let color = "#10b981";
+                    let estadoTxt = "Ecos débiles / Despejado";
+
+                    if (dbz >= 55) {
+                        color = "#dc2626";
+                        estadoTxt = "🔴 Celda Convectiva Severa (Riesgo Granizo)";
+                        alertasActivas.push(`⚠️ ALTA REFLECTIVIDAD EN ${nodo.nombre.toUpperCase()}: ${dbz} dBZ detectados.`);
+                    } else if (dbz >= 45) {
+                        color = "#ea580c";
+                        estadoTxt = "🟠 Convección Fuerte / Chaparrón Intenso";
+                        alertasActivas.push(`⚡ Eco de tormenta intensa en ${nodo.nombre} (${dbz} dBZ).`);
+                    } else if (dbz >= 30) {
+                        color = "#f59e0b";
+                        estadoTxt = "🟡 Precipitación Moderada";
+                    }
+
+                    const elVal = document.getElementById(nodo.elVal);
+                    const elDet = document.getElementById(nodo.elDet);
+                    const elCard = document.getElementById(nodo.elCard);
+
+                    if (elVal) {
+                        elVal.innerText = `${dbz} dBZ`;
+                        elVal.style.color = color;
+                    }
+                    if (elDet) elDet.innerText = estadoTxt;
+                    if (elCard) elCard.style.borderLeftColor = color;
+                });
+
+                try {
+                    var rayosData = __JSON_RAYOS__;
+                    var elRayosVal = document.getElementById("refValRayos");
+                    var elRayosDet = document.getElementById("refDetRayos");
+                    if (elRayosVal && Array.isArray(rayosData)) {
+                        elRayosVal.innerText = `${rayosData.length} descargas`;
+                        if (rayosData.length > 5) {
+                            elRayosVal.style.color = "#ea580c";
+                            if (elRayosDet) elRayosDet.innerText = "⚡ Actividad eléctrica activa";
+                        }
+                    }
+                } catch(e) {}
+
+                const banner = document.getElementById("radarAlertBanner");
+                const bannerTxt = document.getElementById("radarAlertText");
+                const badge = document.getElementById("radarBadgeStatus");
+
+                if (alertasActivas.length > 0) {
+                    if (banner) {
+                        banner.style.display = "block";
+                        banner.style.background = maxDbzGeneral >= 55 ? "#fee2e2" : "#ffedd5";
+                        banner.style.borderColor = maxDbzGeneral >= 55 ? "#ef4444" : "#ea580c";
+                        banner.style.color = maxDbzGeneral >= 55 ? "#991b1b" : "#9a3412";
+                    }
+                    if (bannerTxt) bannerTxt.innerHTML = alertasActivas.join("<br>");
+                    if (badge) {
+                        badge.style.background = maxDbzGeneral >= 55 ? "#dc2626" : "#ea580c";
+                        badge.innerText = maxDbzGeneral >= 55 ? "ALERTA: NÚCLEOS SEVEROS (>50 dBZ)" : "VIGILANCIA: PRECIPITACIÓN MODERADA";
+                    }
+                } else {
+                    if (banner) banner.style.display = "none";
+                    if (badge) {
+                        badge.style.background = "#10b981";
+                        badge.innerText = "ECOS DÉBILES / NORMAL (<30 dBZ)";
+                    }
+                }
+
+            } catch (err) {
+                console.warn("Error evaluando reflectividad de radar:", err);
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', function() {
+            verificarTiempoSeveroCuenca();
+            setInterval(verificarTiempoSeveroCuenca, 180000);
+
+            monitorearReflectividadCuenca();
+            setInterval(monitorearReflectividadCuenca, 120000);
+        });
+    </script>
+</body>
+</html>
